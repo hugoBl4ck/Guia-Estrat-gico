@@ -86,6 +86,7 @@ export class DataRepository implements IDataRepository {
             total_corridas: e.totalTrips,
             distancia_km: e.rideDistanceKm,
             recorded_at: e.recordedAt,
+            user_email: userEmail,
           })),
           { onConflict: 'id' }
         ).catch(() => {});

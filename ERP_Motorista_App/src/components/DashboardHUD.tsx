@@ -45,14 +45,23 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const isBreakEvenPassed = breakEvenProgress >= 100;
 
   const targetTrips = dailyGoalTrips;
-  const tripsCompleted = summary.totalTrips;
-  const tripsRemaining = Math.max(0, targetTrips - tripsCompleted);
-  const recommendedDailyRevenueTarget = targetTrips * 10;
-  const targetProgress = Math.min(100, Math.round((tripsCompleted / targetTrips) * 100));
+
+  // Filtrar Ganhos Exclusivamente do Dia Atual (Hoje)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayEarnings = (earnings || []).filter((e) => {
+    if (e.isDeleted) return false;
+    if (!e.recordedAt) return true;
+    const dateStr = new Date(e.recordedAt).toISOString().slice(0, 10);
+    return dateStr === todayStr;
+  });
+
+  const tripsCompletedToday = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
+  const tripsRemainingToday = Math.max(0, targetTrips - tripsCompletedToday);
+  const targetProgressToday = Math.min(100, Math.round((tripsCompletedToday / targetTrips) * 100));
 
   // Metas Acumuladas do Mês (30 dias)
   const monthlyGoalTrips = targetTrips * 30;
-  const monthlyTripsCompleted = (earnings || []).reduce((sum, e) => sum + e.totalTrips, 0);
+  const monthlyTripsCompleted = (earnings || []).reduce((sum, e) => sum + (e.isDeleted ? 0 : e.totalTrips), 0);
   const monthlyTripsRemaining = Math.max(0, monthlyGoalTrips - monthlyTripsCompleted);
   const monthlyProgressPercent = Math.min(100, Math.round((monthlyTripsCompleted / monthlyGoalTrips) * 100));
 
@@ -267,25 +276,25 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         {/* 1. Progresso do Dia */}
         <div className="space-y-1.5">
           <div className="flex justify-between items-center text-xs font-bold text-white">
-            <span>Progresso do Dia:</span>
-            <span className="text-driver-profit font-mono text-sm">{tripsCompleted} / {targetTrips} corridas</span>
+            <span>Progresso do Dia (Hoje):</span>
+            <span className="text-driver-profit font-mono text-sm">{tripsCompletedToday} / {targetTrips} corridas</span>
           </div>
           
           <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
-              style={{ width: `${targetProgress}%` }}
+              style={{ width: `${targetProgressToday}%` }}
             ></div>
           </div>
 
           <div className="p-2.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
-            {tripsRemaining === 0 ? (
+            {tripsRemainingToday === 0 ? (
               <span className="text-emerald-400 font-bold flex items-center gap-1">
                 <CheckCircle2 className="w-4 h-4" /> Meta do dia de {targetTrips} corridas concluída!
               </span>
             ) : (
               <span className="text-slate-300">
-                Faltam <span className="font-extrabold text-driver-profit">{tripsRemaining} corridas</span> para bater a meta de hoje ({targetTrips}/dia).
+                Faltam <span className="font-extrabold text-driver-profit">{tripsRemainingToday} corridas</span> para bater a meta de hoje ({targetTrips}/dia).
               </span>
             )}
           </div>
@@ -384,7 +393,12 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </div>
 
         <div className="space-y-2.5">
-          {earnings.map((e) => (
+          {todayEarnings.length === 0 ? (
+            <p className="text-xs text-slate-400 p-3 text-center bg-slate-900/60 rounded-2xl border border-slate-800">
+              Nenhum lançamento hoje ainda. Clique em "+ Lançar Corrida".
+            </p>
+          ) : (
+            todayEarnings.map((e) => (
             <div key={e.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-900/90 border border-slate-800">
               <div className="flex items-center space-x-3">
                 <div
@@ -424,7 +438,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
                 </button>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
 
