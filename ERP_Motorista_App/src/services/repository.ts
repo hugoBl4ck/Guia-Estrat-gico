@@ -143,6 +143,75 @@ export class DataRepository implements IDataRepository {
       return false;
     }
   }
+
+  public async fetchFromCloud(userEmail: string = 'hugovieira.eng@gmail.com'): Promise<Partial<FinanceState> | null> {
+    if (!isSupabaseConfigured() || !supabase) return null;
+
+    try {
+      const { data: cloudGanhos } = await supabase
+        .from('ganhos')
+        .select('*')
+        .eq('is_deleted', false);
+
+      const { data: cloudFaturamentos } = await supabase
+        .from('faturamentos')
+        .select('*');
+
+      let earningsList: any[] = [];
+      if (Array.isArray(cloudGanhos) && cloudGanhos.length > 0) {
+        earningsList = cloudGanhos.map((e) => ({
+          id: e.id,
+          platform: e.platform,
+          grossAmount: parseFloat(e.gross_amount) || 0,
+          tipsAmount: parseFloat(e.tips_amount) || 0,
+          totalTrips: parseInt(e.total_trips, 10) || 1,
+          rideDistanceKm: parseFloat(e.ride_distance_km) || 0,
+          recordedAt: e.recorded_at,
+          isDeleted: Boolean(e.is_deleted),
+        }));
+      } else if (Array.isArray(cloudFaturamentos) && cloudFaturamentos.length > 0) {
+        earningsList = cloudFaturamentos.map((f) => ({
+          id: f.id,
+          platform: f.plataforma,
+          grossAmount: parseFloat(f.valor_bruto) || 0,
+          tipsAmount: parseFloat(f.valor_gorjeta) || 0,
+          totalTrips: parseInt(f.total_corridas, 10) || 1,
+          rideDistanceKm: parseFloat(f.distancia_km) || 0,
+          recordedAt: f.recorded_at,
+        }));
+      }
+
+      const { data: cloudDespesas } = await supabase
+        .from('despesas')
+        .select('*')
+        .eq('is_deleted', false);
+
+      let expensesList: any[] = [];
+      if (Array.isArray(cloudDespesas) && cloudDespesas.length > 0) {
+        expensesList = cloudDespesas.map((d) => ({
+          id: d.id,
+          category: d.category || d.categoria || 'OTHER',
+          amount: parseFloat(d.amount || d.valor) || 0,
+          kwhAmount: d.kwh_amount ? parseFloat(d.kwh_amount) : undefined,
+          tariffPerKwh: d.tariff_per_kwh ? parseFloat(d.tariff_per_kwh) : undefined,
+          notes: d.notes || d.observacao || '',
+          expenseDate: d.expense_date,
+          isDeleted: Boolean(d.is_deleted),
+        }));
+      }
+
+      if (earningsList.length > 0 || expensesList.length > 0) {
+        return {
+          earnings: earningsList,
+          expenses: expensesList,
+        };
+      }
+      return null;
+    } catch (err) {
+      console.warn('Erro ao buscar dados do Supabase:', err);
+      return null;
+    }
+  }
 }
 
 export const repository = new DataRepository();

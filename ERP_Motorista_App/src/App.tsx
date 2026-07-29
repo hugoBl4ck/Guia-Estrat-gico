@@ -68,6 +68,22 @@ export function App() {
     }
   }, [state]);
 
+  // Efeito para sincronização e busca inicial automática no Supabase Cloud
+  useEffect(() => {
+    repository.fetchFromCloud(userEmail).then((cloudData) => {
+      if (cloudData && (cloudData.earnings?.length || cloudData.expenses?.length)) {
+        dispatch({
+          type: 'SET_ALL',
+          payload: {
+            ...state,
+            earnings: cloudData.earnings || state.earnings,
+            expenses: cloudData.expenses || state.expenses,
+          },
+        });
+      }
+    });
+  }, [userEmail]);
+
   // Efeitos para persistência contínua de veículos
   useEffect(() => {
     try {
