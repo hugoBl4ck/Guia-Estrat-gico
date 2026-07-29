@@ -91,10 +91,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={onRestoreMockData}
                   className="bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                  title="Restaurar lançamentos demonstrativos"
+                  title="Carregar lançamentos demonstrativos para testar o ERP"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  Exemplo
+                  Modo Demo (Exemplo)
                 </button>
               ) : (
                 <button

@@ -54,22 +54,18 @@ O Driver ERP adota uma arquitetura **Offline-First PWA & Mobile**, garantindo qu
 
 ---
 
-## 2. Tech Stack Recomendada
+## 2. Tech Stack Real do Aplicativo
 
-### Frontend (Mobile & Web)
-- **Framework**: Next.js 14 (App Router) + React Native / Expo (PWA e app nativo cross-platform).
-- **Gerenciamento de Estado & Offline**: TanStack Query (React Query) v5 + Zustand para estado local.
-- **Banco Local Offline**: RxDB / WatermelonDB ou SQLite via Expo.
-- **UI Components**: Tailwind CSS + Shadcn UI adaptado para alto contraste Dark Mode.
+### Frontend (Web & PWA)
+- **Framework**: Vite 5 + React 18 com TypeScript.
+- **Gerenciamento de Estado**: React `useReducer` com arquitetura limpa de Reducer ([financeReducer.ts](file:///c:/Users/Hugo/Documents/Guia%20Estrat%C3%A9gico/ERP_Motorista_App/src/services/financeReducer.ts)).
+- **Persistência Local Offline-First**: LocalStorage com abstração de repositório ([repository.ts](file:///c:/Users/Hugo/Documents/Guia%20Estrat%C3%A9gico/ERP_Motorista_App/src/services/repository.ts) e [db.ts](file:///c:/Users/Hugo/Documents/Guia%20Estrat%C3%A9gico/ERP_Motorista_App/src/services/db.ts)).
+- **Service Worker PWA**: Daemon customizado em [public/sw.js](file:///c:/Users/Hugo/Documents/Guia%20Estrat%C3%A9gico/ERP_Motorista_App/public/sw.js) com política Network-First e suporte completo a instalação offline via [manifest.json](file:///c:/Users/Hugo/Documents/Guia%20Estrat%C3%A9gico/ERP_Motorista_App/public/manifest.json).
+- **UI Components & Estilo**: Tailwind CSS com tema OLED de alto contraste e Lucide Icons.
 
-### Backend (API Services)
-- **Linguagem & Runtime**: Node.js v20 LTS com TypeScript ou Python 3.12 FastAPI para o serviço de visão computacional OCR.
-- **ORM**: Prisma ORM / Drizzle ORM (tipagem estática rigorosa para transações financeiras).
-- **Filas e Async Jobs**: BullMQ com Redis para processamento de cupons fiscal (OCR) e geração de relatórios PDF.
-
-### Banco de Dados & Armazenamento
-- **Banco Relacional Principal**: PostgreSQL 16 com extensão TimescaleDB para agregação performática de dados temporais de turnos e abastecimentos.
-- **Armazenamento de Mídia**: MinIO / AWS S3 para armazenamento seguro de fotos de cupons fiscais e comprovantes.
+### Nuvem & Banco de Dados (Cloud Sync)
+- **Banco de Dados Cloud**: Supabase (PostgreSQL relacional) com tabelas de faturamento e despesas.
+- **Autenticação & Segurança**: Supabase Auth com políticas RLS (*Row Level Security*).
 
 ---
 

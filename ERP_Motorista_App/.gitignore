@@ -1,5 +1,18 @@
+# Dependências e Builds
 node_modules
 dist
 .vercel
+
+# Variáveis de ambiente e credenciais
+.env
 .env.local
+.env.*.local
+
+# Anexos e documentos pessoais sensíveis
+anexos/
+*.pdf
+*.eml
+
+# Sistema
 .DS_Store
+Thumbs.db

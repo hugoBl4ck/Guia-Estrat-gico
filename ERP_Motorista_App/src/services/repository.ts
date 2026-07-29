@@ -1,10 +1,15 @@
 import { dbService } from './db';
 import { FinanceState } from './financeReducer';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { Vehicle } from '../types';
 
 export interface IDataRepository {
   loadData(): FinanceState;
   saveData(state: FinanceState): void;
+  loadVehicles(): Vehicle[];
+  loadCurrentVehicle(): Vehicle;
+  saveVehicles(vehicles: Vehicle[]): void;
+  saveCurrentVehicle(vehicle: Vehicle): void;
   syncWithCloud(state: FinanceState): Promise<boolean>;
 }
 
@@ -19,6 +24,22 @@ export class DataRepository implements IDataRepository {
       personalLogs: Array.isArray(initial.personalLogs) ? initial.personalLogs : [],
       isDataCleared: Boolean(initial.isDataCleared),
     };
+  }
+
+  public loadVehicles(): Vehicle[] {
+    return dbService.loadVehicles();
+  }
+
+  public loadCurrentVehicle(): Vehicle {
+    return dbService.loadCurrentVehicle();
+  }
+
+  public saveVehicles(vehicles: Vehicle[]): void {
+    dbService.saveVehicles(vehicles);
+  }
+
+  public saveCurrentVehicle(vehicle: Vehicle): void {
+    dbService.saveCurrentVehicle(vehicle);
   }
 
   public saveData(state: FinanceState): void {

@@ -1,5 +1,6 @@
-import { Earning, Expense, Shift, ReserveBucket, PersonalUsageLog } from '../types';
+import { Earning, Expense, Shift, ReserveBucket, PersonalUsageLog, Vehicle } from '../types';
 import {
+  VEHICLES_LIST,
   INITIAL_EARNINGS_BYD,
   INITIAL_EXPENSES_BYD,
   INITIAL_SHIFT_BYD,
@@ -12,11 +13,13 @@ const STORAGE_KEYS = {
   SHIFT: 'girocerto_active_shift_v1',
   BUCKETS: 'girocerto_buckets_v1',
   PERSONAL_LOGS: 'girocerto_personal_logs_v1',
+  VEHICLES: 'girocerto_vehicles_v1',
+  CURRENT_VEHICLE: 'girocerto_current_vehicle_v1',
   DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1'
 };
 
 export const dbService = {
-  // Carregar todos os dados salvos ou inicializar
+  // Carregar todos os dados salvos ou inicializar (Produção Limpa por padrão)
   loadInitialData: () => {
     try {
       const savedEarnings = localStorage.getItem(STORAGE_KEYS.EARNINGS);
@@ -26,24 +29,61 @@ export const dbService = {
       const savedPersonalLogs = localStorage.getItem(STORAGE_KEYS.PERSONAL_LOGS);
       const savedClearedFlag = localStorage.getItem(STORAGE_KEYS.DATA_CLEARED_FLAG);
 
+      const hasSavedData = savedEarnings !== null || savedExpenses !== null || savedShift !== null;
+
       return {
-        earnings: savedEarnings ? (JSON.parse(savedEarnings) as Earning[]) : INITIAL_EARNINGS_BYD,
-        expenses: savedExpenses ? (JSON.parse(savedExpenses) as Expense[]) : INITIAL_EXPENSES_BYD,
-        activeShift: savedShift ? (JSON.parse(savedShift) as Shift | null) : INITIAL_SHIFT_BYD,
-        buckets: savedBuckets ? (JSON.parse(savedBuckets) as ReserveBucket[]) : INITIAL_BUCKETS,
+        earnings: savedEarnings ? (JSON.parse(savedEarnings) as Earning[]) : [],
+        expenses: savedExpenses ? (JSON.parse(savedExpenses) as Expense[]) : [],
+        activeShift: savedShift ? (JSON.parse(savedShift) as Shift | null) : null,
+        buckets: savedBuckets ? (JSON.parse(savedBuckets) as ReserveBucket[]) : INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
         personalLogs: savedPersonalLogs ? (JSON.parse(savedPersonalLogs) as PersonalUsageLog[]) : [],
-        isDataCleared: savedClearedFlag ? JSON.parse(savedClearedFlag) : false
+        isDataCleared: savedClearedFlag ? JSON.parse(savedClearedFlag) : !hasSavedData
       };
     } catch (e) {
       console.warn('Erro ao carregar dados do LocalStorage:', e);
       return {
-        earnings: INITIAL_EARNINGS_BYD,
-        expenses: INITIAL_EXPENSES_BYD,
-        activeShift: INITIAL_SHIFT_BYD,
-        buckets: INITIAL_BUCKETS,
+        earnings: [],
+        expenses: [],
+        activeShift: null,
+        buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
         personalLogs: [],
-        isDataCleared: false
+        isDataCleared: true
       };
+    }
+  },
+
+  // Persistência da Frota de Veículos
+  loadVehicles: (): Vehicle[] => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.VEHICLES);
+      return saved ? (JSON.parse(saved) as Vehicle[]) : VEHICLES_LIST;
+    } catch (e) {
+      return VEHICLES_LIST;
+    }
+  },
+
+  loadCurrentVehicle: (): Vehicle => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_VEHICLE);
+      return saved ? (JSON.parse(saved) as Vehicle) : VEHICLES_LIST[0];
+    } catch (e) {
+      return VEHICLES_LIST[0];
+    }
+  },
+
+  saveVehicles: (vehicles: Vehicle[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
+    } catch (e) {
+      console.error('Erro ao salvar veículos:', e);
+    }
+  },
+
+  saveCurrentVehicle: (vehicle: Vehicle) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_VEHICLE, JSON.stringify(vehicle));
+    } catch (e) {
+      console.error('Erro ao salvar veículo ativo:', e);
     }
   },
 

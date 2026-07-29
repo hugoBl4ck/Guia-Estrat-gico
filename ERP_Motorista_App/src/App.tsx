@@ -31,16 +31,16 @@ import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
-  const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES_LIST);
-  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(VEHICLES_LIST[0]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => repository.loadVehicles());
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => repository.loadCurrentVehicle());
 
-  // Carregar estado inicial via Repositório com salvaguarda
+  // Carregar estado inicial via Repositório com salvaguarda (Produção Limpa)
   const initialData = repository.loadData();
   const [state, dispatch] = useReducer(financeReducer, {
-    earnings: Array.isArray(initialData?.earnings) ? initialData.earnings : INITIAL_EARNINGS_BYD,
-    expenses: Array.isArray(initialData?.expenses) ? initialData.expenses : INITIAL_EXPENSES_BYD,
-    activeShift: initialData?.activeShift || INITIAL_SHIFT_BYD,
-    buckets: Array.isArray(initialData?.buckets) ? initialData.buckets : INITIAL_BUCKETS,
+    earnings: Array.isArray(initialData?.earnings) ? initialData.earnings : [],
+    expenses: Array.isArray(initialData?.expenses) ? initialData.expenses : [],
+    activeShift: initialData?.activeShift || null,
+    buckets: Array.isArray(initialData?.buckets) && initialData.buckets.length > 0 ? initialData.buckets : INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
     personalLogs: Array.isArray(initialData?.personalLogs) ? initialData.personalLogs : [],
     isDataCleared: Boolean(initialData?.isDataCleared),
   });
@@ -50,7 +50,7 @@ export function App() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [earningToEdit, setEarningToEdit] = useState<Earning | null>(null);
 
-  // Efeito para salvar o estado no Repositório a cada mutação
+  // Efeito para salvar o estado financeiro no Repositório a cada mutação
   useEffect(() => {
     try {
       repository.saveData(state);
@@ -58,6 +58,19 @@ export function App() {
       console.warn('Erro ao salvar estado:', e);
     }
   }, [state]);
+
+  // Efeitos para persistência contínua de veículos
+  useEffect(() => {
+    try {
+      repository.saveVehicles(vehicles);
+    } catch (e) {}
+  }, [vehicles]);
+
+  useEffect(() => {
+    try {
+      repository.saveCurrentVehicle(currentVehicle);
+    } catch (e) {}
+  }, [currentVehicle]);
 
   // Filtrar dados ativos excluindo itens com Soft Delete (com salvaguarda de array)
   const activeEarnings = (state.earnings || []).filter((e) => !e.isDeleted);
