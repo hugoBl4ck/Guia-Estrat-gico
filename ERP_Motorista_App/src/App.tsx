@@ -13,6 +13,8 @@ import { TaxOnlyReportView } from './components/TaxOnlyReportView';
 import { AddEarningModal } from './components/AddEarningModal';
 import { VehicleManager } from './components/VehicleManager';
 import { NotificationDraftModal } from './components/NotificationDraftModal';
+import { AuthModal } from './components/AuthModal';
+import { VehicleOnboardingModal } from './components/VehicleOnboardingModal';
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
 
 import { repository } from './services/repository';
@@ -31,6 +33,10 @@ import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
+  const [userEmail, setUserEmail] = useState<string>('hugovieira.eng@gmail.com');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
+
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => repository.loadVehicles());
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => repository.loadCurrentVehicle());
 
@@ -256,6 +262,8 @@ export function App() {
         onResetData={handleResetData}
         onRestoreMockData={handleRestoreMockData}
         isDataCleared={state.isDataCleared}
+        userEmail={userEmail}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
 
       {/* Toast Flutuante de Snapshot "Desfazer Alteração" (Camada 1 ERP) */}
@@ -393,6 +401,25 @@ export function App() {
         isOpen={isNotificationModalOpen}
         onClose={() => setIsNotificationModalOpen(false)}
         onConfirmDraft={handleAddEarning}
+      />
+
+      {/* Modal Autenticação Supabase */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onAuthSuccess={(email) => {
+          setUserEmail(email);
+        }}
+      />
+
+      {/* Modal Onboarding de Veículo Real para Novos Motoristas */}
+      <VehicleOnboardingModal
+        isOpen={isVehicleOnboardingOpen}
+        onClose={() => setIsVehicleOnboardingOpen(false)}
+        onSaveVehicle={(newVeh) => {
+          handleAddVehicle(newVeh);
+        }}
+        userEmail={userEmail}
       />
     </div>
   );

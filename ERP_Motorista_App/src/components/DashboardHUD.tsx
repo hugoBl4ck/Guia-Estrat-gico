@@ -40,11 +40,11 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyFixedCostTarget + summary.totalOperatingCost)) * 100));
   const isBreakEvenPassed = breakEvenProgress >= 100;
 
-  const targetTrips = 36;
+  const targetTrips = 30;
   const tripsCompleted = summary.totalTrips;
   const tripsRemaining = Math.max(0, targetTrips - tripsCompleted);
-  const recommendedDailyRevenueTarget = 360.00;
-  const targetProgress = Math.min(100, Math.round((summary.grossRevenue / recommendedDailyRevenueTarget) * 100));
+  const recommendedDailyRevenueTarget = 300.00;
+  const targetProgress = Math.min(100, Math.round((tripsCompleted / targetTrips) * 100));
 
   // Dados do Financiamento Santander e Seguro Aliro
   const finCost = vehicle.monthlyFinancingCost || 3086.58;
@@ -246,7 +246,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <MapPin className="w-3 h-3 text-driver-profit" /> VITÓRIA DA CONQUISTA - BA (Ticket R$ 10)
             </span>
-            <span className="text-xs font-bold text-slate-300">Meta: 36 Corridas</span>
+            <span className="text-xs font-bold text-slate-300">Meta: 30 Corridas</span>
           </div>
 
           <div className="space-y-2">
@@ -265,11 +265,11 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
               {tripsRemaining === 0 ? (
                 <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> Meta de 36 corridas concluída com sucesso!
+                  <CheckCircle2 className="w-4 h-4" /> Meta de 30 corridas concluída com sucesso!
                 </span>
               ) : (
                 <span className="text-slate-300">
-                  Faltam apenas <span className="font-extrabold text-driver-profit">{tripsRemaining} corridas</span> de R$ 10,00 para atingir R$ 360,00/dia e ter <span className="font-bold text-emerald-400">R$ 4.463,00 de lucro livre no mês</span>.
+                  Faltam apenas <span className="font-extrabold text-driver-profit">{tripsRemaining} corridas</span> de R$ 10,00 para atingir a meta diária de 30 corridas.
                 </span>
               )}
             </div>

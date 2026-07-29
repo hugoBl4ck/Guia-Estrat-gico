@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings } from 'lucide-react';
+import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut } from 'lucide-react';
 import { Vehicle, Shift } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
 
@@ -14,6 +14,9 @@ interface NavbarProps {
   onResetData: () => void;
   onRestoreMockData: () => void;
   isDataCleared: boolean;
+  userEmail?: string;
+  onOpenAuth: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,6 +30,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetData,
   onRestoreMockData,
   isDataCleared,
+  userEmail = 'hugovieira.eng@gmail.com',
+  onOpenAuth,
+  onLogout,
 }) => {
   const [showMobileConnectModal, setShowMobileConnectModal] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
@@ -144,6 +150,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Zap className="w-4 h-4 fill-black" />
             <span className="hidden md:inline">Voz Hands-Free</span>
+          </button>
+
+          {/* User Account / Auth Button */}
+          <button
+            onClick={onOpenAuth}
+            className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-emerald-800/80 text-emerald-400 font-bold px-3 py-2 rounded-xl text-xs transition-all"
+            title={userEmail ? `Logado como ${userEmail}` : 'Fazer Login'}
+          >
+            <User className="w-4 h-4 text-emerald-400" />
+            <span className="hidden lg:inline max-w-[130px] truncate text-[11px]">
+              {userEmail ? userEmail.split('@')[0] : 'Entrar'}
+            </span>
           </button>
         </div>
 
