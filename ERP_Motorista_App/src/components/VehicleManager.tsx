@@ -191,11 +191,19 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
-                    v.isElectric ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
-                  }`}>
-                    {v.isElectric ? <Zap className="w-5 h-5" /> : <Fuel className="w-5 h-5" />}
-                  </div>
+                  {v.imageUrl ? (
+                    <img
+                      src={v.imageUrl}
+                      alt={v.model}
+                      className="w-12 h-12 rounded-2xl object-cover border border-emerald-500/40 bg-slate-900 shrink-0"
+                    />
+                  ) : (
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
+                      v.isElectric ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
+                    }`}>
+                      {v.isElectric ? <Zap className="w-5 h-5" /> : <Fuel className="w-5 h-5" />}
+                    </div>
+                  )}
 
                   <div>
                     <h3 className="font-extrabold text-base text-white">{v.model}</h3>

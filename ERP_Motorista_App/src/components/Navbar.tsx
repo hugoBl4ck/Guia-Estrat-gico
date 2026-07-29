@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut } from 'lucide-react';
+import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud } from 'lucide-react';
 import { Vehicle, Shift } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
 
@@ -17,6 +17,7 @@ interface NavbarProps {
   userEmail?: string;
   onOpenAuth: () => void;
   onLogout?: () => void;
+  onSyncCloud?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   userEmail = 'hugovieira.eng@gmail.com',
   onOpenAuth,
   onLogout,
+  onSyncCloud,
 }) => {
   const [showMobileConnectModal, setShowMobileConnectModal] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
@@ -47,9 +49,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         
         {/* Brand & Vehicle Selector */}
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-driver-accent to-emerald-500 flex items-center justify-center font-black text-lg text-black shadow-lg shadow-emerald-500/20">
-            GC
-          </div>
+          {currentVehicle.imageUrl ? (
+            <img
+              src={currentVehicle.imageUrl}
+              alt={currentVehicle.model}
+              className="w-11 h-11 rounded-xl object-cover border border-emerald-500/40 bg-slate-900 shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-driver-accent to-emerald-500 flex items-center justify-center font-black text-lg text-black shadow-lg shadow-emerald-500/20">
+              GC
+            </div>
+          )}
           <div>
             <div className="flex items-center space-x-2">
               <h1 className="font-extrabold text-base tracking-tight text-white">GiroCerto <span className="text-emerald-400 font-mono text-xs">ERP</span></h1>
@@ -151,6 +161,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Zap className="w-4 h-4 fill-black" />
             <span className="hidden md:inline">Voz Hands-Free</span>
           </button>
+
+          {/* Manual Supabase Sync Button */}
+          {onSyncCloud && (
+            <button
+              onClick={onSyncCloud}
+              className="flex items-center space-x-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 font-bold px-2.5 py-2 rounded-xl text-xs transition-all"
+              title="Sincronizar todo o banco local no Supabase"
+            >
+              <UploadCloud className="w-4 h-4 text-emerald-400" />
+              <span className="hidden xl:inline text-[11px]">Sincronizar Banco</span>
+            </button>
+          )}
 
           {/* User Account / Auth Button */}
           <button

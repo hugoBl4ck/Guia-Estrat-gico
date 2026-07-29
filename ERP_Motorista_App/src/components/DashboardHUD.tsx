@@ -15,6 +15,8 @@ interface DashboardHUDProps {
   onOpenAddEarning: () => void;
   onNavigateToTab: (tab: any) => void;
   onEditEarningClick?: (earning: Earning) => void;
+  dailyGoalTrips?: number;
+  onOpenGoalSelector?: () => void;
 }
 
 export const DashboardHUD: React.FC<DashboardHUDProps> = ({
@@ -27,6 +29,8 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   onOpenAddEarning,
   onNavigateToTab,
   onEditEarningClick,
+  dailyGoalTrips = 30,
+  onOpenGoalSelector,
 }) => {
   const [showAutoSyncModal, setShowAutoSyncModal] = useState(false);
 
@@ -40,11 +44,17 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyFixedCostTarget + summary.totalOperatingCost)) * 100));
   const isBreakEvenPassed = breakEvenProgress >= 100;
 
-  const targetTrips = 30;
+  const targetTrips = dailyGoalTrips;
   const tripsCompleted = summary.totalTrips;
   const tripsRemaining = Math.max(0, targetTrips - tripsCompleted);
-  const recommendedDailyRevenueTarget = 300.00;
+  const recommendedDailyRevenueTarget = targetTrips * 10;
   const targetProgress = Math.min(100, Math.round((tripsCompleted / targetTrips) * 100));
+
+  // Metas Acumuladas do Mês (30 dias)
+  const monthlyGoalTrips = targetTrips * 30;
+  const monthlyTripsCompleted = (earnings || []).reduce((sum, e) => sum + e.totalTrips, 0);
+  const monthlyTripsRemaining = Math.max(0, monthlyGoalTrips - monthlyTripsCompleted);
+  const monthlyProgressPercent = Math.min(100, Math.round((monthlyTripsCompleted / monthlyGoalTrips) * 100));
 
   // Dados do Financiamento Santander e Seguro Aliro
   const finCost = vehicle.monthlyFinancingCost || 3086.58;
@@ -239,43 +249,67 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </div>
       </div>
 
-      {/* VDC Corridas Curtas Card Banner */}
-      {vehicle.isElectric && (
-        <div className="bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-emerald-800/60 rounded-3xl p-5 shadow-xl space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-driver-profit" /> VITÓRIA DA CONQUISTA - BA (Ticket R$ 10)
-            </span>
-            <span className="text-xs font-bold text-slate-300">Meta: 30 Corridas</span>
+      {/* Card de Metas Diárias e Acumuladas do Mês */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-800/60 rounded-3xl p-5 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-driver-profit" /> VITÓRIA DA CONQUISTA (Ticket R$ 10)
+          </span>
+
+          <button
+            onClick={onOpenGoalSelector}
+            className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-950/70 border border-amber-800/80 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-colors"
+          >
+            🎯 Meta: {targetTrips} Corridas/Dia (Alterar)
+          </button>
+        </div>
+
+        {/* 1. Progresso do Dia */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center text-xs font-bold text-white">
+            <span>Progresso do Dia:</span>
+            <span className="text-driver-profit font-mono text-sm">{tripsCompleted} / {targetTrips} corridas</span>
+          </div>
+          
+          <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
+              style={{ width: `${targetProgress}%` }}
+            ></div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs font-bold text-white">
-              <span>Progresso de Corridas do Dia:</span>
-              <span className="text-driver-profit font-mono text-sm">{tripsCompleted} / {targetTrips} corridas</span>
-            </div>
-            
-            <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
-                style={{ width: `${targetProgress}%` }}
-              ></div>
-            </div>
-
-            <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
-              {tripsRemaining === 0 ? (
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> Meta de 30 corridas concluída com sucesso!
-                </span>
-              ) : (
-                <span className="text-slate-300">
-                  Faltam apenas <span className="font-extrabold text-driver-profit">{tripsRemaining} corridas</span> de R$ 10,00 para atingir a meta diária de 30 corridas.
-                </span>
-              )}
-            </div>
+          <div className="p-2.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
+            {tripsRemaining === 0 ? (
+              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" /> Meta do dia de {targetTrips} corridas concluída!
+              </span>
+            ) : (
+              <span className="text-slate-300">
+                Faltam <span className="font-extrabold text-driver-profit">{tripsRemaining} corridas</span> para bater a meta de hoje ({targetTrips}/dia).
+              </span>
+            )}
           </div>
         </div>
-      )}
+
+        {/* 2. Progresso Acumulado do Mês (30 dias) */}
+        <div className="space-y-1.5 pt-2 border-t border-slate-800/60">
+          <div className="flex justify-between items-center text-xs font-bold text-white">
+            <span>Progresso Acumulado no Mês:</span>
+            <span className="text-emerald-400 font-mono text-xs">{monthlyTripsCompleted} / {monthlyGoalTrips} corridas ({monthlyProgressPercent}%)</span>
+          </div>
+
+          <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-700"
+              style={{ width: `${monthlyProgressPercent}%` }}
+            ></div>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Para bater a meta mensal ({monthlyGoalTrips} corridas em 30 dias), faltam <span className="font-mono font-bold text-amber-400">{monthlyTripsRemaining} corridas</span> no acumulado.
+          </p>
+        </div>
+      </div>
 
       {/* Break-Even Progress Bar (Ponto de Equilíbrio Diário) */}
       <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl">

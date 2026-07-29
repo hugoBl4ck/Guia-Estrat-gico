@@ -7,6 +7,7 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   year: 2026,
   licensePlate: 'EV-2026',
   vehicleType: 'ELECTRIC',
+  imageUrl: '/images/vehicles/byd_dolphin_mini.png',
   isRented: false,
   monthlyRentalCost: 0,
   monthlyFinancingCost: 3086.58, // Banco Santander 48x R$ 3.086,58 (Contrato Santander PAGO)
@@ -34,6 +35,7 @@ export const VEHICLE_FORD_KA: Vehicle = {
   year: 2021,
   licensePlate: 'FKA-1020',
   vehicleType: 'COMBUSTION',
+  imageUrl: '/images/vehicles/ford_ka.png',
   isRented: false,
   monthlyRentalCost: 0,
   monthlyFinancingCost: 0, // Quitado

@@ -29,6 +29,7 @@ export interface Vehicle {
   licensePlate: string;
   vehicleType: VehiclePowerType;
   acquisitionDate?: string;
+  imageUrl?: string;
   
   // Locação vs Próprio
   isRented: boolean;

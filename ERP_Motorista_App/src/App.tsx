@@ -15,6 +15,7 @@ import { VehicleManager } from './components/VehicleManager';
 import { NotificationDraftModal } from './components/NotificationDraftModal';
 import { AuthModal } from './components/AuthModal';
 import { VehicleOnboardingModal } from './components/VehicleOnboardingModal';
+import { GoalSelectorModal } from './components/GoalSelectorModal';
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
 
 import { repository } from './services/repository';
@@ -36,6 +37,8 @@ export function App() {
   const [userEmail, setUserEmail] = useState<string>('hugovieira.eng@gmail.com');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
+  const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
+  const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => repository.loadVehicles());
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => repository.loadCurrentVehicle());
@@ -248,6 +251,15 @@ export function App() {
     });
   };
 
+  const handleSyncCloud = async () => {
+    const ok = await repository.syncWithCloud(state, userEmail);
+    if (ok) {
+      alert(`Banco de dados de corridas e despesas transferido e sincronizado com sucesso para ${userEmail}!`);
+    } else {
+      alert('Sincronização salva no armazenamento local.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-oled-base text-slate-100 flex flex-col antialiased relative">
       {/* Top Navbar com Marca GiroCerto ERP */}
@@ -264,6 +276,7 @@ export function App() {
         isDataCleared={state.isDataCleared}
         userEmail={userEmail}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onSyncCloud={handleSyncCloud}
       />
 
       {/* Toast Flutuante de Snapshot "Desfazer Alteração" (Camada 1 ERP) */}
@@ -277,21 +290,21 @@ export function App() {
             onClick={handleUndo}
             className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs px-3 py-1 rounded-full flex items-center gap-1 transition-colors"
           >
-            <Undo2 className="w-3.5 h-3.5" />
+            <Undo2 className="w-3.5 h-3.5 stroke-[3]" />
             Desfazer
           </button>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-lg w-full mx-auto px-4 pt-4">
+      {/* Conteúdo Principal Renderizado Conforme Aba Ativa */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
         {activeTab === 'hud' && (
           <DashboardHUD
             vehicle={currentVehicle}
             activeShift={state.activeShift}
             earnings={activeEarnings}
             expenses={activeExpenses}
-            buckets={state.buckets || INITIAL_BUCKETS}
+            buckets={state.buckets}
             onOpenVoice={() => setIsVoiceOpen(true)}
             onOpenAddEarning={() => {
               setEarningToEdit(null);
@@ -299,6 +312,8 @@ export function App() {
             }}
             onNavigateToTab={(tab) => setActiveTab(tab)}
             onEditEarningClick={handleOpenEditEarning}
+            dailyGoalTrips={dailyGoalTrips}
+            onOpenGoalSelector={() => setIsGoalSelectorOpen(true)}
           />
         )}
 
@@ -420,6 +435,14 @@ export function App() {
           handleAddVehicle(newVeh);
         }}
         userEmail={userEmail}
+      />
+
+      {/* Modal Seletor de Meta de Corridas (Plano Financeiro Escolhido pelo Usuário) */}
+      <GoalSelectorModal
+        isOpen={isGoalSelectorOpen}
+        onClose={() => setIsGoalSelectorOpen(false)}
+        currentDailyGoal={dailyGoalTrips}
+        onSelectGoal={(newTrips) => setDailyGoalTrips(newTrips)}
       />
     </div>
   );
