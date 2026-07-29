@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X } from 'lucide-react';
 import { Expense, ExpenseCategory, Vehicle, ChargingLocationType } from '../types';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
 
@@ -18,6 +18,17 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal]);
 
   // Form State
   const [category, setCategory] = useState<ExpenseCategory>(
@@ -209,8 +220,25 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
 
       {/* Modal Nova Despesa Manual */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
+          >
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+              title="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             <h3 className="font-extrabold text-lg text-white">Nova Despesa do Veículo</h3>
 
             <form onSubmit={handleSubmit} className="space-y-3">

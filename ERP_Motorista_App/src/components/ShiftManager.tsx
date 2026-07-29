@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Compass, Play, Square, Plus, DollarSign, MapPin, Clock, Calendar, ShieldCheck, Trash2, Pencil } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Compass, Play, Square, Plus, DollarSign, MapPin, Clock, Calendar, ShieldCheck, Trash2, Pencil, X } from 'lucide-react';
 import { Shift, Earning, PlatformType } from '../types';
 
 interface ShiftManagerProps {
@@ -22,6 +22,17 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
   onEditEarningClick,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAddModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAddModal]);
   const [startKmInput, setStartKmInput] = useState('');
   const [endKmInput, setEndKmInput] = useState('');
 
@@ -242,8 +253,25 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
 
       {/* Modal Lançar Ganhos por Bloco */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddModal(false);
+          }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
+          >
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+              title="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             <h3 className="font-extrabold text-lg text-white">Lançar Ganhos do Bloco / App</h3>
 
             <form onSubmit={handleAddEarningSubmit} className="space-y-3">
