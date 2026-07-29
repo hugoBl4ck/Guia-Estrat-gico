@@ -45,9 +45,10 @@ export const EditBucketsModal: React.FC<EditBucketsModalProps> = ({
     const newValues: { [key: string]: string } = {};
     buckets.forEach((b) => {
       let portion = 0;
-      if (b.type === 'FREE_CASH') portion = totalRealEarnings * 0.65;
+      if (b.type === 'FINANCING') portion = totalRealEarnings * 0.35;
+      else if (b.type === 'FREE_CASH') portion = totalRealEarnings * 0.40;
       else if (b.type === 'MAINTENANCE') portion = totalRealEarnings * 0.10;
-      else if (b.type === 'DEPRECIATION') portion = totalRealEarnings * 0.20;
+      else if (b.type === 'DEPRECIATION') portion = totalRealEarnings * 0.10;
       else if (b.type === 'TAX_MEI') portion = totalRealEarnings * 0.05;
       newValues[b.id] = portion.toFixed(2);
     });

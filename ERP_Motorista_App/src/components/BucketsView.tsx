@@ -29,9 +29,10 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
       if (totalEarningsAmount > 0) {
         const autoUpdated = buckets.map((b) => {
           let portion = 0;
-          if (b.type === 'FREE_CASH') portion = totalEarningsAmount * 0.65;
+          if (b.type === 'FINANCING') portion = totalEarningsAmount * 0.35;
+          else if (b.type === 'FREE_CASH') portion = totalEarningsAmount * 0.40;
           else if (b.type === 'MAINTENANCE') portion = totalEarningsAmount * 0.10;
-          else if (b.type === 'DEPRECIATION') portion = totalEarningsAmount * 0.20;
+          else if (b.type === 'DEPRECIATION') portion = totalEarningsAmount * 0.10;
           else if (b.type === 'TAX_MEI') portion = totalEarningsAmount * 0.05;
           return { ...b, currentBalance: portion };
         });

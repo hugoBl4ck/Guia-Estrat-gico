@@ -40,7 +40,12 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   // Execucao do Agente Auditor Interno de Detecção de Anomalias (Item 7)
   const anomalies: AuditAnomaly[] = runAnomalyAudit(earnings, expenses);
 
-  const dailyFixedCostTarget = vehicle.isElectric ? 148.39 : 85.00;
+  const monthlyFinancing = vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
+  const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
+  const monthlyAppFee = 80.00; // Mensalidade do App R$ 80,00/mês
+  const totalMonthlyFixed = monthlyFinancing + monthlyInsurance + monthlyAppFee;
+  const dailyFixedCostTarget = Math.round((totalMonthlyFixed / 30) * 100) / 100;
+
   const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyFixedCostTarget + summary.totalOperatingCost)) * 100));
   const isBreakEvenPassed = breakEvenProgress >= 100;
 

@@ -34,7 +34,7 @@ describe('financeReducer', () => {
     expect(newState.earnings[0].grossAmount).toBe(100);
 
     const freeCash = newState.buckets.find((b) => b.type === 'FREE_CASH');
-    expect(freeCash?.currentBalance).toBe(65);
+    expect(freeCash?.currentBalance).toBe(40); // 40% de 100
 
     const maintenance = newState.buckets.find((b) => b.type === 'MAINTENANCE');
     expect(maintenance?.currentBalance).toBe(10);
@@ -63,7 +63,7 @@ describe('financeReducer', () => {
     expect(newState.earnings[0].grossAmount).toBe(200);
 
     const freeCash = newState.buckets.find((b) => b.type === 'FREE_CASH');
-    expect(freeCash?.currentBalance).toBe(130); // 65% de 200
+    expect(freeCash?.currentBalance).toBe(80); // 40% de 200
   });
 
   it('SOFT_DELETE_EARNING (Soft Delete) deve recalcular os saldos dos caixas', () => {

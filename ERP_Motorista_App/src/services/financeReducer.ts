@@ -58,9 +58,10 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       const snapshot: FinanceState = { ...state, previousSnapshot: undefined };
       const addedAmount = action.payload.grossAmount + action.payload.tipsAmount;
       const updatedBuckets = state.buckets.map((b) => {
-        if (b.type === 'FREE_CASH') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.65 };
+        if (b.type === 'FINANCING') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.35 };
+        if (b.type === 'FREE_CASH') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.40 };
         if (b.type === 'MAINTENANCE') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.10 };
-        if (b.type === 'DEPRECIATION') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.20 };
+        if (b.type === 'DEPRECIATION') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.10 };
         if (b.type === 'TAX_MEI') return { ...b, currentBalance: b.currentBalance + addedAmount * 0.05 };
         return b;
       });
@@ -88,9 +89,10 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       );
 
       const updatedBuckets = state.buckets.map((b) => {
-        if (b.type === 'FREE_CASH') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.65) };
+        if (b.type === 'FINANCING') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.35) };
+        if (b.type === 'FREE_CASH') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.40) };
         if (b.type === 'MAINTENANCE') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.10) };
-        if (b.type === 'DEPRECIATION') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.20) };
+        if (b.type === 'DEPRECIATION') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.10) };
         if (b.type === 'TAX_MEI') return { ...b, currentBalance: Math.max(0, b.currentBalance + delta * 0.05) };
         return b;
       });
@@ -115,9 +117,10 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
 
       const removedAmount = deleted.grossAmount + deleted.tipsAmount;
       const updatedBuckets = state.buckets.map((b) => {
-        if (b.type === 'FREE_CASH') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.65) };
+        if (b.type === 'FINANCING') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.35) };
+        if (b.type === 'FREE_CASH') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.40) };
         if (b.type === 'MAINTENANCE') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.10) };
-        if (b.type === 'DEPRECIATION') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.20) };
+        if (b.type === 'DEPRECIATION') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.10) };
         if (b.type === 'TAX_MEI') return { ...b, currentBalance: Math.max(0, b.currentBalance - removedAmount * 0.05) };
         return b;
       });

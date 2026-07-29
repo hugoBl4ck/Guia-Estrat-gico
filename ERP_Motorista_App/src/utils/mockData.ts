@@ -162,39 +162,48 @@ export const INITIAL_EXPENSES_FORD_KA: Expense[] = [
 
 export const INITIAL_BUCKETS: ReserveBucket[] = [
   {
-    id: 'bkt-1',
-    name: 'Lucro Livre',
-    type: 'FREE_CASH',
-    currentBalance: 2840.00,
-    targetBalance: 5000.00,
-    percentageAllocated: 65,
-    color: '#00E676'
+    id: 'bkt-financing',
+    name: 'Financiamento Santander / Aluguel',
+    type: 'FINANCING',
+    currentBalance: 0,
+    targetBalance: 3086.58,
+    percentageAllocated: 35,
+    color: '#A855F7'
   },
   {
-    id: 'bkt-2',
-    name: 'Manutenção EV',
+    id: 'bkt-free-cash',
+    name: 'Lucro Livre (Disponível)',
+    type: 'FREE_CASH',
+    currentBalance: 0,
+    targetBalance: 5000.00,
+    percentageAllocated: 40,
+    color: '#10B981'
+  },
+  {
+    id: 'bkt-maint',
+    name: 'Manutenção EV / Revisão',
     type: 'MAINTENANCE',
-    currentBalance: 750.00,
+    currentBalance: 0,
     targetBalance: 1500.00,
     percentageAllocated: 10,
-    color: '#FFD600'
+    color: '#F59E0B'
   },
   {
-    id: 'bkt-3',
-    name: 'Depreciação',
+    id: 'bkt-depr',
+    name: 'Depreciação Veicular / Pneus',
     type: 'DEPRECIATION',
-    currentBalance: 2100.00,
+    currentBalance: 0,
     targetBalance: 8000.00,
-    percentageAllocated: 20,
-    color: '#3D5AFE'
+    percentageAllocated: 10,
+    color: '#3B82F6'
   },
   {
-    id: 'bkt-4',
-    name: 'Impostos MEI',
+    id: 'bkt-tax-mei',
+    name: 'Mensalidade App / Custo Fixo',
     type: 'TAX_MEI',
-    currentBalance: 75.00,
-    targetBalance: 75.00,
+    currentBalance: 0,
+    targetBalance: 80.00,
     percentageAllocated: 5,
-    color: '#FF1744'
+    color: '#EF4444'
   }
 ];

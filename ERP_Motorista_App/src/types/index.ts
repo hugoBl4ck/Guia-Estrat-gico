@@ -143,8 +143,8 @@ export interface Shift {
 
 export interface ReserveBucket {
   id: string;
-  name: 'Manutenção' | 'Manutenção EV' | 'Depreciação' | 'Impostos MEI' | 'Lucro Livre';
-  type: 'MAINTENANCE' | 'DEPRECIATION' | 'TAX_MEI' | 'FREE_CASH';
+  name: string;
+  type: 'MAINTENANCE' | 'DEPRECIATION' | 'TAX_MEI' | 'FREE_CASH' | 'FINANCING';
   currentBalance: number;
   targetBalance: number;
   percentageAllocated: number;
