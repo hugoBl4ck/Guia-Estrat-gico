@@ -282,6 +282,53 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                 </select>
               </div>
 
+              {/* Opções Específicas para Recarga Elétrica (EV) */}
+              {category === 'ELECTRIC_CHARGING' && (
+                <div className="space-y-3 p-3.5 bg-slate-900 border border-emerald-900/60 rounded-2xl">
+                  <div>
+                    <label className="text-xs text-emerald-400 font-bold block mb-1">Local da Recarga</label>
+                    <select
+                      value={chargingType}
+                      onChange={(e) => {
+                        const val = e.target.value as ChargingLocationType;
+                        setChargingType(val);
+                        if (val === 'RESIDENTIAL') {
+                          setTariffPerKwh(vehicle.residentialTariffPerKwh.toString());
+                        } else if (val === 'FAST_CHARGER_PAID') {
+                          setTariffPerKwh((vehicle.fastChargerTariffPerKwh || 1.69).toString());
+                        } else {
+                          setTariffPerKwh('0');
+                        }
+                      }}
+                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-emerald-500"
+                    >
+                      <option value="RESIDENTIAL">⚡ Residencial em Casa (Coelba R$ {vehicle.residentialTariffPerKwh}/kWh)</option>
+                      <option value="FAST_CHARGER_PAID">🔌 Eletroposto / Carga Rápida (R$ {vehicle.fastChargerTariffPerKwh || 1.69}/kWh)</option>
+                      <option value="FREE_CHARGER">🎁 Cortesia / Gratuito (R$ 0,00/kWh)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 font-semibold block mb-1">Energia Carregada (kWh)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={kwhAmount}
+                      onChange={(e) => {
+                        const kwh = e.target.value;
+                        setKwhAmount(kwh);
+                        if (kwh && tariffPerKwh) {
+                          const calculatedAmount = (parseFloat(kwh) * parseFloat(tariffPerKwh)).toFixed(2);
+                          setAmount(calculatedAmount);
+                        }
+                      }}
+                      placeholder="ex: 38.8 kWh"
+                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs text-slate-400 font-semibold block mb-1">Valor Pago (R$)</label>
                 <input

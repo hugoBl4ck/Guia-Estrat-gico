@@ -99,9 +99,9 @@ export function App() {
     } catch (e) {}
   }, [currentVehicle]);
 
-  // Filtrar dados ativos excluindo itens com Soft Delete (com salvaguarda de array)
-  const activeEarnings = (state.earnings || []).filter((e) => !e.isDeleted);
-  const activeExpenses = (state.expenses || []).filter((exp) => !exp.isDeleted);
+  // Filtrar dados ativos excluindo itens com Soft Delete (com salvaguarda de usuario logado)
+  const activeEarnings = userEmail ? (state.earnings || []).filter((e) => !e.isDeleted) : [];
+  const activeExpenses = userEmail ? (state.expenses || []).filter((exp) => !exp.isDeleted) : [];
 
   // Manipuladores de Frota / Veículos
   const handleUpdateVehicle = (updatedVehicle: Vehicle) => {

@@ -144,18 +144,20 @@ export class DataRepository implements IDataRepository {
     }
   }
 
-  public async fetchFromCloud(userEmail: string = 'hugovieira.eng@gmail.com'): Promise<Partial<FinanceState> | null> {
-    if (!isSupabaseConfigured() || !supabase) return null;
+  public async fetchFromCloud(userEmail: string): Promise<Partial<FinanceState> | null> {
+    if (!isSupabaseConfigured() || !supabase || !userEmail || userEmail.trim() === '') return null;
 
     try {
       const { data: cloudGanhos } = await supabase
         .from('ganhos')
         .select('*')
+        .eq('user_email', userEmail)
         .eq('is_deleted', false);
 
       const { data: cloudFaturamentos } = await supabase
         .from('faturamentos')
-        .select('*');
+        .select('*')
+        .eq('user_email', userEmail);
 
       let earningsList: any[] = [];
       if (Array.isArray(cloudGanhos) && cloudGanhos.length > 0) {
@@ -183,26 +185,45 @@ export class DataRepository implements IDataRepository {
 
       const { data: cloudDespesas } = await supabase
         .from('despesas')
-        .select('*');
+        .select('*')
+        .eq('user_email', userEmail);
 
       let expensesList: any[] = [];
       if (Array.isArray(cloudDespesas) && cloudDespesas.length > 0) {
         expensesList = cloudDespesas.map((d) => ({
           id: d.id,
-          category: d.category || d.categoria || 'OTHER',
-          amount: parseFloat(d.amount || d.valor) || 0,
-          kwhAmount: d.kwh_amount ? parseFloat(d.kwh_amount) : undefined,
-          tariffPerKwh: d.tariff_per_kwh ? parseFloat(d.tariff_per_kwh) : undefined,
-          notes: d.notes || d.observacao || '',
+          category: d.categoria || d.category || 'OTHER',
+          amount: parseFloat(d.valor || d.amount) || 0,
+          kwhAmount: d.kwh_carregados ? parseFloat(d.kwh_carregados) : undefined,
+          tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
+          notes: d.observacao || d.notes || '',
           expenseDate: d.expense_date,
-          isDeleted: Boolean(d.is_deleted),
         }));
       }
 
-      if (earningsList.length > 0 || expensesList.length > 0) {
+      const { data: cloudBuckets } = await supabase
+        .from('caixas_buckets')
+        .select('*')
+        .eq('user_email', userEmail);
+
+      let bucketsList: any[] = [];
+      if (Array.isArray(cloudBuckets) && cloudBuckets.length > 0) {
+        bucketsList = cloudBuckets.map((b) => ({
+          id: b.id,
+          name: b.nome,
+          type: b.tipo,
+          currentBalance: parseFloat(b.saldo_atual) || 0,
+          targetBalance: parseFloat(b.saldo_alvo) || 0,
+          percentageAllocated: parseFloat(b.percentual_alocacao) || 0,
+          color: b.tipo === 'FREE_CASH' ? '#10B981' : b.tipo === 'MAINTENANCE' ? '#F59E0B' : b.tipo === 'DEPRECIATION' ? '#3B82F6' : '#EF4444',
+        }));
+      }
+
+      if (earningsList.length > 0 || expensesList.length > 0 || bucketsList.length > 0) {
         return {
           earnings: earningsList,
           expenses: expensesList,
+          buckets: bucketsList.length > 0 ? bucketsList : undefined,
         };
       }
       return null;

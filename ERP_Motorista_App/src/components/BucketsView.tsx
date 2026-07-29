@@ -22,6 +22,24 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
   const maintenanceBucket = buckets.find((b) => b.type === 'MAINTENANCE');
   const maintBalance = maintenanceBucket ? maintenanceBucket.currentBalance : 0;
 
+  // Recálculo automático dos caixas virtuais se o saldo zerado for detectado ao abrir
+  React.useEffect(() => {
+    if (totalBalance === 0 && earnings.length > 0 && onSaveBuckets) {
+      const totalEarningsAmount = earnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
+      if (totalEarningsAmount > 0) {
+        const autoUpdated = buckets.map((b) => {
+          let portion = 0;
+          if (b.type === 'FREE_CASH') portion = totalEarningsAmount * 0.65;
+          else if (b.type === 'MAINTENANCE') portion = totalEarningsAmount * 0.10;
+          else if (b.type === 'DEPRECIATION') portion = totalEarningsAmount * 0.20;
+          else if (b.type === 'TAX_MEI') portion = totalEarningsAmount * 0.05;
+          return { ...b, currentBalance: portion };
+        });
+        onSaveBuckets(autoUpdated);
+      }
+    }
+  }, [earnings.length, totalBalance]);
+
   return (
     <div className="space-y-6 pb-24 text-left">
       {/* Header com Botão de Edição */}
