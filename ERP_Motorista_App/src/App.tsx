@@ -35,7 +35,7 @@ import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
   const [userEmail, setUserEmail] = useState<string>(() => {
-    return localStorage.getItem('erp_driver_user_email') || 'hugovieira.eng@gmail.com';
+    return localStorage.getItem('erp_driver_user_email') || '';
   });
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);

@@ -96,13 +96,12 @@ export class DataRepository implements IDataRepository {
       if (state.expenses && state.expenses.length > 0) {
         const payloadExpenses = state.expenses.map((exp) => ({
           id: exp.id,
-          category: exp.category,
-          amount: exp.amount,
-          kwh_amount: exp.kwhAmount || null,
-          tariff_per_kwh: exp.tariffPerKwh || null,
-          notes: exp.notes || null,
+          categoria: exp.category,
+          valor: exp.amount,
+          kwh_carregados: exp.kwhAmount || null,
+          tarifa_kwh: exp.tariffPerKwh || null,
+          observacao: exp.notes || null,
           expense_date: exp.expenseDate,
-          is_deleted: Boolean(exp.isDeleted),
           user_email: userEmail,
         }));
         await supabase.from('despesas').upsert(payloadExpenses, { onConflict: 'id' }).catch(() => {});
@@ -184,8 +183,7 @@ export class DataRepository implements IDataRepository {
 
       const { data: cloudDespesas } = await supabase
         .from('despesas')
-        .select('*')
-        .eq('is_deleted', false);
+        .select('*');
 
       let expensesList: any[] = [];
       if (Array.isArray(cloudDespesas) && cloudDespesas.length > 0) {
