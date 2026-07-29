@@ -14,7 +14,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onAuthSuccess,
 }) => {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('hugovieira.eng@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

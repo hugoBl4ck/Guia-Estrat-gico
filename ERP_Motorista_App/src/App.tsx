@@ -34,7 +34,9 @@ import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
-  const [userEmail, setUserEmail] = useState<string>('hugovieira.eng@gmail.com');
+  const [userEmail, setUserEmail] = useState<string>(() => {
+    return localStorage.getItem('erp_driver_user_email') || 'hugovieira.eng@gmail.com';
+  });
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
   const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
@@ -292,7 +294,10 @@ export function App() {
         isDataCleared={state.isDataCleared}
         userEmail={userEmail}
         onOpenAuth={() => setIsAuthOpen(true)}
-        onSyncCloud={handleSyncCloud}
+        onLogout={() => {
+          localStorage.removeItem('erp_driver_user_email');
+          setUserEmail('');
+        }}
       />
 
       {/* Toast Flutuante de Snapshot "Desfazer Alteração" (Camada 1 ERP) */}
@@ -441,6 +446,7 @@ export function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={(email) => {
+          localStorage.setItem('erp_driver_user_email', email);
           setUserEmail(email);
         }}
       />

@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetData,
   onRestoreMockData,
   isDataCleared,
-  userEmail = 'hugovieira.eng@gmail.com',
+  userEmail = '',
   onOpenAuth,
   onLogout,
   onSyncCloud,
@@ -103,25 +103,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {/* Botão de Limpar Lançamentos Temporários */}
-              {isDataCleared ? (
-                <button
-                  onClick={onRestoreMockData}
-                  className="bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                  title="Carregar lançamentos demonstrativos para testar o ERP"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Modo Demo (Exemplo)
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowResetConfirmModal(true)}
-                  className="bg-slate-900 hover:bg-rose-950 text-rose-400 border border-slate-800 hover:border-rose-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                  title="Limpar apenas lançamentos de teste mantendo dados fixos reais"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Limpar
-                </button>
-              )}
+              <button
+                onClick={() => setShowResetConfirmModal(true)}
+                className="bg-slate-900 hover:bg-rose-950 text-rose-400 border border-slate-800 hover:border-rose-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                title="Limpar lançamentos mantendo os dados do veículo"
+              >
+                <Trash2 className="w-3 h-3" />
+                Limpar
+              </button>
             </div>
           </div>
         </div>
@@ -162,29 +151,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden md:inline">Voz Hands-Free</span>
           </button>
 
-          {/* Manual Supabase Sync Button */}
-          {onSyncCloud && (
-            <button
-              onClick={onSyncCloud}
-              className="flex items-center space-x-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 font-bold px-2.5 py-2 rounded-xl text-xs transition-all"
-              title="Sincronizar todo o banco local no Supabase"
-            >
-              <UploadCloud className="w-4 h-4 text-emerald-400" />
-              <span className="hidden xl:inline text-[11px]">Sincronizar Banco</span>
-            </button>
-          )}
-
           {/* User Account / Auth Button */}
-          <button
-            onClick={onOpenAuth}
-            className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-emerald-800/80 text-emerald-400 font-bold px-3 py-2 rounded-xl text-xs transition-all"
-            title={userEmail ? `Logado como ${userEmail}` : 'Fazer Login'}
-          >
-            <User className="w-4 h-4 text-emerald-400" />
-            <span className="hidden lg:inline max-w-[130px] truncate text-[11px]">
-              {userEmail ? userEmail.split('@')[0] : 'Entrar'}
-            </span>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-emerald-800/80 text-emerald-400 font-bold px-3 py-2 rounded-xl text-xs transition-all"
+              title={userEmail ? `Logado como ${userEmail}` : 'Fazer Login / Criar Conta'}
+            >
+              <User className="w-4 h-4 text-emerald-400" />
+              <span className="hidden lg:inline max-w-[130px] truncate text-[11px]">
+                {userEmail ? userEmail.split('@')[0] : 'Entrar / Cadastrar'}
+              </span>
+            </button>
+
+            {userEmail && onLogout && (
+              <button
+                onClick={onLogout}
+                className="p-2 bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800 rounded-xl transition-all"
+                title="Sair da Conta (Logout)"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
       </div>
