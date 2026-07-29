@@ -1,0 +1,86 @@
+{
+  "veiculos": [
+    {
+      "id": "veh-byd-dolphin-mini",
+      "modelo": "BYD Dolphin Mini GS 5Seats 380km (Glacier Blue)",
+      "codigoFipe": "095010-6",
+      "anoFabMod": "2026/2027",
+      "chassi": "92VCE4CC6VK074587",
+      "numeroMotor": "7R6006858",
+      "renavam": "101829",
+      "placa": "EV-2026",
+      "cor": "Azul (Glacier Blue - Dark Blue)",
+      "potencia": "75 CV (55 kW)",
+      "proprietario": "HUGO LEONARDO ALMEIDA VIEIRA",
+      "cpfProprietario": "030.259.285-73",
+      "segurado": "ARIVALDO DE SANTANA VIEIRA",
+      "cpfSegurado": "313.077.105-06",
+      "notaFiscal": {
+        "numeroDanfe": "000.005.582",
+        "serie": "002",
+        "dataEmissao": "16/07/2026",
+        "concessionaria": "CONQUISTA VEICULOS LTDA (Vitória da Conquista - BA)",
+        "valorCompra": 119990.00
+      },
+      "financiamentoSantander": {
+        "banco": "BANCO SANTANDER (BRASIL) S.A.",
+        "numeroPac": "0",
+        "parcelasTotais": 48,
+        "valorParcelaMensal": 3086.58,
+        "custoFixoDiaSantander": 128.60
+      },
+      "seguro": {
+        "seguradora": "Aliro Seguro Auto (Grupo HDI)",
+        "apoliceNum": "31.00.2026.1149490",
+        "premioTotal": 3596.66,
+        "parcelasMensais": 12,
+        "valorParcelaMensal": 299.71,
+        "franquia": 13565.00,
+        "vigencia": "22/07/2026 a 22/07/2027"
+      },
+      "resumoCustosFixosMensais": {
+        "parcelaSantander": 3086.58,
+        "seguroAliro": 299.71,
+        "impostoDasMei": 75.00,
+        "lavagens": 100.00,
+        "totalCustosFixosMensais": 3561.29,
+        "custoFixoDiario24Dias": 148.39
+      },
+      "tipoCombustivel": "ELECTRICAL",
+      "isElectric": true,
+      "capacidadeBateriaKwh": 38.8,
+      "autonomiaDeclaradaNfKm": 380,
+      "autonomiaRealUrbanaKm": 280,
+      "kmPerKwh": 7.2,
+      "tarifaResidencialCoelbaKwh": 1.21,
+      "tarifaEletropostoFastKwh": 1.69,
+      "currentOdometerKm": 4500,
+      "isAlugado": false,
+      "valorFipe": 119990.00,
+      "valorResidualEstimado": 85000.00
+    },
+    {
+      "id": "veh-ford-ka-10",
+      "modelo": "Ford Ka Hatch 1.0 SE Flex",
+      "codigoFipe": "017042-9",
+      "anoFabMod": "2020/2021",
+      "placa": "FKA-1020",
+      "proprietario": "ARIVALDO DE SANTANA VIEIRA",
+      "cpfProprietario": "313.077.105-06",
+      "seguro": {
+        "seguradora": "Seguro de Frota / Particular",
+        "valorParcelaMensal": 180.00
+      },
+      "tipoCombustivel": "FLEX",
+      "isElectric": false,
+      "precoEtanolPorLitro": 4.65,
+      "precoGasolinaPorLitro": 6.65,
+      "consumoEtanolKml": 9.5,
+      "consumoGasolinaKml": 13.0,
+      "currentOdometerKm": 68500,
+      "isAlugado": false,
+      "valorFipe": 48500.00,
+      "valorResidualEstimado": 35000.00
+    }
+  ]
+}

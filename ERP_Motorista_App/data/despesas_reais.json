@@ -1,0 +1,62 @@
+{
+  "relatorioUberFordKaReal": {
+    "tipoRelatorio": "SEMANAL (7 DIAS DE RODAGEM)",
+    "periodoSemana": "Jul 13 - Jul 19, 2026",
+    "veiculo": "Ford Ka Hatch 1.0 SE Flex",
+    "faturamentoBrutoSemanal": 1016.97,
+    "totalCorridasSemanais": 88,
+    "horasAtivasSemanais": "22h 18min",
+    "kmPercorridosSemanais": 382.2,
+    "categoriaUber": "Uber Pro Platinum (Nota 5.0)",
+    "mediasDiarias7Dias": {
+      "faturamentoMedioDia": 145.28,
+      "corridasMediasDia": 12.5,
+      "kmMedioDia": 54.6,
+      "horasMediasDia": "3h 11min"
+    }
+  },
+  "faturaEnergiaCoelba": {
+    "concessionaria": "NEOENERGIA COELBA (Companhia de Eletricidade do Estado da Bahia)",
+    "cliente": "ARIVALDO DE SANTANA VIEIRA",
+    "consumoFaturadoKwh": 265,
+    "valorTotalFatura": 344.52,
+    "tarifaEnergiaPuraComImpostosPerKwh": 1.21045,
+    "tarifaEletropostoFastPerKwh": 1.69,
+    "cpkElétricoUrbanoResidencial": 0.168,
+    "cpkElétricoUrbanoEletroposto": 0.234
+  },
+  "despesasHistorico": [
+    {
+      "id": "desp-byd-seguro-aliro",
+      "veiculoId": "veh-byd-dolphin-mini",
+      "categoria": "INSURANCE",
+      "descricao": "Parcela 1/12 Apólice Aliro Seguro Auto (Apólice 31.00.2026.1149490 - Yelum Seguros/HDI)",
+      "valorPago": 299.71,
+      "data": "2026-07-30T00:00:00Z"
+    },
+    {
+      "id": "desp-byd-recarga-coelba",
+      "veiculoId": "veh-byd-dolphin-mini",
+      "categoria": "ELECTRIC_CHARGING",
+      "tipoRecarga": "RESIDENTIAL",
+      "valorPago": 46.96,
+      "kwhCarregados": 38.8,
+      "tarifaPorKwh": 1.21,
+      "odometroKm": 4500,
+      "local": "Garagem Residencial Candeias - Wallbox AC (0% a 100%)",
+      "data": "2026-07-25T22:00:00Z"
+    },
+    {
+      "id": "desp-fordka-combustivel",
+      "veiculoId": "veh-ford-ka-10",
+      "categoria": "FUEL",
+      "tipoCombustivel": "ETHANOL",
+      "valorPago": 186.93,
+      "litrosAbastecidos": 40.2,
+      "precoPorLitro": 4.65,
+      "odometroKm": 68500,
+      "local": "Posto Shell (Etanol a R$ 4,65/L)",
+      "data": "2026-07-15T10:00:00Z"
+    }
+  ]
+}

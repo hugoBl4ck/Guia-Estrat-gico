@@ -1,0 +1,142 @@
+import React, { useState } from 'react';
+import { Wallet, ShieldCheck, ArrowRight, RefreshCw, Lock, Sparkles, Zap, Calendar, CheckCircle2, Wrench } from 'lucide-react';
+import { ReserveBucket } from '../types';
+
+interface BucketsViewProps {
+  buckets: ReserveBucket[];
+  onTransfer: (fromId: string, toId: string, amount: number) => void;
+}
+
+export const BucketsView: React.FC<BucketsViewProps> = ({ buckets, onTransfer }) => {
+  const [transferAmount, setTransferAmount] = useState<string>('50');
+
+  const totalBalance = buckets.reduce((sum, b) => sum + b.currentBalance, 0);
+  const maintenanceBucket = buckets.find((b) => b.type === 'MAINTENANCE');
+  const maintBalance = maintenanceBucket ? maintenanceBucket.currentBalance : 0;
+
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <Wallet className="w-6 h-6 text-driver-profit" />
+          Sistema de Caixas Virtuais (Buckets)
+        </h2>
+        <p className="text-xs text-slate-400">Proteção financeira e retenção automática para manutenção e impostos</p>
+      </div>
+
+      {/* Total Consolidated Balance */}
+      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl glow-accent relative overflow-hidden">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Patrimônio Acumulado no ERP</span>
+          <Sparkles className="w-4 h-4 text-driver-accent" />
+        </div>
+        <p className="text-4xl font-black text-white">
+          R$ {totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </p>
+        <p className="text-xs text-slate-400 mt-2">
+          O dinheiro retido garante que você não terá surpresas ao trocar de pneus, realizar revisões da BYD ou pagar o MEI.
+        </p>
+      </div>
+
+      {/* Buckets Grid */}
+      <div className="space-y-3">
+        {buckets.map((b) => {
+          const progressPercent = Math.min(100, Math.round((b.currentBalance / (b.targetBalance || 1)) * 100));
+
+          return (
+            <div key={b.id} className="bg-oled-card border border-oled-cardBorder rounded-3xl p-4 space-y-3 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div
+                    className="w-3.5 h-3.5 rounded-full"
+                    style={{ backgroundColor: b.color }}
+                  ></div>
+                  <div>
+                    <h3 className="font-extrabold text-sm text-white">{b.name}</h3>
+                    <p className="text-[11px] text-slate-400">Retenção de {b.percentageAllocated}% dos ganhos</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-base font-extrabold text-white" style={{ color: b.color }}>
+                    R$ {b.currentBalance.toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-slate-500">Meta: R$ {b.targetBalance.toFixed(2)}</p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%`, backgroundColor: b.color }}
+                ></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Plano de Revisão Oficial BYD Dolphin Mini (20.000 KM ou 12 Meses) */}
+      <div className="bg-oled-card border border-amber-500/50 rounded-3xl p-5 shadow-xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            Plano de Revisão Oficial BYD Dolphin Mini
+          </h3>
+          <span className="text-[10px] font-bold text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full">
+            A cada 20.000 km / 12 meses
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Intervalo de fábrica: <span className="font-bold text-white">20.000 km ou 12 meses</span> (o que vencer primeiro). O valor retido no seu Caixa de Manutenção (
+          <span className="font-bold text-amber-400">R$ {maintBalance.toFixed(2)}</span>) é gerenciado para cobrir todas as etapas:
+        </p>
+
+        {/* Tabela de Cronograma e Custos de Revisões */}
+        <div className="space-y-2 text-xs">
+          {/* Revisões Ímpares (20k, 60k, 100k) */}
+          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between font-bold">
+              <span className="text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                Revisões Ímpares (20.000 km, 60.000 km, 100.000 km)
+              </span>
+              <span className="text-white font-mono font-extrabold">R$ 361,00 – R$ 370,00</span>
+            </div>
+            <p className="text-[11px] text-slate-400 pl-5">
+              Inspeção completa dos sistemas de alta voltagem, suspensão, freios e substituição do filtro de ar-condicionado / pólen.
+            </p>
+          </div>
+
+          {/* Revisões Pares (40k, 80k) */}
+          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between font-bold">
+              <span className="text-amber-400 flex items-center gap-1.5">
+                <Wrench className="w-4 h-4 text-amber-400" />
+                Revisões Pares (40.000 km, 80.000 km)
+              </span>
+              <span className="text-white font-mono font-extrabold">~R$ 1.000,00</span>
+            </div>
+            <p className="text-[11px] text-slate-400 pl-5">
+              Inspeções complexas de segurança e trocas adicionais de fluidos (fluido de freio, arrefecimento e lubrificação da caixa de redução).
+            </p>
+          </div>
+        </div>
+
+        {/* Status do Fundo de Manutenção */}
+        <div className={`p-3 rounded-2xl text-xs font-semibold border ${
+          maintBalance >= 370
+            ? 'bg-emerald-950/50 border-emerald-800/60 text-emerald-300'
+            : 'bg-amber-950/50 border-amber-800/60 text-amber-300'
+        }`}>
+          {maintBalance >= 370
+            ? `✓ Seu saldo de R$ ${maintBalance.toFixed(2)} cobre 100% da próxima revisão de 20.000 km (R$ 365,00)!`
+            : `⚠️ Saldo atual R$ ${maintBalance.toFixed(2)}. Faltam R$ ${(370 - maintBalance).toFixed(2)} para a revisão de 20.000 km.`
+          }
+        </div>
+      </div>
+    </div>
+  );
+};
