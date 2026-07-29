@@ -121,6 +121,22 @@ export class DataRepository implements IDataRepository {
         await supabase.from('caixas_buckets').upsert(payloadBuckets, { onConflict: 'id' }).catch(() => {});
       }
 
+      // 4. Sincronizar Turno Ativo / Encerrado no Supabase
+      if (state.activeShift) {
+        const payloadShift = {
+          id: state.activeShift.id,
+          vehicle_id: state.activeShift.vehicleId || 'veh-byd-dolphin-mini',
+          start_time: state.activeShift.startTime,
+          end_time: state.activeShift.endTime || null,
+          start_odometer_km: state.activeShift.startOdometerKm,
+          end_odometer_km: state.activeShift.endOdometerKm || null,
+          status: state.activeShift.status,
+          notes: state.activeShift.notes || null,
+          user_email: userEmail,
+        };
+        await supabase.from('turnos').upsert(payloadShift, { onConflict: 'id' }).catch(() => {});
+      }
+
       return true;
     } catch (error) {
       console.warn('Erro ao sincronizar com Supabase:', error);
