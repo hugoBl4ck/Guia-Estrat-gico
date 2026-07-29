@@ -1,28 +1,48 @@
 import React, { useState } from 'react';
-import { Wallet, ShieldCheck, ArrowRight, RefreshCw, Lock, Sparkles, Zap, Calendar, CheckCircle2, Wrench } from 'lucide-react';
-import { ReserveBucket } from '../types';
+import { Wallet, ShieldCheck, ArrowRight, RefreshCw, Lock, Sparkles, Zap, Calendar, CheckCircle2, Wrench, Pencil } from 'lucide-react';
+import { ReserveBucket, Earning } from '../types';
+import { EditBucketsModal } from './EditBucketsModal';
 
 interface BucketsViewProps {
   buckets: ReserveBucket[];
+  earnings?: Earning[];
   onTransfer: (fromId: string, toId: string, amount: number) => void;
+  onSaveBuckets?: (updatedBuckets: ReserveBucket[]) => void;
 }
 
-export const BucketsView: React.FC<BucketsViewProps> = ({ buckets, onTransfer }) => {
-  const [transferAmount, setTransferAmount] = useState<string>('50');
+export const BucketsView: React.FC<BucketsViewProps> = ({
+  buckets,
+  earnings = [],
+  onTransfer,
+  onSaveBuckets,
+}) => {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const totalBalance = buckets.reduce((sum, b) => sum + b.currentBalance, 0);
   const maintenanceBucket = buckets.find((b) => b.type === 'MAINTENANCE');
   const maintBalance = maintenanceBucket ? maintenanceBucket.currentBalance : 0;
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-          <Wallet className="w-6 h-6 text-driver-profit" />
-          Sistema de Caixas Virtuais (Buckets)
-        </h2>
-        <p className="text-xs text-slate-400">Proteção financeira e retenção automática para manutenção e impostos</p>
+    <div className="space-y-6 pb-24 text-left">
+      {/* Header com Botão de Edição */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+            <Wallet className="w-6 h-6 text-driver-profit" />
+            Sistema de Caixas Virtuais (Buckets)
+          </h2>
+          <p className="text-xs text-slate-400">Proteção financeira e retenção automática para manutenção e impostos</p>
+        </div>
+
+        {onSaveBuckets && (
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 font-extrabold px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg transition-all"
+          >
+            <Pencil className="w-4 h-4 text-emerald-400" />
+            Editar / Ajustar
+          </button>
+        )}
       </div>
 
       {/* Total Consolidated Balance */}
@@ -137,6 +157,17 @@ export const BucketsView: React.FC<BucketsViewProps> = ({ buckets, onTransfer })
           }
         </div>
       </div>
+
+      {/* Modal Editar Caixas Virtuais */}
+      {onSaveBuckets && (
+        <EditBucketsModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          buckets={buckets}
+          earnings={earnings}
+          onSaveBuckets={onSaveBuckets}
+        />
+      )}
     </div>
   );
 };

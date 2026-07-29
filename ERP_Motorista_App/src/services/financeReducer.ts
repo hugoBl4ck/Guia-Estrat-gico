@@ -21,6 +21,7 @@ export type FinanceAction =
   | { type: 'START_SHIFT'; payload: Shift }
   | { type: 'END_SHIFT' }
   | { type: 'ADD_PERSONAL_LOG'; payload: PersonalUsageLog }
+  | { type: 'UPDATE_BUCKETS'; payload: ReserveBucket[] }
   | { type: 'RESET_DATA'; payload: { initialEarnings: Earning[]; initialExpenses: Expense[]; initialBuckets: ReserveBucket[] } }
   | { type: 'RESTORE_MOCK'; payload: { initialEarnings: Earning[]; initialExpenses: Expense[]; initialShift: Shift; initialBuckets: ReserveBucket[] } }
   | { type: 'UNDO_LAST_ACTION' }
@@ -30,6 +31,12 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
   switch (action.type) {
     case 'SET_ALL':
       return { ...action.payload };
+
+    case 'UPDATE_BUCKETS':
+      return {
+        ...state,
+        buckets: action.payload,
+      };
 
     case 'UNDO_LAST_ACTION': {
       if (!state.previousSnapshot) return state;

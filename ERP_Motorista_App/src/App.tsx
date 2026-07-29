@@ -361,8 +361,10 @@ export function App() {
 
         {activeTab === 'buckets' && (
           <BucketsView
-            buckets={state.buckets || INITIAL_BUCKETS}
+            buckets={state.buckets}
+            earnings={activeEarnings}
             onTransfer={handleBucketTransfer}
+            onSaveBuckets={(updated) => dispatch({ type: 'UPDATE_BUCKETS', payload: updated })}
           />
         )}
 
