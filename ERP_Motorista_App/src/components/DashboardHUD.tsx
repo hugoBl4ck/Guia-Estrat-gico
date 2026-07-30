@@ -277,25 +277,47 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </div>
 
           {/* RECOMENDAÇÃO OPERACIONAL PARA O MOTORISTA */}
-          <div className="bg-amber-950/40 border border-amber-500/40 p-3.5 flex items-start gap-3">
-            <Target className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-xs font-mono">
-              <p className="font-black text-amber-300 uppercase tracking-wide">
-                📋 META DIÁRIA NECESSÁRIA PARA PAGAR NO VENCIMENTO:
-              </p>
-              <p className="text-slate-200 leading-relaxed">
-                Para quitar os <strong className="text-white">R$ {remainingFinancingAmount.toFixed(2)}</strong> restantes até o dia <strong className="text-white">{finDueDay}</strong>, você precisa acumular de Lucro Líquido:
-              </p>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <span className="bg-pma-acid text-black font-black px-3 py-1 text-xs">
-                  💰 R$ {requiredDailyNetProfitForFinancing.toFixed(2)} / dia de Lucro Líquido
-                </span>
-                <span className="bg-pma-dark text-pma-acid border border-pma-acid/40 font-bold px-3 py-1 text-xs">
-                  🚖 ~{requiredTripsPerDayForFinancing} corridas/dia (Média R$ {estimatedNetPerTrip.toFixed(2)}/corrida)
-                </span>
+          {remainingFinancingAmount > 0 ? (
+            <div className="bg-amber-950/40 border border-amber-500/40 p-3.5 flex items-start gap-3">
+              <Target className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs font-mono">
+                <p className="font-black text-amber-300 uppercase tracking-wide">
+                  📋 META DIÁRIA NECESSÁRIA PARA PAGAR NO VENCIMENTO:
+                </p>
+                <p className="text-slate-200 leading-relaxed">
+                  Para quitar os <strong className="text-white">R$ {remainingFinancingAmount.toFixed(2)}</strong> restantes até o dia <strong className="text-white">{finDueDay}</strong>, você precisa acumular de Lucro Líquido:
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <span className="bg-pma-acid text-black font-black px-3 py-1 text-xs">
+                    💰 R$ {requiredDailyNetProfitForFinancing.toFixed(2)} / dia de Lucro Líquido
+                  </span>
+                  <span className="bg-pma-dark text-pma-acid border border-pma-acid/40 font-bold px-3 py-1 text-xs">
+                    🚖 ~{requiredTripsPerDayForFinancing} corridas/dia (Média R$ {estimatedNetPerTrip.toFixed(2)}/corrida)
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-emerald-950/60 border border-emerald-500/50 p-3.5 flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs font-mono">
+                <p className="font-black text-emerald-300 uppercase tracking-wide flex items-center gap-2">
+                  🎉 PARCELA DO MÊS 100% GARANTIDA NO ENVELOPE!
+                </p>
+                <p className="text-slate-200 leading-relaxed">
+                  Sua parcela <strong className="text-white">{bankName}</strong> deste mês (R$ {targetFinancingTotal.toFixed(2)}) já está totalmente reservada.
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <span className="bg-emerald-500 text-black font-black px-3 py-1 text-xs">
+                    🚀 100% DAS NOVAS CORRIDAS VÃO PARA SEU LUCRO LIVRE OU AMORTIZAÇÃO
+                  </span>
+                  <span className="bg-pma-dark text-emerald-400 border border-emerald-500/40 font-bold px-3 py-1 text-xs">
+                    ⚡ Desconto de ~50% nos juros ao antecipar parcelas futuras
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-pma-card border border-emerald-500/60 rounded-none p-4 shadow-2xl flex items-center justify-between text-left">
