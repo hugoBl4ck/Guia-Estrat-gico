@@ -129,32 +129,41 @@ export function App() {
   const totalExpensesAmount = activeExpenses.reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
   const netRealBalance = Math.max(0, totalEarningsAmount - totalExpensesAmount);
 
-  // Algoritmo de Rateio Dinâmico Inteligente (Distribuição automática proporcional às metas fixas)
-  const nonFreeBuckets = state.buckets.filter(b => b.type !== 'FREE_CASH');
-  const totalCommitmentsTarget = nonFreeBuckets.reduce((sum, b) => sum + (b.targetBalance || 0), 0);
+  // Algoritmo de Cascata Prioritária (100% do Lucro Líquido vai PRIMEIRO para o Financiamento Santander)
+  let remainingNetProfit = netRealBalance;
+
+  // Ordem de prioridade financeira real do motorista:
+  // 1. Financiamento (Garante a ferramenta de trabalho / prestação)
+  // 2. Custos Fixos (MEI / App / Lavagem R$120)
+  // 3. Manutenção EV / Revisão
+  // 4. Depreciação / Pneus
+  // 5. Lucro Livre (Sobra limpa no bolso)
+  const priorityOrder = ['FINANCING', 'TAX_MEI', 'MAINTENANCE', 'DEPRECIATION', 'FREE_CASH'];
+  const bucketBalancesMap: Record<string, number> = {};
+
+  for (const type of priorityOrder) {
+    const bucket = state.buckets.find((b) => b.type === type);
+    if (!bucket) continue;
+
+    if (type === 'FREE_CASH') {
+      bucketBalancesMap[type] = Math.max(0, remainingNetProfit);
+      remainingNetProfit = 0;
+    } else {
+      const needed = bucket.targetBalance || 0;
+      const allocated = Math.min(remainingNetProfit, needed);
+      bucketBalancesMap[type] = allocated;
+      remainingNetProfit = Math.max(0, remainingNetProfit - allocated);
+    }
+  }
 
   const calculatedBuckets = state.buckets.map((b) => {
-    if (b.type === 'FREE_CASH') {
-      // Lucro Livre recebe o excedente após cobrir as metas de todos os compromissos fixos do mês
-      const surplus = Math.max(0, netRealBalance - totalCommitmentsTarget);
-      return { 
-        ...b, 
-        currentBalance: surplus,
-        percentageAllocated: netRealBalance > 0 ? Math.round((surplus / netRealBalance) * 100) : 0
-      };
-    } else {
-      // Distribuição proporcional ao peso da meta de cada compromisso no orçamento total
-      const targetWeight = totalCommitmentsTarget > 0 ? (b.targetBalance / totalCommitmentsTarget) : 0;
-      const allocatedBalance = netRealBalance <= totalCommitmentsTarget
-        ? netRealBalance * targetWeight
-        : b.targetBalance; // travado na meta caso o lucro ultrapasse
-      
-      return {
-        ...b,
-        currentBalance: allocatedBalance,
-        percentageAllocated: Math.round(targetWeight * 100)
-      };
-    }
+    const currentBalance = bucketBalancesMap[b.type] ?? 0;
+    const percentageAllocated = netRealBalance > 0 ? Math.round((currentBalance / netRealBalance) * 100) : 0;
+    return {
+      ...b,
+      currentBalance,
+      percentageAllocated,
+    };
   });
 
   // Manipuladores de Frota / Veículos
