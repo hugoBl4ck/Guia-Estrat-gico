@@ -93,15 +93,16 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     goalDescription = `🚀 Meta Agressiva: Quita custos, gera lucro e antecipa parcelas futuras ${bankName ? `do ${bankName}` : ''} com ~50% de desconto no juro!`;
   }
 
-  const effectiveRevenue = todayRevenue > 0 ? todayRevenue : summary.grossRevenue;
+  const effectiveRevenue = todayRevenue;
   const todayExpenses = (expenses || [])
     .filter((e) => !e.isDeleted && e.expenseDate && getLocalDateString(e.expenseDate) === todayStr)
     .reduce((sum, exp) => sum + exp.amount, 0);
-  const effectiveOperatingCost = todayExpenses > 0 ? todayExpenses : summary.totalOperatingCost;
+  const effectiveOperatingCost = todayExpenses;
 
   const breakEvenTarget = dailyBaseCostTarget + effectiveOperatingCost;
   const breakEvenProgress = breakEvenTarget > 0 ? Math.min(100, Math.round((effectiveRevenue / breakEvenTarget) * 100)) : 0;
-  const isBreakEvenPassed = breakEvenProgress >= 100;
+  const isBreakEvenPassed = breakEvenProgress >= 100 && breakEvenTarget > 0;
+  const remainingForBreakEven = Math.max(0, breakEvenTarget - effectiveRevenue);
 
   const tripsCompletedToday = todayTrips;
   const tripsRemainingToday = Math.max(0, targetTrips - tripsCompletedToday);
@@ -610,11 +611,11 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           {isBreakEvenPassed ? (
             <p className="text-emerald-400 font-bold flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4" />
-              Parcela Santander & Custos Quitados! Agora é Lucro Puro.
+              Custos diários de hoje (R$ {breakEvenTarget.toFixed(2)}) quitados! Agora é Lucro Limpo.
             </p>
           ) : (
             <p className="text-slate-400">
-              Faltam <span className="font-bold text-driver-warning">R$ {Math.max(0, (dailyBaseCostTarget + summary.totalOperatingCost) - summary.grossRevenue).toFixed(2)}</span> para quitar os custos diários.
+              Faltam <span className="font-bold text-driver-warning">R$ {remainingForBreakEven.toFixed(2)}</span> das corridas de hoje para quitar os custos diários (R$ {breakEvenTarget.toFixed(2)}).
             </p>
           )}
         </div>
