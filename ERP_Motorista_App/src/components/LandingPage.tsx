@@ -172,8 +172,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               className="w-full max-w-2xl object-cover"
               style={{ opacity: 0.75, maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)' }}
             />
-            {/* PMA SCANNER sobre a imagem EV — estilo autentico */}
-            <div className="scanner-bar" />
           </div>
         </div>
 
@@ -212,9 +210,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           }}
         />
         <div className="absolute inset-0 bg-[#0B0D13]/70 pointer-events-none" />
-
-        {/* PMA SCANNER — idêntico ao original na section Verdades */}
-        <div className="scanner-bar" />
 
         <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12 relative z-10">
           
