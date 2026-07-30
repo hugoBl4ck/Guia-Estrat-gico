@@ -176,7 +176,7 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
                 </td>
                 <td className="p-3 font-mono font-extrabold text-purple-400 bg-purple-950/60">35,0% dos ganhos</td>
                 <td className="p-3 text-right font-mono font-extrabold text-white">R$ 3086.58</td>
-                <td className="p-3 text-right font-bold text-purple-300">Dia 10 de cada mês</td>
+                <td className="p-3 text-right font-bold text-purple-300">Dia 16/08/2026 (1ª Parcela)</td>
               </tr>
 
               <tr className="hover:bg-slate-900/40 bg-emerald-950/20">

@@ -14,6 +14,7 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   financingTotalInstallments: 48,
   financingPaidInstallments: 1,
   financingBank: 'Banco Santander',
+  financingDueDay: 16, // Vencimento 16/08/2026
   fipeValue: 119990, // Valor da Nota Fiscal DANFE nº 000.005.582 (16/07/2026)
   estimatedResidualValue: 85000,
   currentOdometerKm: 4500,

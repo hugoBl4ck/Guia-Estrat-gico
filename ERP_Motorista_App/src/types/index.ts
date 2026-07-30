@@ -40,11 +40,13 @@ export interface Vehicle {
   financingTotalInstallments?: number;  // Total de parcelas (ex: 48)
   financingPaidInstallments?: number;   // Parcelas quitadas (ex: 1)
   financingBank?: string;               // ex: Banco Santander
+  financingDueDay?: number;             // Dia do vencimento mensal (ex: 16)
 
   insuranceMonthlyCost: number;         // Parcela do Seguro Mensal (R$)
   insuranceTotalInstallments?: number;  // Total de parcelas do seguro (ex: 12 ou 10)
   insurancePaidInstallments?: number;   // Parcelas quitadas do seguro (ex: 1)
   insuranceCompany?: string;           // ex: Aliro / HDI Seguro Auto
+  insuranceDueDay?: number;             // Dia do vencimento do seguro (ex: 1)
 
   annualIpvaLicensingCost?: number;     // IPVA + Licenciamento Anual (divisão duodécimo por 12)
 
