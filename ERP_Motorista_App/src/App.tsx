@@ -323,7 +323,7 @@ export function App() {
     setCurrentVehicle(vehicle);
   };
 
-  const handleStartShift = (startKm: number) => {
+  const handleStartShift = async (startKm: number) => {
     const newShift: Shift = {
       id: `shift-${Date.now()}`,
       startTime: new Date().toISOString(),
@@ -332,9 +332,26 @@ export function App() {
       vehicleId: currentVehicle.id
     };
     dispatch({ type: 'START_SHIFT', payload: newShift });
+
+    if (startKm > 0) {
+      const updatedVeh = { ...currentVehicle, currentOdometerKm: startKm };
+      await handleUpdateVehicle(updatedVeh);
+    }
   };
 
-  const handleEndShift = () => {
+  const handleEndShift = async (endKm?: number) => {
+    if (state.activeShift && endKm !== undefined && !isNaN(endKm) && endKm > 0) {
+      const closedShift: Shift = {
+        ...state.activeShift,
+        endTime: new Date().toISOString(),
+        endOdometerKm: endKm,
+        status: 'CLOSED'
+      };
+      dispatch({ type: 'START_SHIFT', payload: closedShift });
+
+      const updatedVeh = { ...currentVehicle, currentOdometerKm: endKm };
+      await handleUpdateVehicle(updatedVeh);
+    }
     dispatch({ type: 'END_SHIFT' });
   };
 

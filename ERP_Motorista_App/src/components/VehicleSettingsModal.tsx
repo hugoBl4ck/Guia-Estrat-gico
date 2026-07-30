@@ -30,6 +30,7 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
   const [usageMode, setUsageMode] = useState<'DRIVER' | 'RENTAL_OWNER'>(vehicle.usageMode || 'DRIVER');
   const [weeklyRentalIncome, setWeeklyRentalIncome] = useState(vehicle.weeklyRentalIncome?.toString() || '550.00');
   const [tenantName, setTenantName] = useState(vehicle.tenantName || 'Motorista Locatário');
+  const [odometerKm, setOdometerKm] = useState(vehicle.currentOdometerKm?.toString() || '792');
 
   // Estado para simulador de amortizacao da ultima parcela (1a + 48a)
   const [amortizationDiscountPercent, setAmortizationDiscountPercent] = useState('50'); // Desconto medio de juros no adiantamento da ultima parcela
@@ -41,6 +42,7 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
 
     const updatedVehicle: Vehicle = {
       ...vehicle,
+      currentOdometerKm: parseFloat(odometerKm) || 0,
       monthlyFinancingCost: parseFloat(financingCost) || 0,
       financingBank: financingBank || 'Financiadora / Banco',
       financingTotalInstallments: parseInt(financingTotal, 10) || 48,
@@ -91,6 +93,27 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           
+          {/* SEÇÃO DA QUILOMETRAGEM / ODÔMETRO ATUAL */}
+          <div className="p-3.5 bg-slate-900 border border-emerald-800/80 rounded-2xl space-y-2">
+            <span className="font-extrabold text-emerald-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
+              <Zap className="w-4 h-4 text-emerald-400" /> Odômetro Atual do Veículo (Painel)
+            </span>
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Quilometragem Atual (km)</label>
+              <input
+                type="number"
+                step="1"
+                value={odometerKm}
+                onChange={(e) => setOdometerKm(e.target.value)}
+                placeholder="ex: 792"
+                className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-emerald-400 font-mono font-bold text-base outline-none focus:border-emerald-500"
+              />
+              <span className="text-[10px] text-slate-400 block mt-0.5">
+                Digite o valor exibido no painel do carro hoje (ex: 792 km).
+              </span>
+            </div>
+          </div>
+
           {/* SEÇÃO 0: MODO DE OPERAÇÃO DO VEÍCULO (USO PRÓPRIO VS ALUGADO PARA TERCEIRO) */}
           <div className="p-3.5 bg-slate-900 border border-purple-800/80 rounded-2xl space-y-3">
             <span className="font-extrabold text-purple-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
