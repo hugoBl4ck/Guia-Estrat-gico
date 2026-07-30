@@ -27,9 +27,11 @@ import {
   INITIAL_SHIFT_BYD,
   INITIAL_EARNINGS_BYD,
   INITIAL_EXPENSES_BYD,
+  VEHICLE_FORD_KA,
   INITIAL_EARNINGS_FORD_KA,
   INITIAL_EXPENSES_FORD_KA,
-  INITIAL_BUCKETS
+  INITIAL_BUCKETS,
+  getInitialVehicleForUser
 } from './utils/mockData';
 import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
 
@@ -43,8 +45,16 @@ export function App() {
   const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
   const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => repository.loadVehicles());
-  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => repository.loadCurrentVehicle());
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    const loaded = repository.loadVehicles();
+    if (!loaded || loaded.length === 0) return [getInitialVehicleForUser(localStorage.getItem('erp_driver_user_email') || '')];
+    return loaded;
+  });
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => {
+    const email = localStorage.getItem('erp_driver_user_email') || '';
+    if (email && email !== 'hugovieira.eng@gmail.com') return getInitialVehicleForUser(email);
+    return repository.loadCurrentVehicle();
+  });
 
   // Carregar estado inicial via Repositório com salvaguarda (Produção Limpa)
   const initialData = repository.loadData();

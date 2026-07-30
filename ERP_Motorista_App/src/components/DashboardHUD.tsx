@@ -75,18 +75,21 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   let targetTrips = dailyGoalTrips;
   let goalDescription = '';
 
+  const bankName = vehicle.financingBank || (vehicle.isRented ? 'Aluguel' : 'Financiamento');
+  const insName = vehicle.insuranceCompany || 'Seguro Auto';
+
   if (goalProfile === 'LEVE') {
     targetDailyRevenue = dailyBaseCostTarget;
     targetTrips = Math.max(15, Math.ceil(targetDailyRevenue / 11));
-    goalDescription = `🛡️ Meta Leve: Cobre 100% da parcela Santander (R$ 3.086,58) e despesas (R$ ${dailyBaseCostTarget.toFixed(2)}/dia) sem margem extra.`;
+    goalDescription = `🛡️ Meta Leve: Cobre 100% da parcela ${bankName} (R$ ${monthlyFinancing.toFixed(2)}) e despesas (R$ ${dailyBaseCostTarget.toFixed(2)}/dia) sem margem extra.`;
   } else if (goalProfile === 'MODERADA') {
     targetDailyRevenue = dailyBaseCostTarget + 150.00;
     targetTrips = dailyGoalTrips;
-    goalDescription = `⚡ Meta Moderada: Garante a parcela do Santander + R$ 150,00 de Lucro Limpo no bolso todo dia.`;
+    goalDescription = `⚡ Meta Moderada: Garante a parcela ${bankName} + R$ 150,00 de Lucro Limpo no bolso todo dia.`;
   } else {
     targetDailyRevenue = dailyBaseCostTarget + 275.00;
     targetTrips = Math.max(40, Math.ceil(targetDailyRevenue / 11));
-    goalDescription = `🚀 Meta Agressiva: Quita custos, gera lucro e antecipa a 48ª parcela do Santander com ~50% de desconto no juro!`;
+    goalDescription = `🚀 Meta Agressiva: Quita custos, gera lucro e antecipa parcelas futuras ${bankName ? `do ${bankName}` : ''} com ~50% de desconto no juro!`;
   }
 
   const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyBaseCostTarget + summary.totalOperatingCost)) * 100));
@@ -184,7 +187,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Descontados parcela Santander (R$ 3.086,58), seguro Aliro (R$ 299,71), Coelba e manutenção.
+            Descontados parcela {bankName} (R$ {monthlyFinancing.toFixed(2)}), seguro {insName} (R$ {monthlyInsurance.toFixed(2)}), recarga/combustível e manutenção.
           </p>
         </div>
 
@@ -195,44 +198,44 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             <p className="text-base font-extrabold text-emerald-400 mt-0.5">
               R$ {todayRevenue.toFixed(2)}
             </p>
-            <span className="text-[9px] text-slate-500 block">Total 3 dias: R$ {summary.grossRevenue.toFixed(2)}</span>
+            <span className="text-[9px] text-slate-500 block">Total período: R$ {summary.grossRevenue.toFixed(2)}</span>
           </div>
           <div className="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800">
             <p className="text-[10px] text-slate-400 font-semibold uppercase">Custo Operacional</p>
             <p className="text-base font-extrabold text-driver-danger mt-0.5">
               -R$ {summary.totalOperatingCost.toFixed(2)}
             </p>
-            <span className="text-[9px] text-slate-500 block">Coelba + Seguro + Revisão</span>
+            <span className="text-[9px] text-slate-500 block">Recargas + Seguro + Revisão</span>
           </div>
           <div className="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800">
             <p className="text-[10px] text-slate-400 font-semibold uppercase">KM Rodado Hoje</p>
             <p className="text-base font-extrabold text-driver-warning mt-0.5">
               {todayKm > 0 ? todayKm.toFixed(1) : summary.kmDriven.toFixed(1)} km
             </p>
-            <span className="text-[9px] text-slate-500 block">Autonomia BYD: 380km</span>
+            <span className="text-[9px] text-slate-500 block">{vehicle.model || 'Veículo Cadastrado'}</span>
           </div>
         </div>
       </div>
 
-      {/* Widget Financiamento Santander (48x) & Amortização + Seguro Aliro (12x/10x) */}
+      {/* Widget Financiamento / Aluguel & Apólice de Seguro */}
       <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-sm text-white flex items-center gap-2">
             <Building2 className="w-4 h-4 text-amber-400" />
-            Financiamento & Apólice de Seguro
+            {vehicle.isRented ? 'Aluguel' : 'Financiamento'} & Apólice de Seguro
           </h2>
           <span className="text-[10px] font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded-full border border-amber-800">
-            Santander 48x
+            {bankName} {finTotal ? `${finTotal}x` : ''}
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs">
-          {/* Financiamento */}
+          {/* Financiamento / Aluguel */}
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5">
-            <span className="text-slate-400 font-semibold block text-[10px] uppercase">Financiamento Santander</span>
+            <span className="text-slate-400 font-semibold block text-[10px] uppercase">{bankName}</span>
             <p className="font-mono font-black text-amber-400 text-sm">R$ {finCost.toFixed(2)}/mês</p>
             <div className="flex justify-between text-[11px] text-slate-300 pt-1 border-t border-slate-800">
-              <span>Parcela:</span>
+              <span>Parcela / Contrato:</span>
               <span className="font-bold text-white">{finPaid} / {finTotal}x</span>
             </div>
             <p className="text-[10px] text-emerald-400 pt-0.5">

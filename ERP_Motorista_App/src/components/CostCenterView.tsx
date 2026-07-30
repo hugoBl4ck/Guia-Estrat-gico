@@ -172,11 +172,11 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
               <tr className="hover:bg-slate-900/40 bg-purple-950/20">
                 <td className="p-3 font-mono font-bold text-purple-400">CC-01</td>
                 <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-purple-400" /> Financiamento Santander / Aluguel
+                  <Building2 className="w-3.5 h-3.5 text-purple-400" /> {vehicle.financingBank || (vehicle.isRented ? 'Aluguel' : 'Financiamento Veicular')}
                 </td>
                 <td className="p-3 font-mono font-extrabold text-purple-400 bg-purple-950/60">35,0% dos ganhos</td>
-                <td className="p-3 text-right font-mono font-extrabold text-white">R$ 3086.58</td>
-                <td className="p-3 text-right font-bold text-purple-300">Dia 16/08/2026 (1ª Parcela)</td>
+                <td className="p-3 text-right font-mono font-extrabold text-white">R$ {(vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 0)).toFixed(2)}</td>
+                <td className="p-3 text-right font-bold text-purple-300">Dia {vehicle.financingDueDay || 10} de cada mês</td>
               </tr>
 
               <tr className="hover:bg-slate-900/40 bg-emerald-950/20">
@@ -192,11 +192,11 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
               <tr className="hover:bg-slate-900/40 bg-amber-950/20">
                 <td className="p-3 font-mono font-bold text-amber-400">CC-03</td>
                 <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                  <Wrench className="w-3.5 h-3.5 text-amber-400" /> Manutenção EV / Revisão BYD
+                  <Wrench className="w-3.5 h-3.5 text-amber-400" /> Manutenção & Revisão ({vehicle.isElectric ? 'EV' : 'Combustão'})
                 </td>
                 <td className="p-3 font-mono font-extrabold text-amber-400 bg-amber-950/60">10,0% dos ganhos</td>
                 <td className="p-3 text-right font-mono font-extrabold text-white">R$ 1.500,00</td>
-                <td className="p-3 text-right font-bold text-amber-300">Revisão 20.000 km (R$ 370)</td>
+                <td className="p-3 text-right font-bold text-amber-300">Reserva Preventiva</td>
               </tr>
 
               <tr className="hover:bg-slate-900/40 bg-blue-950/20">

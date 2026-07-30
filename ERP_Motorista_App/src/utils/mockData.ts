@@ -26,7 +26,45 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   insuranceMonthlyCost: 299.71, // Apólice Aliro Seguro Auto nº 31.00.2026.1149490 (12x R$ 299,71)
   insuranceTotalInstallments: 12, // 12 parcelas (ou 10x no próximo ano)
   insurancePaidInstallments: 1,
-  insuranceCompany: 'Aliro / HDI'
+  insuranceCompany: 'Aliro / HDI',
+  insuranceDueDay: 1
+};
+
+export const DEFAULT_GENERIC_VEHICLE: Vehicle = {
+  id: 'veh-default-generic',
+  model: 'Veículo de Aplicativo',
+  brand: 'GiroCerto',
+  year: 2024,
+  licensePlate: 'ABC-1234',
+  vehicleType: 'COMBUSTION',
+  imageUrl: '/images/vehicles/ford_ka.png',
+  isRented: false,
+  monthlyRentalCost: 0,
+  monthlyFinancingCost: 1500.00,
+  financingTotalInstallments: 48,
+  financingPaidInstallments: 1,
+  financingBank: 'Banco / Financiadora',
+  financingDueDay: 10,
+  fipeValue: 60000,
+  estimatedResidualValue: 40000,
+  currentOdometerKm: 50000,
+  isElectric: false,
+  batteryCapacityKwh: 0,
+  kmPerKwh: 0,
+  residentialTariffPerKwh: 1.21,
+  fastChargerTariffPerKwh: 1.69,
+  insuranceMonthlyCost: 200.00,
+  insuranceTotalInstallments: 12,
+  insurancePaidInstallments: 1,
+  insuranceCompany: 'Seguradora Auto',
+  insuranceDueDay: 1
+};
+
+export const getInitialVehicleForUser = (email?: string): Vehicle => {
+  if (email === 'hugovieira.eng@gmail.com') {
+    return VEHICLE_BYD_DOLPHIN;
+  }
+  return DEFAULT_GENERIC_VEHICLE;
 };
 
 export const VEHICLE_FORD_KA: Vehicle = {
