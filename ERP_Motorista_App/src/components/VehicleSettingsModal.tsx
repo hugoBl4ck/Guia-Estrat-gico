@@ -15,10 +15,12 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
   vehicle,
   onUpdateVehicle,
 }) => {
-  const [financingCost, setFinancingCost] = useState(vehicle.monthlyFinancingCost?.toString() || '3086.58');
+  const [financingBank, setFinancingBank] = useState(vehicle.financingBank || (vehicle.monthlyFinancingCost ? 'Banco Santander' : 'Quitado'));
+  const [financingCost, setFinancingCost] = useState(vehicle.monthlyFinancingCost?.toString() || '0');
   const [financingTotal, setFinancingTotal] = useState(vehicle.financingTotalInstallments?.toString() || '48');
   const [financingPaid, setFinancingPaid] = useState(vehicle.financingPaidInstallments?.toString() || '1');
 
+  const [insuranceCompany, setInsuranceCompany] = useState(vehicle.insuranceCompany || 'Aliro / HDI');
   const [insuranceCost, setInsuranceCost] = useState(vehicle.insuranceMonthlyCost.toString() || '299.71');
   const [insuranceTotal, setInsuranceTotal] = useState(vehicle.insuranceTotalInstallments?.toString() || '12');
   const [insurancePaid, setInsurancePaid] = useState(vehicle.insurancePaidInstallments?.toString() || '1');
@@ -40,9 +42,11 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
     const updatedVehicle: Vehicle = {
       ...vehicle,
       monthlyFinancingCost: parseFloat(financingCost) || 0,
+      financingBank: financingBank || 'Financiadora / Banco',
       financingTotalInstallments: parseInt(financingTotal, 10) || 48,
       financingPaidInstallments: parseInt(financingPaid, 10) || 0,
       insuranceMonthlyCost: parseFloat(insuranceCost) || 0,
+      insuranceCompany: insuranceCompany || 'Seguradora / Associação',
       insuranceTotalInstallments: parseInt(insuranceTotal, 10) || 12,
       insurancePaidInstallments: parseInt(insurancePaid, 10) || 0,
       residentialTariffPerKwh: parseFloat(residentialTariff) || 0,
@@ -153,17 +157,28 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
           {/* SEÇÃO 1: FINANCIAMENTO & AMORTIZAÇÃO */}
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
             <span className="font-extrabold text-amber-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
-              <DollarSign className="w-4 h-4 text-amber-400" /> Financiamento do Veículo (Banco Santander)
+              <DollarSign className="w-4 h-4 text-amber-400" /> Financiamento ({financingBank || 'Banco / Financiadora'})
             </span>
 
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Valor da Parcela Mensal (R$)</label>
+              <label className="text-slate-300 font-semibold block mb-1">Banco / Financiadora (ou Quitado)</label>
+              <input
+                type="text"
+                value={financingBank}
+                onChange={(e) => setFinancingBank(e.target.value)}
+                placeholder="ex: Banco Santander, BV, Itaú ou Quitado"
+                className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-white font-bold outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Valor da Parcela Mensal (R$) (0 = Quitado)</label>
               <input
                 type="number"
                 step="0.01"
                 value={financingCost}
                 onChange={(e) => setFinancingCost(e.target.value)}
-                placeholder="ex: 3086.58"
+                placeholder="ex: 3086.58 (ou 0 se quitado)"
                 className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-white font-mono font-bold outline-none focus:border-amber-500"
               />
             </div>
@@ -176,6 +191,7 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
                   onChange={(e) => setFinancingTotal(e.target.value)}
                   className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-white font-bold outline-none"
                 >
+                  <option value="0">0x (Quitado)</option>
                   <option value="12">12x (1 ano)</option>
                   <option value="24">24x (2 anos)</option>
                   <option value="36">36x (3 anos)</option>
@@ -196,49 +212,62 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
               </div>
             </div>
 
-            {/* SIMULADOR DE AMORTIZAÇÃO (PAGAR 1ª + ÚLTIMA PARCELA) */}
-            <div className="mt-3 p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-amber-300 flex items-center gap-1 text-[11px]">
-                  <Sparkles className="w-3.5 h-3.5" /> Simulador de Amortização (1ª + Última Parcela)
-                </span>
-                <span className="text-[10px] font-bold text-amber-400 bg-black px-2 py-0.5 rounded-full border border-amber-800">
-                  Desconto Banco
-                </span>
-              </div>
-
-              <p className="text-[11px] text-slate-300">
-                Ao pagar a <b>1ª parcela (R$ {rawFinancingVal.toFixed(2)})</b> + a <b>48ª parcela antecipada</b>, os juros futuros são eliminados!
-              </p>
-
-              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                <div className="bg-black/60 p-2 rounded-lg border border-amber-900/60">
-                  <span className="text-slate-400 block text-[10px]">Custo da 48ª Parcela (com ~50% de desconto):</span>
-                  <span className="font-mono font-extrabold text-emerald-400">R$ {lastInstallmentEstimatedCost.toFixed(2)}</span>
+            {/* SIMULADOR DE AMORTIZAÇÃO (SE TIVER FINANCIAMENTO ATIVO) */}
+            {parseFloat(financingCost) > 0 && (
+              <div className="mt-3 p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-amber-300 flex items-center gap-1 text-[11px]">
+                    <Sparkles className="w-3.5 h-3.5" /> Simulador de Amortização (1ª + Última Parcela)
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-400 bg-black px-2 py-0.5 rounded-full border border-amber-800">
+                    Desconto Banco
+                  </span>
                 </div>
 
-                <div className="bg-black/60 p-2 rounded-lg border border-amber-900/60">
-                  <span className="text-slate-400 block text-[10px]">Economia de Juros Ganha:</span>
-                  <span className="font-mono font-extrabold text-amber-400">R$ {interestSaved.toFixed(2)}</span>
+                <p className="text-[11px] text-slate-300">
+                  Ao pagar a <b>1ª parcela (R$ {rawFinancingVal.toFixed(2)})</b> + a <b>{financingTotal}ª parcela antecipada</b>, os juros futuros são eliminados!
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div className="bg-black/60 p-2 rounded-lg border border-amber-900/60">
+                    <span className="text-slate-400 block text-[10px]">Custo da Última Parcela com ~50% Desc:</span>
+                    <span className="font-mono font-extrabold text-emerald-400">R$ {lastInstallmentEstimatedCost.toFixed(2)}</span>
+                  </div>
+
+                  <div className="bg-black/60 p-2 rounded-lg border border-amber-900/60">
+                    <span className="text-slate-400 block text-[10px]">Economia de Juros Ganha:</span>
+                    <span className="font-mono font-extrabold text-amber-400">R$ {interestSaved.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* SEÇÃO 2: SEGURO AUTO & PARCELAMENTO (12x OU 10x) */}
+          {/* SEÇÃO 2: SEGURO AUTO OU ASSOCIAÇÃO DE PROTEÇÃO VEICULAR */}
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
             <span className="font-extrabold text-blue-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
-              <Shield className="w-4 h-4 text-blue-400" /> Seguro Auto (Aliro / HDI)
+              <Shield className="w-4 h-4 text-blue-400" /> Seguro ou Associação ({insuranceCompany || 'Proteção Veicular'})
             </span>
 
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Valor da Parcela do Seguro (R$)</label>
+              <label className="text-slate-300 font-semibold block mb-1">Nome da Seguradora ou Associação</label>
+              <input
+                type="text"
+                value={insuranceCompany}
+                onChange={(e) => setInsuranceCompany(e.target.value)}
+                placeholder="ex: Aliro / HDI, Porto Seguro, APVS, Hinova, AGV"
+                className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-white font-bold outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Valor da Parcela Mensal (R$)</label>
               <input
                 type="number"
                 step="0.01"
                 value={insuranceCost}
                 onChange={(e) => setInsuranceCost(e.target.value)}
-                placeholder="ex: 299.71"
+                placeholder="ex: 299.71 ou 180.00"
                 className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-white font-mono font-bold outline-none focus:border-blue-500"
               />
             </div>

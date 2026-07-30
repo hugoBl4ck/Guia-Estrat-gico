@@ -136,7 +136,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     (earnings || []).filter((e) => !e.isDeleted && e.recordedAt).map((e) => getLocalDateString(e.recordedAt))
   ).size || 1;
 
-  const targetFinancingTotal = vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 3086.58);
+  const targetFinancingTotal = vehicle.monthlyFinancingCost !== undefined ? vehicle.monthlyFinancingCost : (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
   const remainingFinancingAmount = Math.max(0, targetFinancingTotal - currentFinancingBalance);
   
   // Meta Diária de Lucro Líquido requerida a partir de hoje até a data do boleto
@@ -229,75 +229,94 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       )}
 
       {/* CARD DE MONITORAMENTO INTELIGENTE DA PARCELA DO FINANCIAMENTO (FOCO DO MÊS) */}
-      <div className="bg-[#0B0D13] border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
-        <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 bg-amber-400 rounded-full animate-ping"></span>
-            <h2 className="font-mono font-black text-sm text-amber-400 uppercase tracking-wider flex items-center gap-2">
-              🎯 FOCO PRINCIPAL: PARCELA {bankName.toUpperCase()}
-            </h2>
-          </div>
-          <span className="text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800 px-3 py-1 uppercase">
-            ⏳ Faltam {daysRemainingToDue} dias para o vencimento (Dia {finDueDay})
-          </span>
-        </div>
-
-        {/* Resumo em Números Reais */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-black/60 border border-white/10 p-3">
-            <span className="text-[10px] font-mono text-slate-400 uppercase block">Valor Total da Parcela</span>
-            <p className="text-lg font-black text-white font-mono">R$ {targetFinancingTotal.toFixed(2)}</p>
-            <span className="text-[10px] text-slate-500 font-mono">Contrato {bankName}</span>
+      {targetFinancingTotal > 0 ? (
+        <div className="bg-[#0B0D13] border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 bg-amber-400 rounded-full animate-ping"></span>
+              <h2 className="font-mono font-black text-sm text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                🎯 FOCO PRINCIPAL: PARCELA {bankName.toUpperCase()}
+              </h2>
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800 px-3 py-1 uppercase">
+              ⏳ Faltam {daysRemainingToDue} dias para o vencimento (Dia {finDueDay})
+            </span>
           </div>
 
-          <div className="bg-black/60 border border-emerald-500/30 p-3">
-            <span className="text-[10px] font-mono text-emerald-400 uppercase block">Acumulado ({uniqueDaysWorked} dias trab.)</span>
-            <p className="text-lg font-black text-emerald-400 font-mono">R$ {currentFinancingBalance.toFixed(2)}</p>
-            <span className="text-[10px] text-emerald-300/80 font-mono">{financingProgressPercent}% Quitado da Parcela</span>
+          {/* Resumo em Números Reais */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-black/60 border border-white/10 p-3">
+              <span className="text-[10px] font-mono text-slate-400 uppercase block">Valor Total da Parcela</span>
+              <p className="text-lg font-black text-white font-mono">R$ {targetFinancingTotal.toFixed(2)}</p>
+              <span className="text-[10px] text-slate-500 font-mono">Contrato {bankName}</span>
+            </div>
+
+            <div className="bg-black/60 border border-emerald-500/30 p-3">
+              <span className="text-[10px] font-mono text-emerald-400 uppercase block">Acumulado ({uniqueDaysWorked} dias trab.)</span>
+              <p className="text-lg font-black text-emerald-400 font-mono">R$ {currentFinancingBalance.toFixed(2)}</p>
+              <span className="text-[10px] text-emerald-300/80 font-mono">{financingProgressPercent}% Quitado da Parcela</span>
+            </div>
+
+            <div className="bg-black/60 border border-amber-500/30 p-3">
+              <span className="text-[10px] font-mono text-amber-400 uppercase block">Falta Acumular</span>
+              <p className="text-lg font-black text-amber-400 font-mono">R$ {remainingFinancingAmount.toFixed(2)}</p>
+              <span className="text-[10px] text-amber-300/80 font-mono">em {daysRemainingToDue} dias restantes</span>
+            </div>
           </div>
 
-          <div className="bg-black/60 border border-amber-500/30 p-3">
-            <span className="text-[10px] font-mono text-amber-400 uppercase block">Falta Acumular</span>
-            <p className="text-lg font-black text-amber-400 font-mono">R$ {remainingFinancingAmount.toFixed(2)}</p>
-            <span className="text-[10px] text-amber-300/80 font-mono">em {daysRemainingToDue} dias restantes</span>
+          {/* Barra de Progresso da Parcela */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-slate-300">Progresso de Retenção da Parcela:</span>
+              <span className="font-bold text-amber-400">{financingProgressPercent}% Concluído</span>
+            </div>
+            <div className="w-full bg-slate-900 h-3 border border-amber-500/30 p-0.5">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
+                style={{ width: `${financingProgressPercent}%` }}
+              ></div>
+            </div>
           </div>
-        </div>
 
-        {/* Barra de Progresso da Parcela */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] font-mono">
-            <span className="text-slate-300">Progresso de Retenção da Parcela:</span>
-            <span className="font-bold text-amber-400">{financingProgressPercent}% Concluído</span>
-          </div>
-          <div className="w-full bg-slate-900 h-3 border border-amber-500/30 p-0.5">
-            <div
-              className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
-              style={{ width: `${financingProgressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* RECOMENDAÇÃO OPERACIONAL PARA O MOTORISTA */}
-        <div className="bg-amber-950/40 border border-amber-500/40 p-3.5 flex items-start gap-3">
-          <Target className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-1 text-xs font-mono">
-            <p className="font-black text-amber-300 uppercase tracking-wide">
-              📋 META DIÁRIA NECESSÁRIA PARA PAGAR NO VENCIMENTO:
-            </p>
-            <p className="text-slate-200 leading-relaxed">
-              Para quitar os <strong className="text-white">R$ {remainingFinancingAmount.toFixed(2)}</strong> restantes até o dia <strong className="text-white">{finDueDay}</strong>, você precisa acumular de Lucro Líquido:
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <span className="bg-[#D4FF00] text-black font-black px-3 py-1 text-xs">
-                💰 R$ {requiredDailyNetProfitForFinancing.toFixed(2)} / dia de Lucro Líquido
-              </span>
-              <span className="bg-black text-[#D4FF00] border border-[#D4FF00]/40 font-bold px-3 py-1 text-xs">
-                🚖 ~{requiredTripsPerDayForFinancing} corridas/dia (Média R$ {estimatedNetPerTrip.toFixed(2)}/corrida)
-              </span>
+          {/* RECOMENDAÇÃO OPERACIONAL PARA O MOTORISTA */}
+          <div className="bg-amber-950/40 border border-amber-500/40 p-3.5 flex items-start gap-3">
+            <Target className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs font-mono">
+              <p className="font-black text-amber-300 uppercase tracking-wide">
+                📋 META DIÁRIA NECESSÁRIA PARA PAGAR NO VENCIMENTO:
+              </p>
+              <p className="text-slate-200 leading-relaxed">
+                Para quitar os <strong className="text-white">R$ {remainingFinancingAmount.toFixed(2)}</strong> restantes até o dia <strong className="text-white">{finDueDay}</strong>, você precisa acumular de Lucro Líquido:
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <span className="bg-[#D4FF00] text-black font-black px-3 py-1 text-xs">
+                  💰 R$ {requiredDailyNetProfitForFinancing.toFixed(2)} / dia de Lucro Líquido
+                </span>
+                <span className="bg-black text-[#D4FF00] border border-[#D4FF00]/40 font-bold px-3 py-1 text-xs">
+                  🚖 ~{requiredTripsPerDayForFinancing} corridas/dia (Média R$ {estimatedNetPerTrip.toFixed(2)}/corrida)
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-[#0B0D13] border border-emerald-500/60 rounded-none p-4 shadow-2xl flex items-center justify-between text-left">
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></span>
+            <div>
+              <h2 className="font-mono font-black text-sm text-emerald-400 uppercase tracking-wider">
+                🟢 VEÍCULO QUITADO ({vehicle.model.toUpperCase()})
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Isento de parcela de financiamento. 100% da receita de lucro vai para o seu bolso e reservas.
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 uppercase">
+            QUITADO (R$ 0,00)
+          </span>
+        </div>
+      )}
 
       {/* Banner de Auditoria de Anomalias do Agente Interno (Item 7) */}
       {anomalies.length > 0 && (
