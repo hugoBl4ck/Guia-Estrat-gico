@@ -54,9 +54,20 @@ export const dbService = {
         localStorage.setItem(STORAGE_KEYS.BUCKETS, JSON.stringify(parsedBuckets));
       }
 
+      let rawExpenses: Expense[] = savedExpenses ? (JSON.parse(savedExpenses) as Expense[]) : [];
+      const mockIdsToPurge = new Set([
+        'exp-byd-seguro',
+        'exp-byd-recarga-coelba',
+        'exp-recarga-domingo-26',
+        'exp-ford-combustivel',
+        'exp-ford-oleo',
+        'exp-ford-seguro'
+      ]);
+      rawExpenses = rawExpenses.filter((exp) => !mockIdsToPurge.has(exp.id));
+
       return {
         earnings: savedEarnings ? (JSON.parse(savedEarnings) as Earning[]) : [],
-        expenses: savedExpenses ? (JSON.parse(savedExpenses) as Expense[]) : [],
+        expenses: rawExpenses,
         activeShift: savedShift ? (JSON.parse(savedShift) as Shift | null) : null,
         buckets: parsedBuckets,
         personalLogs: savedPersonalLogs ? (JSON.parse(savedPersonalLogs) as PersonalUsageLog[]) : [],

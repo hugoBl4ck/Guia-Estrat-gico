@@ -134,42 +134,9 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
   }
 ];
 
-export const INITIAL_EXPENSES_BYD: Expense[] = [
-  {
-    id: 'exp-byd-seguro',
-    shiftId: 'shift-byd-01',
-    category: 'INSURANCE',
-    amount: 299.71, // Seguro Aliro Auto Apólice 31.00.2026.1149490
-    notes: 'Aliro Seguro Auto - Parcela Mensal 1/12 (Seguradora HDI)',
-    expenseDate: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    source: 'manual'
-  },
-  {
-    id: 'exp-byd-recarga-coelba',
-    shiftId: 'shift-byd-01',
-    category: 'ELECTRIC_CHARGING',
-    amount: 46.96, // 38.8 kWh * R$ 1.21 (Tarifa Coelba BA)
-    odometerKm: 4500,
-    kwhAmount: 38.8,
-    tariffPerKwh: 1.21,
-    chargingType: 'RESIDENTIAL',
-    notes: 'Recarga Noturna Residencial Coelba (38.8 kWh - 0% a 100%)',
-    expenseDate: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-    source: 'manual'
-  },
-  {
-    id: 'exp-recarga-domingo-26',
-    shiftId: 'shift-byd-01',
-    category: 'ELECTRIC_CHARGING',
-    amount: 37.08,
-    chargingType: 'FAST_CHARGER_PAID',
-    notes: 'Recarga em Eletroposto / Posto (Domingo 26/07)',
-    expenseDate: '2026-07-26T14:00:00.000Z',
-    source: 'manual'
-  }
-];
+export const INITIAL_EXPENSES_BYD: Expense[] = [];
 
-// Dados reais do Ford Ka 1.0 (Relatório SEMANAL da Uber da semana Jul 13 - Jul 19, 2026: 7 dias)
+// Dados do Ford Ka 1.0
 export const INITIAL_EARNINGS_FORD_KA: Earning[] = [
   {
     id: 'earning-ford-relatorio-semanal',
@@ -182,34 +149,7 @@ export const INITIAL_EARNINGS_FORD_KA: Earning[] = [
   }
 ];
 
-export const INITIAL_EXPENSES_FORD_KA: Expense[] = [
-  {
-    id: 'exp-ford-combustivel',
-    category: 'FUEL',
-    amount: 186.93,
-    fuelLiters: 40.2,
-    pricePerLiter: 4.65,
-    notes: 'Abastecimento Etanol Semanal (Posto Shell - R$ 4,65/L)',
-    expenseDate: new Date('2026-07-15T10:00:00Z').toISOString(),
-    source: 'manual'
-  },
-  {
-    id: 'exp-ford-oleo',
-    category: 'OIL_CHANGE',
-    amount: 320.00,
-    notes: 'Troca de Óleo 5W20 Sintético + Filtros de Óleo, Ar e Combustível (A cada 10.000km)',
-    expenseDate: new Date('2026-07-10T10:00:00Z').toISOString(),
-    source: 'manual'
-  },
-  {
-    id: 'exp-ford-seguro',
-    category: 'INSURANCE',
-    amount: 180.00,
-    notes: 'Seguro Mensal Ford Ka',
-    expenseDate: new Date('2026-07-01T10:00:00Z').toISOString(),
-    source: 'manual'
-  }
-];
+export const INITIAL_EXPENSES_FORD_KA: Expense[] = [];
 
 export const INITIAL_BUCKETS: ReserveBucket[] = [
   {
