@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud } from 'lucide-react';
+import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle } from 'lucide-react';
 import { Vehicle, Shift } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
 
@@ -22,6 +22,7 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onLogout?: () => void;
   onSyncCloud?: () => void;
+  syncErrorMessage?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -43,6 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   onLogout,
   onSyncCloud,
+  syncErrorMessage,
 }) => {
   const [showMobileConnectModal, setShowMobileConnectModal] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
@@ -169,6 +171,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className={isOnline ? 'text-emerald-400' : 'text-amber-400'}>
               {isOnline ? (pendingSyncCount > 0 ? `Pendente ${pendingSyncCount}` : 'Sincronizado') : 'Offline'}
             </span>
+            {syncErrorMessage && (
+              <div className="flex items-center gap-1 text-rose-400" title={syncErrorMessage}>
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Erro
+              </div>
+            )}
             {onSyncCloud && (
               <button
                 onClick={onSyncCloud}

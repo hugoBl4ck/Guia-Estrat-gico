@@ -6,6 +6,7 @@ import { ShiftManager } from './components/ShiftManager';
 import { ExpensesTracker } from './components/ExpensesTracker';
 import { BucketsView } from './components/BucketsView';
 import { VoiceCopilotModal } from './components/VoiceCopilotModal';
+import { FlexFuelCalculator } from './components/FlexFuelCalculator';
 import { ElectricChargingCalculator } from './components/ElectricChargingCalculator';
 import { PersonalUsageTab } from './components/PersonalUsageTab';
 import { DailyReportView } from './components/DailyReportView';
@@ -20,6 +21,7 @@ import { LandingPage } from './components/LandingPage';
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
 
 import { repository } from './services/repository';
+import { dbService } from './services/db';
 import { financeReducer } from './services/financeReducer';
 
 import {
@@ -37,34 +39,24 @@ import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
-  const [userEmail, setUserEmail] = useState<string>(() => {
-    return localStorage.getItem('erp_driver_user_email') || '';
-  });
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [isLoadingUserEmail, setIsLoadingUserEmail] = useState<boolean>(true);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
   const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
   const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    const loaded = repository.loadVehicles();
-    if (!loaded || loaded.length === 0) return [getInitialVehicleForUser(localStorage.getItem('erp_driver_user_email') || '')];
-    return loaded;
-  });
-  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => {
-    const email = localStorage.getItem('erp_driver_user_email') || '';
-    if (email && email !== 'hugovieira.eng@gmail.com') return getInitialVehicleForUser(email);
-    return repository.loadCurrentVehicle();
-  });
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => [VEHICLES_LIST[0]]);
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => VEHICLES_LIST[0]);
 
-  // Carregar estado inicial via Repositório com salvaguarda (Produção Limpa)
-  const initialData = repository.loadData();
+  // Carregar estado inicial via IndexedDB de forma assíncrona
   const [state, dispatch] = useReducer(financeReducer, {
-    earnings: Array.isArray(initialData?.earnings) ? initialData.earnings : [],
-    expenses: Array.isArray(initialData?.expenses) ? initialData.expenses : [],
-    activeShift: initialData?.activeShift || null,
-    buckets: Array.isArray(initialData?.buckets) && initialData.buckets.length > 0 ? initialData.buckets : INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
-    personalLogs: Array.isArray(initialData?.personalLogs) ? initialData.personalLogs : [],
-    isDataCleared: Boolean(initialData?.isDataCleared),
+    earnings: [],
+    expenses: [],
+    activeShift: null,
+    buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
+    personalLogs: [],
+    isDataCleared: true,
   });
 
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
@@ -75,18 +67,56 @@ export function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [lastSyncStatus, setLastSyncStatus] = useState('Nenhuma sincronização ainda');
+  const [syncErrorMessage, setSyncErrorMessage] = useState<string>('');
 
-  // Efeito para salvar o estado financeiro no Repositório a cada mutação
+  // Efeito para salvar o estado financeiro no IndexedDB a cada mutação
   useEffect(() => {
-    try {
-      repository.saveData(state, userEmail);
-      if (userEmail) {
-        setPendingSyncCount(repository.getPendingSyncCount(userEmail));
+    if (isLoadingUserEmail) return;
+    const saveState = async () => {
+      try {
+        await repository.saveData(state, userEmail);
+        if (userEmail) {
+          const count = await repository.getPendingSyncCount(userEmail);
+          setPendingSyncCount(count);
+        }
+      } catch (e) {
+        console.warn('Erro ao salvar estado no IndexedDB:', e);
       }
-    } catch (e) {
-      console.warn('Erro ao salvar estado:', e);
-    }
-  }, [state, userEmail]);
+    };
+
+    saveState();
+  }, [state, userEmail, isLoadingUserEmail]);
+
+  useEffect(() => {
+    const loadIndexedDBState = async () => {
+      const storedEmail = await dbService.loadUserEmailFromIndexedDB();
+      if (storedEmail) {
+        setUserEmail(storedEmail);
+      }
+
+      const [dbData, dbVehicles, dbCurrentVehicle] = await Promise.all([
+        repository.loadDataAsync(),
+        repository.loadVehiclesAsync(),
+        repository.loadCurrentVehicleAsync()
+      ]);
+
+      if (dbData) {
+        dispatch({ type: 'SET_ALL', payload: dbData });
+      }
+
+      if (dbVehicles && dbVehicles.length > 0) {
+        setVehicles(dbVehicles);
+      }
+
+      if (dbCurrentVehicle) {
+        setCurrentVehicle(dbCurrentVehicle);
+      }
+
+      setIsLoadingUserEmail(false);
+    };
+
+    loadIndexedDBState();
+  }, []);
 
   // Efeito para sincronização e busca inicial automática no Supabase Cloud (com Merge por ID)
   useEffect(() => {
@@ -130,25 +160,39 @@ export function App() {
     const flushQueue = async () => {
       if (!userEmail || !isOnline) return;
       setIsSyncing(true);
-      const success = await repository.flushSyncQueue(userEmail);
+      const result = await repository.flushSyncQueue(userEmail);
       setIsSyncing(false);
-      setPendingSyncCount(repository.getPendingSyncCount(userEmail));
-      setLastSyncStatus(success ? 'Sincronizado com sucesso' : 'Aguardando próximo envio');
+      const count = await repository.getPendingSyncCount(userEmail);
+      setPendingSyncCount(count);
+      setLastSyncStatus(result.success ? 'Sincronizado com sucesso' : (result.errorMessage || 'Aguardando próximo envio'));
+      setSyncErrorMessage(result.success ? '' : result.errorMessage || 'Falha na sincronização');
     };
     flushQueue();
   }, [userEmail, isOnline]);
 
   // Efeitos para persistência contínua de veículos
   useEffect(() => {
-    try {
-      repository.saveVehicles(vehicles);
-    } catch (e) {}
+    const saveVehicles = async () => {
+      try {
+        await repository.saveVehicles(vehicles);
+      } catch (e) {
+        console.warn('Erro ao salvar veículos:', e);
+      }
+    };
+
+    saveVehicles();
   }, [vehicles]);
 
   useEffect(() => {
-    try {
-      repository.saveCurrentVehicle(currentVehicle);
-    } catch (e) {}
+    const saveCurrentVehicle = async () => {
+      try {
+        await repository.saveCurrentVehicle(currentVehicle);
+      } catch (e) {
+        console.warn('Erro ao salvar veículo ativo:', e);
+      }
+    };
+
+    saveCurrentVehicle();
   }, [currentVehicle]);
 
   // Filtrar dados ativos excluindo itens com Soft Delete (com salvaguarda de usuario logado)
@@ -343,17 +387,30 @@ export function App() {
   const handleSyncCloud = async () => {
     if (!userEmail) return;
     setIsSyncing(true);
-    const success = await repository.flushSyncQueue(userEmail);
+    const result = await repository.flushSyncQueue(userEmail);
     setIsSyncing(false);
-    setPendingSyncCount(repository.getPendingSyncCount(userEmail));
-    setLastSyncStatus(success ? 'Sincronização manual concluída' : 'Falha na sincronização manual');
+    const count = await repository.getPendingSyncCount(userEmail);
+    setPendingSyncCount(count);
+    setLastSyncStatus(result.success ? 'Sincronização manual concluída' : (result.errorMessage || 'Falha na sincronização manual'));
+    setSyncErrorMessage(result.success ? '' : (result.errorMessage || 'Falha na sincronização manual'));
 
-    if (success) {
+    if (result.success) {
       alert(`Banco de dados de corridas e despesas transferido e sincronizado com sucesso para ${userEmail}!`);
     } else {
-      alert('Sincronização salva no armazenamento local ou pendente.');
+      alert(`Falha ao sincronizar agora: ${result.errorMessage || 'verifique sua conexão e tente novamente.'}`);
     }
   };
+
+  const handleLogout = async () => {
+    await dbService.saveUserEmail('');
+    setUserEmail('');
+  };
+
+  if (isLoadingUserEmail) {
+    return (
+      <div className="min-h-screen bg-pma-dark text-slate-100 flex items-center justify-center">Carregando...</div>
+    );
+  }
 
   if (!userEmail) {
     return (
@@ -362,8 +419,8 @@ export function App() {
         <AuthModal
           isOpen={isAuthOpen}
           onClose={() => setIsAuthOpen(false)}
-          onAuthSuccess={(email) => {
-            localStorage.setItem('erp_driver_user_email', email);
+          onAuthSuccess={async (email) => {
+            await dbService.saveUserEmail(email);
             setUserEmail(email);
             setIsAuthOpen(false);
           }}
@@ -383,6 +440,7 @@ export function App() {
         activeShift={state.activeShift}
         onEndShift={handleEndShift}
         onOpenVoice={() => setIsVoiceOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
         onResetData={handleResetData}
         onRestoreMockData={handleRestoreMockData}
         isDataCleared={state.isDataCleared}
@@ -391,30 +449,12 @@ export function App() {
         pendingSyncCount={pendingSyncCount}
         isSyncing={isSyncing}
         lastSyncStatus={lastSyncStatus}
+        syncErrorMessage={syncErrorMessage}
         onSyncCloud={handleSyncCloud}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onLogout={() => {
-          localStorage.removeItem('erp_driver_user_email');
-          setUserEmail('');
-        }}
+        onLogout={handleLogout}
       />
 
-      {/* Toast Flutuante de Snapshot "Desfazer Alteração" (Camada 1 ERP) */}
-      {state.previousSnapshot && state.lastActionDescription && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-950 border border-emerald-500 text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-3 animate-bounce">
-          <span className="text-xs font-bold flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            {state.lastActionDescription}
-          </span>
-          <button
-            onClick={handleUndo}
-            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs px-3 py-1 rounded-full flex items-center gap-1 transition-colors"
-          >
-            <Undo2 className="w-3.5 h-3.5 stroke-[3]" />
-            Desfazer
-          </button>
-        </div>
-      )}
+      {/* Conteúdo Principal Renderizado Conforme Aba Ativa */}
 
       {/* Conteúdo Principal Renderizado Conforme Aba Ativa */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
@@ -498,7 +538,11 @@ export function App() {
         )}
 
         {activeTab === 'flex' && (
-          <ElectricChargingCalculator vehicle={currentVehicle} />
+          currentVehicle.isElectric ? (
+            <ElectricChargingCalculator vehicle={currentVehicle} />
+          ) : (
+            <FlexFuelCalculator vehicle={currentVehicle} />
+          )
         )}
 
         {activeTab === 'tax' && (
@@ -545,8 +589,8 @@ export function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onAuthSuccess={(email) => {
-          localStorage.setItem('erp_driver_user_email', email);
+        onAuthSuccess={async (email) => {
+          await dbService.saveUserEmail(email);
           setUserEmail(email);
         }}
       />

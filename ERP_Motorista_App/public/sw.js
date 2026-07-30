@@ -3,7 +3,9 @@ const CACHE_NAME = 'girocerto-erp-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/favicon.ico',
+  '/robots.txt'
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,18 +35,53 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Sempre tentar buscar da rede primeiro (Network-First) para garantir que o código novo apareça instantaneamente
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isNavigationRequest = event.request.mode === 'navigate';
+
+  if (isNavigationRequest && isSameOrigin) {
+    event.respondWith(
+      caches.match('/index.html').then((cached) => {
+        const networkResponse = fetch(event.request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', response.clone()));
+            }
+            return response;
+          })
+          .catch(() => cached);
+
+        return cached || networkResponse;
+      })
+    );
+    return;
+  }
+
+  if (isSameOrigin) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) {
+          return cached;
         }
-        return networkResponse;
+        return fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            if (event.request.destination === 'document') {
+              return caches.match('/index.html');
+            }
+            return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+          });
       })
-      .catch(() => {
-        return caches.match(event.request).then((cached) => cached || caches.match('/index.html'));
-      })
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });

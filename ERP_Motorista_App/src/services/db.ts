@@ -1,11 +1,9 @@
 import { Earning, Expense, Shift, ReserveBucket, PersonalUsageLog, Vehicle } from '../types';
 import {
   VEHICLES_LIST,
-  INITIAL_EARNINGS_BYD,
-  INITIAL_EXPENSES_BYD,
-  INITIAL_SHIFT_BYD,
   INITIAL_BUCKETS
 } from '../utils/mockData';
+import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 
 const STORAGE_KEYS = {
   EARNINGS: 'girocerto_earnings_v1',
@@ -15,29 +13,53 @@ const STORAGE_KEYS = {
   PERSONAL_LOGS: 'girocerto_personal_logs_v1',
   VEHICLES: 'girocerto_vehicles_v1',
   CURRENT_VEHICLE: 'girocerto_current_vehicle_v1',
-  DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1'
+  DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1',
+  USER_EMAIL: 'erp_driver_user_email'
 };
 
-export const dbService = {
-  // Carregar todos os dados salvos ou inicializar (Produção Limpa por padrão)
-  loadInitialData: () => {
-    try {
-      const savedEarnings = localStorage.getItem(STORAGE_KEYS.EARNINGS);
-      const savedExpenses = localStorage.getItem(STORAGE_KEYS.EXPENSES);
-      const savedShift = localStorage.getItem(STORAGE_KEYS.SHIFT);
-      const savedBuckets = localStorage.getItem(STORAGE_KEYS.BUCKETS);
-      const savedPersonalLogs = localStorage.getItem(STORAGE_KEYS.PERSONAL_LOGS);
-      const savedClearedFlag = localStorage.getItem(STORAGE_KEYS.DATA_CLEARED_FLAG);
-      const hasSavedData = savedEarnings !== null || savedExpenses !== null || savedShift !== null;
+/**
+ * Migração única caso existam dados legados no LocalStorage
+ * Copia para o IndexedDB e limpa o LocalStorage em seguida.
+ */
+async function migrateFromLocalStorage<T>(storeName: any, key: string): Promise<T | null> {
+  try {
+    const stored = await indexedDBService.getItem<T>(storeName, key);
+    if (stored !== null) return stored;
 
-      // Sanitização / Migração Automática de Caixas Virtuais (Garante que Financiamento e Custo Fixo/Lavagem sempre existam)
-      let parsedBuckets: ReserveBucket[] = [];
-      try {
-        parsedBuckets = savedBuckets ? JSON.parse(savedBuckets) : [];
-      } catch (e) {
-        parsedBuckets = [];
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as T;
+          await indexedDBService.setItem(storeName, key, parsed);
+          localStorage.removeItem(key);
+          return parsed;
+        } catch {
+          localStorage.removeItem(key);
+        }
       }
+    }
+    return null;
+  } catch (error) {
+    console.warn('Erro na migração de armazenamento:', key, error);
+    return null;
+  }
+}
 
+export const dbService = {
+  // Carregar todos os dados de forma assíncrona exclusivamente do IndexedDB
+  async loadInitialDataFromIndexedDB() {
+    try {
+      const [savedEarnings, savedExpenses, savedShift, savedBuckets, savedPersonalLogs, savedClearedFlag] = await Promise.all([
+        migrateFromLocalStorage<Earning[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EARNINGS),
+        migrateFromLocalStorage<Expense[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EXPENSES),
+        migrateFromLocalStorage<Shift | null>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.SHIFT),
+        migrateFromLocalStorage<ReserveBucket[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS),
+        migrateFromLocalStorage<PersonalUsageLog[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.PERSONAL_LOGS),
+        migrateFromLocalStorage<boolean>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DATA_CLEARED_FLAG)
+      ]);
+
+      let parsedBuckets = savedBuckets ?? [];
       const hasFinancing = parsedBuckets.some((b) => b.type === 'FINANCING');
       const hasTaxMeiUpdated = parsedBuckets.some((b) => b.type === 'TAX_MEI' && b.targetBalance >= 200);
 
@@ -47,14 +69,13 @@ export const dbService = {
           return {
             ...b,
             currentBalance: existing ? existing.currentBalance : 0,
-            targetBalance: b.targetBalance, // Garante metas atualizadas: R$ 3086.58 Parcela, R$ 200.00 Custo Fixo/Lavagem, R$ 500.00 Depreciação
+            targetBalance: b.targetBalance,
             name: b.name,
           };
         });
-        localStorage.setItem(STORAGE_KEYS.BUCKETS, JSON.stringify(parsedBuckets));
+        await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS, parsedBuckets);
       }
 
-      let rawExpenses: Expense[] = savedExpenses ? (JSON.parse(savedExpenses) as Expense[]) : [];
       const mockIdsToPurge = new Set([
         'exp-byd-seguro',
         'exp-byd-recarga-coelba',
@@ -63,18 +84,21 @@ export const dbService = {
         'exp-ford-oleo',
         'exp-ford-seguro'
       ]);
-      rawExpenses = rawExpenses.filter((exp) => !mockIdsToPurge.has(exp.id));
+      const rawExpenses: Expense[] = savedExpenses ?? [];
+      const expenses = rawExpenses.filter((exp) => !mockIdsToPurge.has(exp.id));
+
+      const hasSavedData = savedEarnings !== null || savedExpenses !== null || savedShift !== null;
 
       return {
-        earnings: savedEarnings ? (JSON.parse(savedEarnings) as Earning[]) : [],
-        expenses: rawExpenses,
-        activeShift: savedShift ? (JSON.parse(savedShift) as Shift | null) : null,
+        earnings: savedEarnings ?? [],
+        expenses,
+        activeShift: savedShift ?? null,
         buckets: parsedBuckets,
-        personalLogs: savedPersonalLogs ? (JSON.parse(savedPersonalLogs) as PersonalUsageLog[]) : [],
-        isDataCleared: savedClearedFlag ? JSON.parse(savedClearedFlag) : !hasSavedData
+        personalLogs: savedPersonalLogs ?? [],
+        isDataCleared: savedClearedFlag ?? !hasSavedData
       };
-    } catch (e) {
-      console.warn('Erro ao carregar dados do LocalStorage:', e);
+    } catch (error) {
+      console.warn('Erro ao carregar dados do IndexedDB:', error);
       return {
         earnings: [],
         expenses: [],
@@ -86,90 +110,106 @@ export const dbService = {
     }
   },
 
-  // Persistência da Frota de Veículos
-  loadVehicles: (): Vehicle[] => {
+  async loadVehiclesFromIndexedDB(): Promise<Vehicle[]> {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.VEHICLES);
-      return saved ? (JSON.parse(saved) as Vehicle[]) : VEHICLES_LIST;
-    } catch (e) {
+      const stored = await migrateFromLocalStorage<Vehicle[]>(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES);
+      return stored ?? VEHICLES_LIST;
+    } catch (error) {
       return VEHICLES_LIST;
     }
   },
 
-  loadCurrentVehicle: (): Vehicle => {
+  async loadCurrentVehicleFromIndexedDB(): Promise<Vehicle> {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_VEHICLE);
-      return saved ? (JSON.parse(saved) as Vehicle) : VEHICLES_LIST[0];
-    } catch (e) {
+      const stored = await migrateFromLocalStorage<Vehicle>(IDB_STORE_NAMES.CURRENT_VEHICLE, STORAGE_KEYS.CURRENT_VEHICLE);
+      return stored ?? VEHICLES_LIST[0];
+    } catch (error) {
       return VEHICLES_LIST[0];
     }
   },
 
-  saveVehicles: (vehicles: Vehicle[]) => {
+  async loadUserEmailFromIndexedDB(): Promise<string> {
     try {
-      localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
-    } catch (e) {
-      console.error('Erro ao salvar veículos:', e);
+      const stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.USER_EMAIL);
+      return stored ?? '';
+    } catch (error) {
+      return '';
     }
   },
 
-  saveCurrentVehicle: (vehicle: Vehicle) => {
+  async saveVehicles(vehicles: Vehicle[]) {
     try {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_VEHICLE, JSON.stringify(vehicle));
-    } catch (e) {
-      console.error('Erro ao salvar veículo ativo:', e);
+      await indexedDBService.setItem(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES, vehicles);
+    } catch (error) {
+      console.error('Erro ao salvar veículos no IndexedDB:', error);
     }
   },
 
-  // Salvar Faturamentos
-  saveEarnings: (earnings: Earning[]) => {
+  async saveCurrentVehicle(vehicle: Vehicle) {
     try {
-      localStorage.setItem(STORAGE_KEYS.EARNINGS, JSON.stringify(earnings));
-    } catch (e) {
-      console.error('Erro ao salvar faturamentos:', e);
+      await indexedDBService.setItem(IDB_STORE_NAMES.CURRENT_VEHICLE, STORAGE_KEYS.CURRENT_VEHICLE, vehicle);
+    } catch (error) {
+      console.error('Erro ao salvar veículo ativo no IndexedDB:', error);
     }
   },
 
-  // Salvar Despesas
-  saveExpenses: (expenses: Expense[]) => {
+  async saveEarnings(earnings: Earning[]) {
     try {
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
-    } catch (e) {
-      console.error('Erro ao salvar despesas:', e);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EARNINGS, earnings);
+    } catch (error) {
+      console.error('Erro ao salvar faturamentos no IndexedDB:', error);
     }
   },
 
-  // Salvar Turno
-  saveActiveShift: (shift: Shift | null) => {
+  async saveExpenses(expenses: Expense[]) {
     try {
-      localStorage.setItem(STORAGE_KEYS.SHIFT, JSON.stringify(shift));
-    } catch (e) {
-      console.error('Erro ao salvar turno:', e);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EXPENSES, expenses);
+    } catch (error) {
+      console.error('Erro ao salvar despesas no IndexedDB:', error);
     }
   },
 
-  // Salvar Caixas / Buckets
-  saveBuckets: (buckets: ReserveBucket[]) => {
+  async saveActiveShift(shift: Shift | null) {
     try {
-      localStorage.setItem(STORAGE_KEYS.BUCKETS, JSON.stringify(buckets));
-    } catch (e) {
-      console.error('Erro ao salvar caixas:', e);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.SHIFT, shift);
+    } catch (error) {
+      console.error('Erro ao salvar turno no IndexedDB:', error);
     }
   },
 
-  // Salvar Logs Pessoais
-  savePersonalLogs: (logs: PersonalUsageLog[]) => {
+  async saveBuckets(buckets: ReserveBucket[]) {
     try {
-      localStorage.setItem(STORAGE_KEYS.PERSONAL_LOGS, JSON.stringify(logs));
-    } catch (e) {
-      console.error('Erro ao salvar uso pessoal:', e);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS, buckets);
+    } catch (error) {
+      console.error('Erro ao salvar caixas no IndexedDB:', error);
     }
   },
 
-  // Salvar Flag de Reset
-  saveDataClearedFlag: (isCleared: boolean) => {
+  async savePersonalLogs(logs: PersonalUsageLog[]) {
     try {
-      localStorage.setItem(STORAGE_KEYS.DATA_CLEARED_FLAG, JSON.stringify(isCleared));
-    } catch (e) {}
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.PERSONAL_LOGS, logs);
+    } catch (error) {
+      console.error('Erro ao salvar uso pessoal no IndexedDB:', error);
+    }
+  },
+
+  async saveDataClearedFlag(isCleared: boolean) {
+    try {
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DATA_CLEARED_FLAG, isCleared);
+    } catch (error) {
+      console.error('Erro ao salvar flag de limpeza no IndexedDB:', error);
+    }
+  },
+
+  async saveUserEmail(email: string) {
+    try {
+      if (email && email.trim() !== '') {
+        await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.USER_EMAIL, email);
+      } else {
+        await indexedDBService.deleteItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.USER_EMAIL);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar email do usuário no IndexedDB:', error);
+    }
   }
 };
