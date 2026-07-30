@@ -65,77 +65,60 @@
 }
 
 /* =====================================================
-   PMA CLUB-STYLE LASER SCAN EFFECT
-   Um raio horizontal de luz neon (#D4FF00) que percorre
-   verticalmente a secao de cima a baixo em loop continuo.
-   Reproduz fielmente o efeito "scan" do pmaclub.com.br.
+   PMA SCANNER — Replica EXATA do efeito pmaclub.com.br
+   
+   CSS extraído diretamente do DevTools do site original:
+   .scanner-bar { animation: pma-scanner 5s ease-in-out infinite; }
+   height: 1px (h-px)
+   left: 0; right: 0; (inset-x-0)
+   position: absolute
+   background-color: hsl(var(--acid) / .7) = rgba(223, 255, 0, 0.7)
+   box-shadow: 0 0 20px 4px rgba(223, 255, 0, .4)
+   
+   O container PAI deve ter: position: relative; overflow: hidden;
+   A animação move top: 0% → top: 100% (não translateY!)
    ===================================================== */
-@keyframes laser-scan-y {
+
+/* CSS variable para a cor acid — idêntica ao PMA Club */
+:root {
+  --acid: 67 100% 48%; /* hsl(67, 100%, 48%) = rgb(223, 255, 0) */
+}
+
+/* Keyframe IDÊNTICO ao pma-scanner do site original */
+@keyframes pma-scanner {
   0% {
-    transform: translateY(-100%);
+    top: 0%;
     opacity: 0;
   }
   5% {
     opacity: 1;
   }
-  90% {
+  92% {
     opacity: 1;
   }
   100% {
-    transform: translateY(4000%);
+    top: 100%;
     opacity: 0;
   }
 }
 
-/* Linha principal do laser */
-.laser-scan-line {
+/* Classe principal — corresponde ao .scanner-bar do PMA Club */
+.scanner-bar {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  height: 2px;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    rgba(212, 255, 0, 0) 5%,
-    rgba(212, 255, 0, 0.6) 30%,
-    #D4FF00 50%,
-    rgba(212, 255, 0, 0.6) 70%,
-    rgba(212, 255, 0, 0) 95%,
-    transparent 100%
-  );
-  box-shadow:
-    0 0 6px 2px rgba(212, 255, 0, 0.7),
-    0 0 25px 8px rgba(212, 255, 0, 0.3),
-    0 0 60px 20px rgba(212, 255, 0, 0.12);
-  animation: laser-scan-y 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  height: 1px;
   pointer-events: none;
   z-index: 30;
-  will-change: transform;
-}
-
-/* Cauda difusa apos o laser (glow trail) */
-.laser-scan-line::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 60px;
-  transform: translateY(-50%);
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(212, 255, 0, 0.06) 40%,
-    rgba(212, 255, 0, 0.02) 70%,
-    transparent 100%
-  );
-  pointer-events: none;
-}
-
-/* Variante mais lenta para secoes maiores */
-.laser-scan-line-slow {
-  animation-duration: 8s;
+  /* Cor exata do PMA Club: hsl(var(--acid) / .7) */
+  background-color: rgba(223, 255, 0, 0.7);
+  /* Box-shadow exato do PMA Club: 0 0 20px 4px rgba(223, 255, 0, .4) */
+  box-shadow:
+    0 0 20px 4px rgba(223, 255, 0, 0.4);
+  /* Animação idêntica: pma-scanner 5s ease-in-out infinite */
+  animation: pma-scanner 5s ease-in-out infinite;
+  will-change: top;
 }
 
 /* Shimmer / neon flicker para texto */

@@ -94,7 +94,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
       </header>
 
       {/* 2. Hero Section (PMA Protocol Style) */}
-      <section className="relative px-6 lg:px-12 pt-20 pb-24 max-w-7xl mx-auto space-y-10">
+      {/*
+        IMPORTANTE: overflow-hidden é OBRIGATÓRIO para o pma-scanner.
+        O scanner-bar usa top: 0% → top: 100% dentro do container.
+        Sem overflow-hidden o raio laser vaza para fora da section.
+      */}
+      <section className="relative overflow-hidden px-6 lg:px-12 pt-20 pb-24 max-w-7xl mx-auto space-y-10">
 
         {/* EV Background Image — subtle translucent overlay on right side */}
         <div
@@ -110,8 +115,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
         {/* Gradiente de fade da esquerda para manter legibilidade do texto */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#07080C] via-[#07080C]/80 to-transparent pointer-events-none" />
 
-        {/* Laser Scan Animado — efeito idêntico ao PMA Club (percorre verticalmente em loop) */}
-        <div className="laser-scan-line" />
+        {/* PMA SCANNER — Réplica fiel do .scanner-bar do pmaclub.com.br
+            animation: pma-scanner 5s ease-in-out infinite
+            top: 0% → top: 100% | height: 1px | rgba(223,255,0,0.7)
+            box-shadow: 0 0 20px 4px rgba(223,255,0,0.4) */}
+        <div className="scanner-bar" />
 
         {/* Badge Eyebrow Protocolo */}
         <div className="space-y-2 relative z-10">
@@ -164,8 +172,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               className="w-full max-w-2xl object-cover"
               style={{ opacity: 0.75, maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)' }}
             />
-            {/* Linha laser horizontal sobre a imagem */}
-            <div className="absolute left-0 right-0 h-[1px] bg-[#D4FF00]/60 shadow-[0_0_15px_#D4FF00] z-20" style={{ top: '55%' }} />
+            {/* PMA SCANNER sobre a imagem EV — estilo autentico */}
+            <div className="scanner-bar" />
           </div>
         </div>
 
@@ -204,6 +212,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           }}
         />
         <div className="absolute inset-0 bg-[#0B0D13]/70 pointer-events-none" />
+
+        {/* PMA SCANNER — idêntico ao original na section Verdades */}
+        <div className="scanner-bar" />
 
         <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12 relative z-10">
           
