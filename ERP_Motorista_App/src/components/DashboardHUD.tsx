@@ -93,7 +93,14 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     goalDescription = `🚀 Meta Agressiva: Quita custos, gera lucro e antecipa parcelas futuras ${bankName ? `do ${bankName}` : ''} com ~50% de desconto no juro!`;
   }
 
-  const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyBaseCostTarget + summary.totalOperatingCost)) * 100));
+  const effectiveRevenue = todayRevenue > 0 ? todayRevenue : summary.grossRevenue;
+  const todayExpenses = (expenses || [])
+    .filter((e) => !e.isDeleted && e.expenseDate && getLocalDateString(e.expenseDate) === todayStr)
+    .reduce((sum, exp) => sum + exp.amount, 0);
+  const effectiveOperatingCost = todayExpenses > 0 ? todayExpenses : summary.totalOperatingCost;
+
+  const breakEvenTarget = dailyBaseCostTarget + effectiveOperatingCost;
+  const breakEvenProgress = breakEvenTarget > 0 ? Math.min(100, Math.round((effectiveRevenue / breakEvenTarget) * 100)) : 0;
   const isBreakEvenPassed = breakEvenProgress >= 100;
 
   const tripsCompletedToday = todayTrips;
@@ -150,16 +157,6 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
   const requiredTripsPerDayForFinancing = Math.ceil(requiredDailyNetProfitForFinancing / estimatedNetPerTrip);
   const financingProgressPercent = Math.min(100, Math.round((currentFinancingBalance / targetFinancingTotal) * 100));
-
-  useEffect(() => {
-    if (isBreakEvenPassed && summary.grossRevenue > 250) {
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.7 }
-      });
-    }
-  }, [isBreakEvenPassed]);
 
   return (
     <div className="space-y-6 pb-24">

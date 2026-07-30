@@ -19,6 +19,7 @@ import { VehicleOnboardingModal } from './components/VehicleOnboardingModal';
 import { GoalSelectorModal } from './components/GoalSelectorModal';
 import { LandingPage } from './components/LandingPage';
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 import { repository } from './services/repository';
 import { dbService } from './services/db';
@@ -324,6 +325,19 @@ export function App() {
   };
 
   const handleAddEarning = (earningData: Omit<Earning, 'id'>) => {
+    const getLocalDateString = (d: Date | string) => {
+      const dateObj = typeof d === 'string' ? new Date(d) : d;
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getLocalDateString(new Date());
+    const tripsBeforeAdd = (state.earnings || [])
+      .filter((e) => !e.isDeleted && e.recordedAt && getLocalDateString(e.recordedAt) === todayStr)
+      .reduce((sum, e) => sum + e.totalTrips, 0);
+
     const newEarning: Earning = {
       ...earningData,
       id: `earning-${Date.now()}`,
@@ -331,6 +345,17 @@ export function App() {
       vehicleId: currentVehicle.id
     };
     dispatch({ type: 'ADD_EARNING', payload: newEarning });
+
+    const tripsAfterAdd = tripsBeforeAdd + (earningData.totalTrips || 0);
+
+    // Explosão de comemoração disparada APENAS ao bater a meta diária (30 corridas) no lançamento do turno
+    if (tripsBeforeAdd < dailyGoalTrips && tripsAfterAdd >= dailyGoalTrips) {
+      confetti({
+        particleCount: 100,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+    }
   };
 
   const handleEditEarning = (updatedEarning: Earning) => {
