@@ -124,6 +124,16 @@ export function App() {
   const activeEarnings = userEmail ? (state.earnings || []).filter((e) => !e.isDeleted) : [];
   const activeExpenses = userEmail ? (state.expenses || []).filter((exp) => !exp.isDeleted) : [];
 
+  // Recalcular em tempo real o saldo de cada caixa virtual com base no Lucro Líquido Real (Receita Bruta - Despesas Reais)
+  const totalEarningsAmount = activeEarnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
+  const totalExpensesAmount = activeExpenses.reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
+  const netRealBalance = Math.max(0, totalEarningsAmount - totalExpensesAmount);
+
+  const calculatedBuckets = state.buckets.map((b) => {
+    const pct = (b.percentageAllocated ?? 0) / 100;
+    return { ...b, currentBalance: netRealBalance * pct };
+  });
+
   // Manipuladores de Frota / Veículos
   const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
     setCurrentVehicle(updatedVehicle);
@@ -363,7 +373,7 @@ export function App() {
             activeShift={state.activeShift}
             earnings={activeEarnings}
             expenses={activeExpenses}
-            buckets={state.buckets}
+            buckets={calculatedBuckets}
             onOpenVoice={() => setIsVoiceOpen(true)}
             onOpenAddEarning={() => {
               setEarningToEdit(null);
@@ -420,7 +430,7 @@ export function App() {
 
         {activeTab === 'buckets' && (
           <BucketsView
-            buckets={state.buckets}
+            buckets={calculatedBuckets}
             earnings={activeEarnings}
             expenses={activeExpenses}
             onTransfer={handleBucketTransfer}

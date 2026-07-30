@@ -119,13 +119,7 @@ export function calculateShiftSummary(
     activeHours = Math.max(0.5, (end - start) / (1000 * 60 * 60));
   }
 
-  // Custo Fixo Diário Dinâmico (Parcela + Seguro + IPVA) / 24 dias trabalhados no mês
-  const monthlyFinancing = vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
-  const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
-  const monthlyIpva = (vehicle.annualIpvaLicensingCost || 0) / 12;
-
-  const dailyFixedCost = roundCurrency((monthlyFinancing + monthlyInsurance + monthlyIpva) / 24);
-  const totalOperatingCost = roundCurrency(actualExpensesTotal + dailyFixedCost);
+  const totalOperatingCost = roundCurrency(actualExpensesTotal);
   const netRealProfit = roundCurrency(grossRevenue - totalOperatingCost);
 
   const grossEarnedPerKm = kmDriven > 0 ? roundCurrency(grossRevenue / kmDriven) : 0;
