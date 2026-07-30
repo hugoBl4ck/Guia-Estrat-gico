@@ -139,8 +139,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
         {/* Prova Social Rápida */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-12 border-t border-white/10 font-mono text-xs">
           <div>
-            <p className="text-[#D4FF00] text-2xl font-black">R$ 3.086,58</p>
-            <p className="text-slate-500 uppercase text-[10px] tracking-wider">Parcela Santander Protegida</p>
+            <p className="text-[#D4FF00] text-2xl font-black">100%</p>
+            <p className="text-slate-500 uppercase text-[10px] tracking-wider">Parcela / Aluguel Protegido</p>
           </div>
           <div>
             <p className="text-[#D4FF00] text-2xl font-black">35%</p>
@@ -175,7 +175,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               <span className="font-mono text-3xl font-black text-[#D4FF00]">01.</span>
               <h3 className="text-xl font-bold text-white uppercase">O Mito do Faturamento Bruto</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Faturar R$ 6.000,00 no mês sem descontar a parcela do financiamento Santander (R$ 3.086,58), o seguro Aliro e a recarga elétrica Coelba é uma ilusão que destrói a sua saúde financeira.
+                Faturar R$ 6.000,00 a R$ 10.000,00 no mês sem descontar a parcela real do seu financiamento ou aluguel veicular, o seguro auto e a recarga/combustível é uma ilusão que destrói a sua saúde financeira.
               </p>
             </div>
 
@@ -184,7 +184,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               <span className="font-mono text-3xl font-black text-[#D4FF00]">02.</span>
               <h3 className="text-xl font-bold text-white uppercase">A Armadilha do Boleto sem Reserva</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                O boleto do carro vence dia 16 e se você não retiver 35% de cada corrida todo dia em um Caixa Virtual dedicado, no dia 15 bate o desespero de onde tirar o dinheiro.
+                O boleto da parcela do seu carro ou aluguel vence todo mês e se você não retiver 35% de cada corrida em um Caixa Virtual dedicado, no dia do vencimento bate o desespero de onde tirar o dinheiro.
               </p>
             </div>
 
@@ -193,7 +193,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               <span className="font-mono text-3xl font-black text-[#D4FF00]">03.</span>
               <h3 className="text-xl font-bold text-white uppercase">O Custo Oculto da Rodagem (CPK)</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Cada quilômetro rodado no BYD Dolphin Mini ou no carro a combustão tem um custo real de depreciação e desgaste de pneus. Não calcular o CPK é rodar no prejuízo sem saber.
+                Cada quilômetro rodado no seu veículo elétrico ou a combustão tem um custo real de depreciação, recarga/combustível e pneus. Não calcular o Custo por KM (CPK) é rodar no prejuízo sem saber.
               </p>
             </div>
 
@@ -202,7 +202,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               <span className="font-mono text-3xl font-black text-[#D4FF00]">04.</span>
               <h3 className="text-xl font-bold text-white uppercase">Falta de Metas Claras por Perfil</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Rodar sem saber se sua meta diária hoje é a 🛡️ LEVE (Ponto de Equilíbrio), ⚡ MODERADA (Lucro Limpo) ou 🚀 AGRESSIVA (Amortização com 50% de desconto no juro) faz você parar cedo ou rodar exausto.
+                Rodar sem saber se sua meta diária hoje é a 🛡️ LEVE (Ponto de Equilíbrio), ⚡ MODERADA (Lucro Limpo) ou 🚀 AGRESSIVA (Amortização com ~50% de desconto no juro) faz você parar cedo ou rodar exausto.
               </p>
             </div>
 
@@ -230,7 +230,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               </div>
               <h3 className="text-xl font-black text-white uppercase">5 Caixas Virtuais Automáticos</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Separação diária automática por corrida: 35% Santander, 40% Lucro Livre, 10% Manutenção, 10% Depreciação e 5% Mensalidade do App.
+                Separação diária automática por corrida: 35% Financiamento/Aluguel, 40% Lucro Livre, 10% Manutenção, 10% Depreciação e 5% Mensalidade do App.
               </p>
             </div>
 
@@ -241,7 +241,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               </div>
               <h3 className="text-xl font-black text-white uppercase">3 Perfis de Metas Diárias</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Alterne entre Meta Leve (Ponto de Equilíbrio), Moderada (Lucro no Bolso) e Agressiva (Amortização com ~50% de desconto no juro Santander).
+                Alterne entre Meta Leve (Ponto de Equilíbrio), Moderada (Lucro no Bolso) e Agressiva (Amortização de Parcelas com ~50% de desconto no juro).
               </p>
             </div>
 

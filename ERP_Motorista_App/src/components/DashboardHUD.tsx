@@ -126,11 +126,11 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   return (
     <div className="space-y-6 pb-24">
       
-      {/* Botões de Ação Direta no Topo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {/* Botões de Ação Direta no Topo (Estilo PMA Acid Neon #D4FF00) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={onOpenAddEarning}
-          className="w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black py-3.5 px-4 rounded-3xl text-xs flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all group"
+          className="w-full bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black py-4 px-4 rounded-none text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(212,255,0,0.25)] uppercase tracking-wider active:scale-95 transition-all group"
         >
           <Plus className="w-4 h-4 stroke-[3] group-hover:scale-125 transition-transform" />
           <span>➕ LANÇAR CORRIDAS DO DIA</span>
@@ -138,9 +138,9 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
         <button
           onClick={() => onNavigateToTab('reports')}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-800/80 font-extrabold py-3.5 px-4 rounded-3xl text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
+          className="w-full bg-[#0B0D13] hover:bg-[#141722] text-[#D4FF00] border border-[#D4FF00]/40 font-mono font-bold py-4 px-4 rounded-none text-xs flex items-center justify-center gap-2 uppercase tracking-wider shadow-lg active:scale-95 transition-all"
         >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+          <FileSpreadsheet className="w-4 h-4 text-[#D4FF00]" />
           <span>📊 VER RELATÓRIOS DIÁRIOS</span>
         </button>
       </div>
@@ -149,7 +149,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       {anomalies.length > 0 && (
         <div className="space-y-2">
           {anomalies.map((anom) => (
-            <div key={anom.id} className="p-3 bg-amber-950/80 border border-amber-800 rounded-2xl flex items-start gap-2.5 text-xs text-amber-200 shadow-lg">
+            <div key={anom.id} className="p-3 bg-amber-950/80 border border-amber-800 rounded-none flex items-start gap-2.5 text-xs text-amber-200 shadow-lg">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <p className="font-extrabold text-amber-300">{anom.title}</p>
@@ -161,19 +161,19 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       )}
 
       {/* Top Banner: Status Operacional HUD */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-2xl relative overflow-hidden glow-profit">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div className="bg-[#0B0D13] border border-white/10 rounded-none p-6 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4FF00]/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-driver-profit"></span>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#D4FF00] flex items-center gap-1.5 bg-[#D4FF00]/10 border border-[#D4FF00]/30 px-3 py-1">
+            <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-pulse"></span>
             LUCRO REAL LÍQUIDO (HOJE)
           </span>
           <button
             onClick={() => setShowAutoSyncModal(true)}
-            className="bg-emerald-950 text-emerald-400 border border-emerald-800 hover:border-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors"
+            className="bg-black text-[#D4FF00] border border-[#D4FF00]/40 text-[10px] font-mono font-bold px-3 py-1.5 rounded-none flex items-center gap-1.5 uppercase tracking-wider hover:border-[#D4FF00] transition-colors"
           >
-            <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+            <Radio className="w-3 h-3 text-[#D4FF00] animate-pulse" />
             AUTO-SYNC UBER/99
           </button>
         </div>
@@ -301,26 +301,26 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </div>
       </div>
 
-      {/* Card de Metas Diárias e Acumuladas do Mês */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-800/60 rounded-3xl p-5 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-driver-profit" /> VITÓRIA DA CONQUISTA (Ticket R$ 11)
+      {/* Card de Metas Diárias e Acumuladas do Mês (Estilo PMA Acid Neon) */}
+      <div className="bg-[#0B0D13] border border-white/10 rounded-none p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#D4FF00] bg-[#D4FF00]/10 border border-[#D4FF00]/30 px-3 py-1 flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-[#D4FF00]" /> METAS DE OPERAÇÃO (Ticket R$ 11)
           </span>
 
           <button
             onClick={onOpenGoalSelector}
-            className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-950/70 border border-amber-800/80 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-colors"
+            className="text-xs font-mono font-bold text-[#D4FF00] hover:text-[#b8de00] bg-black border border-[#D4FF00]/40 px-3 py-1 uppercase tracking-wider flex items-center gap-1.5 transition-colors"
           >
             🎯 Meta: {targetTrips} Corridas/Dia (Alterar)
           </button>
         </div>
 
         {/* SELETOR DE PERFIL DE META DIÁRIA (LEVE / MODERADA / AGRESSIVA) */}
-        <div className="space-y-2 pt-1 border-b border-slate-800/80 pb-3">
+        <div className="space-y-2 pt-1 border-b border-white/10 pb-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-300">Escolha seu Perfil de Meta Diária:</span>
-            <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950 border border-emerald-800 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">Escolha seu Perfil de Meta Diária:</span>
+            <span className="text-[11px] font-mono font-bold text-[#D4FF00] bg-[#D4FF00]/10 border border-[#D4FF00]/30 px-2.5 py-0.5">
               Meta: R$ {targetDailyRevenue.toFixed(2)}/dia
             </span>
           </div>
@@ -328,42 +328,42 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setGoalProfile('LEVE')}
-              className={`p-2.5 rounded-2xl text-xs font-extrabold flex flex-col items-center transition-all ${
+              className={`p-3 text-xs font-black uppercase tracking-wider flex flex-col items-center transition-all ${
                 goalProfile === 'LEVE'
-                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 scale-[1.02]'
-                  : 'bg-black text-slate-400 border border-slate-800 hover:text-white'
+                  ? 'bg-[#D4FF00] text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]'
+                  : 'bg-black text-slate-400 border border-white/10 hover:text-white'
               }`}
             >
               <span>🛡️ LEVE</span>
-              <span className="text-[10px] opacity-90 font-mono">R$ {dailyBaseCostTarget.toFixed(0)}/dia</span>
+              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {dailyBaseCostTarget.toFixed(0)}/dia</span>
             </button>
 
             <button
               onClick={() => setGoalProfile('MODERADA')}
-              className={`p-2.5 rounded-2xl text-xs font-extrabold flex flex-col items-center transition-all ${
+              className={`p-3 text-xs font-black uppercase tracking-wider flex flex-col items-center transition-all ${
                 goalProfile === 'MODERADA'
-                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20 scale-[1.02]'
-                  : 'bg-black text-slate-400 border border-slate-800 hover:text-white'
+                  ? 'bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                  : 'bg-black text-slate-400 border border-white/10 hover:text-white'
               }`}
             >
               <span>⚡ MODERADA</span>
-              <span className="text-[10px] opacity-90 font-mono">R$ {(dailyBaseCostTarget + 150).toFixed(0)}/dia</span>
+              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {(dailyBaseCostTarget + 150).toFixed(0)}/dia</span>
             </button>
 
             <button
               onClick={() => setGoalProfile('AGRESSIVA')}
-              className={`p-2.5 rounded-2xl text-xs font-extrabold flex flex-col items-center transition-all ${
+              className={`p-3 text-xs font-black uppercase tracking-wider flex flex-col items-center transition-all ${
                 goalProfile === 'AGRESSIVA'
-                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20 scale-[1.02]'
-                  : 'bg-black text-slate-400 border border-slate-800 hover:text-white'
+                  ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                  : 'bg-black text-slate-400 border border-white/10 hover:text-white'
               }`}
             >
               <span>🚀 AGRESSIVA</span>
-              <span className="text-[10px] opacity-90 font-mono">R$ {(dailyBaseCostTarget + 275).toFixed(0)}/dia</span>
+              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {(dailyBaseCostTarget + 275).toFixed(0)}/dia</span>
             </button>
           </div>
 
-          <p className="text-[11px] text-amber-300/90 font-medium pt-1 leading-relaxed">
+          <p className="text-[11px] text-[#D4FF00] font-mono pt-1 leading-relaxed">
             {goalDescription}
           </p>
         </div>

@@ -8,14 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
+        pma: {
+          acid: '#D4FF00',
+          acidHover: '#b8de00',
+          dark: '#07080C',
+          card: '#0B0D13',
+          border: 'rgba(255, 255, 255, 0.10)'
+        },
         oled: {
-          base: '#040508',
-          card: '#0D0F17',
+          base: '#07080C',
+          card: '#0B0D13',
           cardBorder: '#1A1D2B',
-          hover: '#161926'
+          hover: '#141722'
         },
         driver: {
-          profit: '#00E676', // Emerald Neon
+          profit: '#D4FF00', // Acid Neon (PMA Style)
           warning: '#FFD600', // Amber
           danger: '#FF1744', // Red
           accent: '#3D5AFE', // Electric Blue
