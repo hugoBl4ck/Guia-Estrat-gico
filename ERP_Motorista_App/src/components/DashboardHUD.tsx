@@ -33,6 +33,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   onOpenGoalSelector,
 }) => {
   const [showAutoSyncModal, setShowAutoSyncModal] = useState(false);
+  const [goalProfile, setGoalProfile] = useState<'LEVE' | 'MODERADA' | 'AGRESSIVA'>('MODERADA');
 
   const cpk = calculateCPK(vehicle);
   const summary = calculateShiftSummary(activeShift, earnings, expenses, vehicle, cpk);
@@ -40,27 +41,58 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   // Execucao do Agente Auditor Interno de Detecção de Anomalias (Item 7)
   const anomalies: AuditAnomaly[] = runAnomalyAudit(earnings, expenses);
 
-  const monthlyFinancing = vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
-  const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
-  const monthlyAppFee = 80.00; // Mensalidade do App R$ 80,00/mês
-  const totalMonthlyFixed = monthlyFinancing + monthlyInsurance + monthlyAppFee;
-  const dailyFixedCostTarget = Math.round((totalMonthlyFixed / 30) * 100) / 100;
+  // Fuso Horario Local (YYYY-MM-DD)
+  const getLocalDateString = (d: Date | string) => {
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-  const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyFixedCostTarget + summary.totalOperatingCost)) * 100));
-  const isBreakEvenPassed = breakEvenProgress >= 100;
-
-  const targetTrips = dailyGoalTrips;
-
-  // Filtrar Ganhos Exclusivamente do Dia Atual (Hoje)
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getLocalDateString(new Date());
   const todayEarnings = (earnings || []).filter((e) => {
     if (e.isDeleted) return false;
     if (!e.recordedAt) return true;
-    const dateStr = new Date(e.recordedAt).toISOString().slice(0, 10);
-    return dateStr === todayStr;
+    return getLocalDateString(e.recordedAt) === todayStr;
   });
 
-  const tripsCompletedToday = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
+  const todayRevenue = todayEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const todayKm = todayEarnings.reduce((sum, e) => sum + e.rideDistanceKm, 0);
+  const todayTrips = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
+
+  // Recálculo Dinâmico dos Custos Totais (Fixos + Novas Despesas Lançadas no Mês)
+  const monthlyFinancing = vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
+  const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
+  const monthlyAppFee = 80.00;
+  const monthlyLoggedExpenses = (expenses || []).reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
+  
+  const totalMonthlyCommitments = monthlyFinancing + monthlyInsurance + monthlyAppFee + monthlyLoggedExpenses;
+  const dailyBaseCostTarget = Math.round((totalMonthlyCommitments / 30) * 100) / 100; // Recalcula com CADA nova despesa!
+
+  // Definição dos 3 Perfis de Metas Diárias (Leve, Moderada, Agressiva)
+  let targetDailyRevenue = dailyBaseCostTarget;
+  let targetTrips = dailyGoalTrips;
+  let goalDescription = '';
+
+  if (goalProfile === 'LEVE') {
+    targetDailyRevenue = dailyBaseCostTarget;
+    targetTrips = Math.max(15, Math.ceil(targetDailyRevenue / 11));
+    goalDescription = `🛡️ Meta Leve: Cobre 100% da parcela Santander (R$ 3.086,58) e despesas (R$ ${dailyBaseCostTarget.toFixed(2)}/dia) sem margem extra.`;
+  } else if (goalProfile === 'MODERADA') {
+    targetDailyRevenue = dailyBaseCostTarget + 150.00;
+    targetTrips = dailyGoalTrips;
+    goalDescription = `⚡ Meta Moderada: Garante a parcela do Santander + R$ 150,00 de Lucro Limpo no bolso todo dia.`;
+  } else {
+    targetDailyRevenue = dailyBaseCostTarget + 275.00;
+    targetTrips = Math.max(40, Math.ceil(targetDailyRevenue / 11));
+    goalDescription = `🚀 Meta Agressiva: Quita custos, gera lucro e antecipa a 48ª parcela do Santander com ~50% de desconto no juro!`;
+  }
+
+  const breakEvenProgress = Math.min(100, Math.round((summary.grossRevenue / (dailyBaseCostTarget + summary.totalOperatingCost)) * 100));
+  const isBreakEvenPassed = breakEvenProgress >= 100;
+
+  const tripsCompletedToday = todayTrips;
   const tripsRemainingToday = Math.max(0, targetTrips - tripsCompletedToday);
   const targetProgressToday = Math.min(100, Math.round((tripsCompletedToday / targetTrips) * 100));
 
@@ -160,21 +192,24 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800/80">
           <div className="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800">
             <p className="text-[10px] text-slate-400 font-semibold uppercase">Bruto Hoje</p>
-            <p className="text-base font-extrabold text-white mt-0.5">
-              R$ {summary.grossRevenue.toFixed(2)}
+            <p className="text-base font-extrabold text-emerald-400 mt-0.5">
+              R$ {todayRevenue.toFixed(2)}
             </p>
+            <span className="text-[9px] text-slate-500 block">Total 3 dias: R$ {summary.grossRevenue.toFixed(2)}</span>
           </div>
           <div className="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800">
             <p className="text-[10px] text-slate-400 font-semibold uppercase">Custo Operacional</p>
             <p className="text-base font-extrabold text-driver-danger mt-0.5">
               -R$ {summary.totalOperatingCost.toFixed(2)}
             </p>
+            <span className="text-[9px] text-slate-500 block">Coelba + Seguro + Revisão</span>
           </div>
           <div className="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800">
-            <p className="text-[10px] text-slate-400 font-semibold uppercase">KM Rodado</p>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase">KM Rodado Hoje</p>
             <p className="text-base font-extrabold text-driver-warning mt-0.5">
-              {summary.kmDriven.toFixed(1)} km
+              {todayKm > 0 ? todayKm.toFixed(1) : summary.kmDriven.toFixed(1)} km
             </p>
+            <span className="text-[9px] text-slate-500 block">Autonomia BYD: 380km</span>
           </div>
         </div>
       </div>
@@ -267,7 +302,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-800/60 rounded-3xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-driver-profit" /> VITÓRIA DA CONQUISTA (Ticket R$ 10)
+            <MapPin className="w-3 h-3 text-driver-profit" /> VITÓRIA DA CONQUISTA (Ticket R$ 11)
           </span>
 
           <button
@@ -276,6 +311,58 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           >
             🎯 Meta: {targetTrips} Corridas/Dia (Alterar)
           </button>
+        </div>
+
+        {/* SELETOR DE PERFIL DE META DIÁRIA (LEVE / MODERADA / AGRESSIVA) */}
+        <div className="space-y-2 pt-1 border-b border-slate-800/80 pb-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">Escolha seu Perfil de Meta Diária:</span>
+            <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950 border border-emerald-800 px-2 py-0.5 rounded-full">
+              Meta: R$ {targetDailyRevenue.toFixed(2)}/dia
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setGoalProfile('LEVE')}
+              className={`p-2.5 rounded-2xl text-xs font-extrabold flex flex-col items-center transition-all ${
+                goalProfile === 'LEVE'
+                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 scale-[1.02]'
+                  : 'bg-black text-slate-400 border border-slate-800 hover:text-white'
+              }`}
+            >
+              <span>🛡️ LEVE</span>
+              <span className="text-[10px] opacity-90 font-mono">R$ {dailyBaseCostTarget.toFixed(0)}/dia</span>
+            </button>
+
+            <button
+              onClick={() => setGoalProfile('MODERADA')}
+              className={`p-2.5 rounded-2xl text-xs font-extrabold flex flex-col items-center transition-all ${
+                goalProfile === 'MODERADA'
+                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20 scale-[1.02]'
+                  : 'bg-black text-slate-400 border border-slate-800 hover:text-white'
+              }`}
+            >
+              <span>⚡ MODERADA</span>
+              <span className="text-[10px] opacity-90 font-mono">R$ {(dailyBaseCostTarget + 150).toFixed(0)}/dia</span>
+            </button>
+
+            <button
+              onClick={() => setGoalProfile('AGRESSIVA')}
+              className={`p-2.5 rounded-2xl text-xs font-extrabold flex flex-col items-center transition-all ${
+                goalProfile === 'AGRESSIVA'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20 scale-[1.02]'
+                  : 'bg-black text-slate-400 border border-slate-800 hover:text-white'
+              }`}
+            >
+              <span>🚀 AGRESSIVA</span>
+              <span className="text-[10px] opacity-90 font-mono">R$ {(dailyBaseCostTarget + 275).toFixed(0)}/dia</span>
+            </button>
+          </div>
+
+          <p className="text-[11px] text-amber-300/90 font-medium pt-1 leading-relaxed">
+            {goalDescription}
+          </p>
         </div>
 
         {/* 1. Progresso do Dia */}
@@ -354,7 +441,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             </p>
           ) : (
             <p className="text-slate-400">
-              Faltam <span className="font-bold text-driver-warning">R$ {Math.max(0, (dailyFixedCostTarget + summary.totalOperatingCost) - summary.grossRevenue).toFixed(2)}</span> para quitar os custos diários.
+              Faltam <span className="font-bold text-driver-warning">R$ {Math.max(0, (dailyBaseCostTarget + summary.totalOperatingCost) - summary.grossRevenue).toFixed(2)}</span> para quitar os custos diários.
             </p>
           )}
         </div>
