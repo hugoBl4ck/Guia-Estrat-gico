@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useState } from 'react';
+import React, { useReducer, useEffect, useState, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { BottomNav, ActiveTab } from './components/BottomNav';
 import { DashboardHUD } from './components/DashboardHUD';
@@ -46,6 +46,7 @@ export function App() {
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
   const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
   const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
+  const isHydratedRef = useRef<boolean>(false);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => [VEHICLES_LIST[0]]);
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => VEHICLES_LIST[0]);
@@ -70,9 +71,9 @@ export function App() {
   const [lastSyncStatus, setLastSyncStatus] = useState('Nenhuma sincronização ainda');
   const [syncErrorMessage, setSyncErrorMessage] = useState<string>('');
 
-  // Efeito para salvar o estado financeiro no IndexedDB a cada mutação
+  // Efeito para salvar o estado financeiro no IndexedDB APENAS APÓS A HIDRATAÇÃO INICIAL
   useEffect(() => {
-    if (isLoadingUserEmail) return;
+    if (!isHydratedRef.current) return;
     const saveState = async () => {
       try {
         await repository.saveData(state, userEmail);
@@ -86,7 +87,7 @@ export function App() {
     };
 
     saveState();
-  }, [state, userEmail, isLoadingUserEmail]);
+  }, [state, userEmail]);
 
   useEffect(() => {
     const loadIndexedDBState = async () => {
@@ -101,6 +102,15 @@ export function App() {
         repository.loadCurrentVehicleAsync()
       ]);
 
+      let currentStateData = dbData || {
+        earnings: [],
+        expenses: [],
+        activeShift: null,
+        buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
+        personalLogs: [],
+        isDataCleared: true,
+      };
+
       if (dbData) {
         dispatch({ type: 'SET_ALL', payload: dbData });
       }
@@ -113,36 +123,40 @@ export function App() {
         setCurrentVehicle(dbCurrentVehicle);
       }
 
+      // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
+      if (storedEmail) {
+        try {
+          const cloudData = await repository.fetchFromCloud(storedEmail);
+          if (cloudData) {
+            const expensesMap = new Map();
+            (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+            (currentStateData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+
+            const earningsMap = new Map();
+            (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+            (currentStateData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+
+            const mergedState = {
+              ...currentStateData,
+              earnings: Array.from(earningsMap.values()),
+              expenses: Array.from(expensesMap.values()),
+              buckets: cloudData.buckets || currentStateData.buckets,
+            };
+
+            dispatch({ type: 'SET_ALL', payload: mergedState });
+            await repository.saveData(mergedState, storedEmail);
+          }
+        } catch (cloudErr) {
+          console.warn('Falha na sincronização inicial Supabase:', cloudErr);
+        }
+      }
+
       setIsLoadingUserEmail(false);
+      isHydratedRef.current = true;
     };
 
     loadIndexedDBState();
   }, []);
-
-  // Efeito para sincronização e busca inicial automática no Supabase Cloud (com Merge por ID)
-  useEffect(() => {
-    if (!userEmail) return;
-    repository.fetchFromCloud(userEmail).then((cloudData) => {
-      if (cloudData) {
-        const expensesMap = new Map();
-        (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
-        (state.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
-
-        const earningsMap = new Map();
-        (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
-        (state.earnings || []).forEach((e) => earningsMap.set(e.id, e));
-
-        dispatch({
-          type: 'SET_ALL',
-          payload: {
-            ...state,
-            earnings: Array.from(earningsMap.values()),
-            expenses: Array.from(expensesMap.values()),
-          },
-        });
-      }
-    });
-  }, [userEmail]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
