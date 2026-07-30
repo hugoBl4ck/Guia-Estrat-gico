@@ -100,6 +100,8 @@ export class DataRepository implements IDataRepository {
           valor: exp.amount,
           kwh_carregados: exp.kwhAmount || null,
           tarifa_kwh: exp.tariffPerKwh || null,
+          tipo_recarga: exp.chargingType || null,
+          odometro_km: exp.odometerKm || null,
           observacao: exp.notes || null,
           expense_date: exp.expenseDate,
           user_email: userEmail,

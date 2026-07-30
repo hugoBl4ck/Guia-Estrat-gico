@@ -71,16 +71,26 @@ export function App() {
     }
   }, [state]);
 
-  // Efeito para sincronização e busca inicial automática no Supabase Cloud
+  // Efeito para sincronização e busca inicial automática no Supabase Cloud (com Merge por ID)
   useEffect(() => {
     repository.fetchFromCloud(userEmail).then((cloudData) => {
-      if (cloudData && (cloudData.earnings?.length || cloudData.expenses?.length)) {
+      if (cloudData) {
+        // Merge Inteligente por ID de Despesas (Preserva lançamentos locais não sincronizados)
+        const expensesMap = new Map();
+        (state.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+        (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+
+        // Merge Inteligente por ID de Ganhos
+        const earningsMap = new Map();
+        (state.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+        (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+
         dispatch({
           type: 'SET_ALL',
           payload: {
             ...state,
-            earnings: cloudData.earnings || state.earnings,
-            expenses: cloudData.expenses || state.expenses,
+            earnings: Array.from(earningsMap.values()),
+            expenses: Array.from(expensesMap.values()),
           },
         });
       }

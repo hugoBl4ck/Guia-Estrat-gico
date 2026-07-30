@@ -116,6 +116,16 @@ export const INITIAL_EXPENSES_BYD: Expense[] = [
     notes: 'Recarga Noturna Residencial Coelba (38.8 kWh - 0% a 100%)',
     expenseDate: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
     source: 'manual'
+  },
+  {
+    id: 'exp-recarga-domingo-26',
+    shiftId: 'shift-byd-01',
+    category: 'ELECTRIC_CHARGING',
+    amount: 37.08,
+    chargingType: 'FAST_CHARGER_PAID',
+    notes: 'Recarga em Eletroposto / Posto (Domingo 26/07)',
+    expenseDate: '2026-07-26T14:00:00.000Z',
+    source: 'manual'
   }
 ];
 
