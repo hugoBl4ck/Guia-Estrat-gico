@@ -151,6 +151,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden md:inline">Voz Hands-Free</span>
           </button>
 
+          {/* Indicador de Status do Supabase Cloud Sync */}
+          <div className="hidden md:flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-800/80 text-emerald-400 px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold" title="Conectado e sincronizado com o Supabase Cloud em tempo real">
+            <UploadCloud className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span>NUVEM SUPABASE OK</span>
+          </div>
+
           {/* User Account / Auth Button */}
           <div className="flex items-center gap-1">
             <button

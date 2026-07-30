@@ -63,50 +63,63 @@ export class DataRepository implements IDataRepository {
     if (!isSupabaseConfigured() || !supabase) return false;
 
     try {
-      // 1. Sincronizar Faturamentos no Supabase
-      if (state.earnings && state.earnings.length > 0) {
-        const payloadEarnings = state.earnings.map((e) => ({
-          id: e.id,
-          platform: e.platform,
-          gross_amount: e.grossAmount,
-          tips_amount: e.tipsAmount,
-          total_trips: e.totalTrips,
-          ride_distance_km: e.rideDistanceKm,
-          recorded_at: e.recordedAt,
-          is_deleted: Boolean(e.isDeleted),
-          user_email: userEmail,
-        }));
-        await supabase.from('ganhos').upsert(payloadEarnings, { onConflict: 'id' }).catch(() => {});
-        await supabase.from('faturamentos').upsert(
-          state.earnings.map((e) => ({
+      // 1. Sincronizar Faturamentos no Supabase (Upsert + Delete de excluídos)
+      if (state.earnings) {
+        const activeGanhos = state.earnings.filter((e) => !e.isDeleted);
+        if (activeGanhos.length > 0) {
+          const payloadEarnings = activeGanhos.map((e) => ({
             id: e.id,
-            plataforma: e.platform,
-            valor_bruto: e.grossAmount,
-            valor_gorjeta: e.tipsAmount,
-            total_corridas: e.totalTrips,
-            distancia_km: e.rideDistanceKm,
+            platform: e.platform,
+            gross_amount: e.grossAmount,
+            tips_amount: e.tipsAmount,
+            total_trips: e.totalTrips,
+            ride_distance_km: e.rideDistanceKm,
             recorded_at: e.recordedAt,
+            is_deleted: false,
             user_email: userEmail,
-          })),
-          { onConflict: 'id' }
-        ).catch(() => {});
+          }));
+          await supabase.from('ganhos').upsert(payloadEarnings, { onConflict: 'id' }).catch(() => {});
+        }
+
+        // Deletar do Supabase qualquer ganho excluído no app
+        const activeEarningIds = new Set(activeGanhos.map((e) => e.id));
+        const { data: cloudGanhos } = await supabase.from('ganhos').select('id').eq('user_email', userEmail);
+        if (Array.isArray(cloudGanhos)) {
+          const earningIdsToDelete = cloudGanhos.map((g) => g.id).filter((id) => !activeEarningIds.has(id));
+          if (earningIdsToDelete.length > 0) {
+            await supabase.from('ganhos').delete().in('id', earningIdsToDelete).catch(() => {});
+          }
+        }
       }
 
-      // 2. Sincronizar Despesas no Supabase
-      if (state.expenses && state.expenses.length > 0) {
-        const payloadExpenses = state.expenses.map((exp) => ({
-          id: exp.id,
-          categoria: exp.category,
-          valor: exp.amount,
-          kwh_carregados: exp.kwhAmount || null,
-          tarifa_kwh: exp.tariffPerKwh || null,
-          tipo_recarga: exp.chargingType || null,
-          odometro_km: exp.odometerKm || null,
-          observacao: exp.notes || null,
-          expense_date: exp.expenseDate,
-          user_email: userEmail,
-        }));
-        await supabase.from('despesas').upsert(payloadExpenses, { onConflict: 'id' }).catch(() => {});
+      // 2. Sincronizar Despesas no Supabase (Upsert + Delete de excluídos)
+      if (state.expenses) {
+        const activeExpenses = state.expenses.filter((exp) => !exp.isDeleted);
+        if (activeExpenses.length > 0) {
+          const payloadExpenses = activeExpenses.map((exp) => ({
+            id: exp.id,
+            categoria: exp.category,
+            valor: exp.amount,
+            kwh_carregados: exp.kwhAmount || null,
+            tarifa_kwh: exp.tariffPerKwh || null,
+            tipo_recarga: exp.chargingType || null,
+            odometro_km: exp.odometerKm || null,
+            observacao: exp.notes || null,
+            expense_date: exp.expenseDate,
+            user_email: userEmail,
+          }));
+          await supabase.from('despesas').upsert(payloadExpenses, { onConflict: 'id' }).catch(() => {});
+        }
+
+        // Deletar do Supabase qualquer despesa excluída no app
+        const activeExpenseIds = new Set(activeExpenses.map((exp) => exp.id));
+        const { data: cloudDespesas } = await supabase.from('despesas').select('id').eq('user_email', userEmail);
+        if (Array.isArray(cloudDespesas)) {
+          const expenseIdsToDelete = cloudDespesas.map((d) => d.id).filter((id) => !activeExpenseIds.has(id));
+          if (expenseIdsToDelete.length > 0) {
+            await supabase.from('despesas').delete().in('id', expenseIdsToDelete).catch(() => {});
+          }
+        }
       }
 
       // 3. Sincronizar Caixas de Reserva no Supabase
