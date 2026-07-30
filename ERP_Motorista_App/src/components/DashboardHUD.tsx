@@ -296,7 +296,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Descontados parcela {bankName} (R$ {monthlyFinancing.toFixed(2)}), seguro {insName} (R$ {monthlyInsurance.toFixed(2)}), recarga/combustível e manutenção.
+            Descontados parcela {bankName} (R$ {monthlyFinancing.toFixed(2)}), seguro {insName} (R$ {monthlyInsurance.toFixed(2)}), lavagem (R$ {monthlyCarWash.toFixed(2)}), recarga/combustível e manutenção.
           </p>
         </div>
 

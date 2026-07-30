@@ -129,9 +129,32 @@ export function App() {
   const totalExpensesAmount = activeExpenses.reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
   const netRealBalance = Math.max(0, totalEarningsAmount - totalExpensesAmount);
 
+  // Algoritmo de Rateio Dinâmico Inteligente (Distribuição automática proporcional às metas fixas)
+  const nonFreeBuckets = state.buckets.filter(b => b.type !== 'FREE_CASH');
+  const totalCommitmentsTarget = nonFreeBuckets.reduce((sum, b) => sum + (b.targetBalance || 0), 0);
+
   const calculatedBuckets = state.buckets.map((b) => {
-    const pct = (b.percentageAllocated ?? 0) / 100;
-    return { ...b, currentBalance: netRealBalance * pct };
+    if (b.type === 'FREE_CASH') {
+      // Lucro Livre recebe o excedente após cobrir as metas de todos os compromissos fixos do mês
+      const surplus = Math.max(0, netRealBalance - totalCommitmentsTarget);
+      return { 
+        ...b, 
+        currentBalance: surplus,
+        percentageAllocated: netRealBalance > 0 ? Math.round((surplus / netRealBalance) * 100) : 0
+      };
+    } else {
+      // Distribuição proporcional ao peso da meta de cada compromisso no orçamento total
+      const targetWeight = totalCommitmentsTarget > 0 ? (b.targetBalance / totalCommitmentsTarget) : 0;
+      const allocatedBalance = netRealBalance <= totalCommitmentsTarget
+        ? netRealBalance * targetWeight
+        : b.targetBalance; // travado na meta caso o lucro ultrapasse
+      
+      return {
+        ...b,
+        currentBalance: allocatedBalance,
+        percentageAllocated: Math.round(targetWeight * 100)
+      };
+    }
   });
 
   // Manipuladores de Frota / Veículos

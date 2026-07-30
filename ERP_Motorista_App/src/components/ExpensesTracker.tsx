@@ -276,6 +276,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                       <option value="SPARK_PLUGS_BELT">Velas & Correia Dentada</option>
                       <option value="BRAKES">Pastilhas de Freio</option>
                       <option value="INSURANCE">Seguro Auto</option>
+                      <option value="WASH">Lava-Jato</option>
                     </>
                   )}
                   <option value="OTHER">Outros</option>
