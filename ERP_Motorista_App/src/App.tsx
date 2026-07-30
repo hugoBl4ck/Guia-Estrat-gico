@@ -231,29 +231,6 @@ export function App() {
 
   const handleSelectVehicle = (vehicle: Vehicle) => {
     setCurrentVehicle(vehicle);
-    if (!state.isDataCleared) {
-      if (vehicle.id === 'veh-ford-ka-10') {
-        dispatch({
-          type: 'SET_ALL',
-          payload: {
-            ...state,
-            earnings: INITIAL_EARNINGS_FORD_KA,
-            expenses: INITIAL_EXPENSES_FORD_KA,
-            activeShift: null
-          }
-        });
-      } else {
-        dispatch({
-          type: 'SET_ALL',
-          payload: {
-            ...state,
-            earnings: INITIAL_EARNINGS_BYD,
-            expenses: INITIAL_EXPENSES_BYD,
-            activeShift: INITIAL_SHIFT_BYD
-          }
-        });
-      }
-    }
   };
 
   const handleStartShift = (startKm: number) => {
