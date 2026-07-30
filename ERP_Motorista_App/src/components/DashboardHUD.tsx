@@ -183,8 +183,53 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </button>
       </div>
 
+      {/* CARD DE GESTÃO DO LOCADOR (SE O VEÍCULO ESTIVER ALUGADO PARA TERCEIROS) */}
+      {vehicle.usageMode === 'RENTAL_OWNER' && (
+        <div className="bg-[#0B0D13] border border-purple-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
+          <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 bg-purple-400 rounded-full animate-ping"></span>
+              <h2 className="font-mono font-black text-sm text-purple-400 uppercase tracking-wider flex items-center gap-2">
+                🔑 GESTÃO DA FROTA / LOCADOR: {vehicle.model.toUpperCase()} ({vehicle.licensePlate})
+              </h2>
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 uppercase">
+              Motorista: {vehicle.tenantName || 'Locatário'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-black/60 border border-emerald-500/30 p-3">
+              <span className="text-[10px] font-mono text-emerald-400 uppercase block">Aluguel Semanal Acordado</span>
+              <p className="text-xl font-black text-emerald-400 font-mono">
+                R$ {(vehicle.weeklyRentalIncome || 550.00).toFixed(2)} /semana
+              </p>
+              <span className="text-[10px] text-emerald-300/80 font-mono">
+                ~R$ {((vehicle.weeklyRentalIncome || 550.00) * 4).toFixed(2)}/mês
+              </span>
+            </div>
+
+            <div className="bg-black/60 border border-rose-500/30 p-3">
+              <span className="text-[10px] font-mono text-rose-400 uppercase block">Despesas do Locador (Oficina / IPVA)</span>
+              <p className="text-xl font-black text-rose-400 font-mono">
+                -R$ {((expenses || []).filter(e => !e.isDeleted).reduce((sum, exp) => sum + exp.amount, 0)).toFixed(2)}
+              </p>
+              <span className="text-[10px] text-slate-500 font-mono">Manutenção Pesada + Docs + Seguro</span>
+            </div>
+
+            <div className="bg-black/60 border border-purple-500/30 p-3">
+              <span className="text-[10px] font-mono text-purple-300 uppercase block">Retorno Líquido do Proprietário</span>
+              <p className="text-xl font-black text-purple-400 font-mono">
+                R$ {(((earnings || []).filter(e => !e.isDeleted).reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0)) - ((expenses || []).filter(e => !e.isDeleted).reduce((sum, exp) => sum + exp.amount, 0))).toFixed(2)}
+              </p>
+              <span className="text-[10px] text-purple-300/80 font-mono">Rentabilidade do Investimento</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CARD DE MONITORAMENTO INTELIGENTE DA PARCELA DO FINANCIAMENTO (FOCO DO MÊS) */}
-      <div className="bg-[#0B0D13] border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden">
+      <div className="bg-[#0B0D13] border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
         <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 bg-amber-400 rounded-full animate-ping"></span>

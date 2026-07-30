@@ -32,32 +32,31 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
 
 export const DEFAULT_GENERIC_VEHICLE: Vehicle = {
   id: 'veh-default-generic',
-  model: 'Veículo de Aplicativo',
-  brand: 'GiroCerto',
-  year: 2024,
-  licensePlate: 'ABC-1234',
+  model: 'Ford Ka 1.0 SE Flex',
+  brand: 'Ford',
+  year: 2021,
+  licensePlate: 'FORD-550',
   vehicleType: 'COMBUSTION',
   imageUrl: '/images/vehicles/ford_ka.png',
   isRented: false,
   monthlyRentalCost: 0,
-  monthlyFinancingCost: 1500.00,
-  financingTotalInstallments: 48,
-  financingPaidInstallments: 1,
-  financingBank: 'Banco / Financiadora',
-  financingDueDay: 10,
-  fipeValue: 60000,
-  estimatedResidualValue: 40000,
-  currentOdometerKm: 50000,
+  usageMode: 'RENTAL_OWNER', // Alugado para terceiro (Modo Locador)
+  weeklyRentalIncome: 550.00,  // R$ 550,00 / semana (R$ 2.200,00 / mês)
+  tenantName: 'Motorista Locatário',
+  monthlyFinancingCost: 0,
+  fipeValue: 48000,
+  estimatedResidualValue: 35000,
+  currentOdometerKm: 78000,
   isElectric: false,
   batteryCapacityKwh: 0,
   kmPerKwh: 0,
   residentialTariffPerKwh: 1.21,
   fastChargerTariffPerKwh: 1.69,
-  insuranceMonthlyCost: 200.00,
+  insuranceMonthlyCost: 180.00,
   insuranceTotalInstallments: 12,
   insurancePaidInstallments: 1,
-  insuranceCompany: 'Seguradora Auto',
-  insuranceDueDay: 1
+  insuranceCompany: 'Seguradora Auto Frota',
+  insuranceDueDay: 10
 };
 
 export const getInitialVehicleForUser = (email?: string): Vehicle => {
@@ -77,6 +76,9 @@ export const VEHICLE_FORD_KA: Vehicle = {
   imageUrl: '/images/vehicles/ford_ka.png',
   isRented: false,
   monthlyRentalCost: 0,
+  usageMode: 'RENTAL_OWNER', // Alugado para terceiro (Modo Locador)
+  weeklyRentalIncome: 550.00,  // Aluguel Semanal R$ 550,00 (R$ 2.200,00/mês)
+  tenantName: 'Motorista Locatário',
   monthlyFinancingCost: 0, // Quitado
   financingTotalInstallments: 0,
   financingPaidInstallments: 0,
@@ -91,7 +93,7 @@ export const VEHICLE_FORD_KA: Vehicle = {
   insuranceMonthlyCost: 180.00,
   insuranceTotalInstallments: 12,
   insurancePaidInstallments: 12,
-  insuranceCompany: 'Porto Seguro',
+  insuranceCompany: 'Porto Seguro Frota',
   fuelKmlCity: 9.5,
   fuelType: 'FLEX',
   precoCombustivelPorLitro: 4.65

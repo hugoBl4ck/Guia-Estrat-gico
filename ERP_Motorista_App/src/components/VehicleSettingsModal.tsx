@@ -25,7 +25,9 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
 
   const [residentialTariff, setResidentialTariff] = useState(vehicle.residentialTariffPerKwh.toString() || '1.21');
   const [fastChargerTariff, setFastChargerTariff] = useState(vehicle.fastChargerTariffPerKwh.toString() || '1.69');
-  const [rentalCost, setRentalCost] = useState(vehicle.monthlyRentalCost.toString() || '0');
+  const [usageMode, setUsageMode] = useState<'DRIVER' | 'RENTAL_OWNER'>(vehicle.usageMode || 'DRIVER');
+  const [weeklyRentalIncome, setWeeklyRentalIncome] = useState(vehicle.weeklyRentalIncome?.toString() || '550.00');
+  const [tenantName, setTenantName] = useState(vehicle.tenantName || 'Motorista Locatário');
 
   // Estado para simulador de amortizacao da ultima parcela (1a + 48a)
   const [amortizationDiscountPercent, setAmortizationDiscountPercent] = useState('50'); // Desconto medio de juros no adiantamento da ultima parcela
@@ -45,7 +47,10 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
       insurancePaidInstallments: parseInt(insurancePaid, 10) || 0,
       residentialTariffPerKwh: parseFloat(residentialTariff) || 0,
       fastChargerTariffPerKwh: parseFloat(fastChargerTariff) || 0,
-      monthlyRentalCost: parseFloat(rentalCost) || 0,
+      monthlyRentalCost: vehicle.monthlyRentalCost || 0,
+      usageMode,
+      weeklyRentalIncome: parseFloat(weeklyRentalIncome) || 550.00,
+      tenantName: tenantName || 'Motorista Locatário',
     };
 
     onUpdateVehicle(updatedVehicle);
@@ -82,6 +87,69 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           
+          {/* SEÇÃO 0: MODO DE OPERAÇÃO DO VEÍCULO (USO PRÓPRIO VS ALUGADO PARA TERCEIRO) */}
+          <div className="p-3.5 bg-slate-900 border border-purple-800/80 rounded-2xl space-y-3">
+            <span className="font-extrabold text-purple-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
+              <Car className="w-4 h-4 text-purple-400" /> Modo de Operação do Veículo
+            </span>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setUsageMode('DRIVER')}
+                className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all ${
+                  usageMode === 'DRIVER'
+                    ? 'bg-purple-600 text-white border-purple-400'
+                    : 'bg-black text-slate-400 border-slate-800 hover:text-white'
+                }`}
+              >
+                🚖 Uso Próprio (App)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUsageMode('RENTAL_OWNER')}
+                className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all ${
+                  usageMode === 'RENTAL_OWNER'
+                    ? 'bg-purple-600 text-white border-purple-400'
+                    : 'bg-black text-slate-400 border-slate-800 hover:text-white'
+                }`}
+              >
+                🔑 Alugado (Locador)
+              </button>
+            </div>
+
+            {usageMode === 'RENTAL_OWNER' && (
+              <div className="space-y-2 pt-2 border-t border-slate-800">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Receita de Aluguel Semanal (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={weeklyRentalIncome}
+                    onChange={(e) => setWeeklyRentalIncome(e.target.value)}
+                    placeholder="ex: 550.00"
+                    className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-emerald-400 font-mono font-bold outline-none focus:border-emerald-500"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Equivalente a R$ {(parseFloat(weeklyRentalIncome || '0') * 4).toFixed(2)}/mês
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Nome do Motorista Locatário</label>
+                  <input
+                    type="text"
+                    value={tenantName}
+                    onChange={(e) => setTenantName(e.target.value)}
+                    placeholder="ex: Motorista João da Silva"
+                    className="w-full bg-black border border-slate-800 rounded-xl px-3.5 py-2 text-white font-bold outline-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* SEÇÃO 1: FINANCIAMENTO & AMORTIZAÇÃO */}
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
             <span className="font-extrabold text-amber-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">

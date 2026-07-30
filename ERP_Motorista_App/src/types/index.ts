@@ -1,4 +1,4 @@
-export type PlatformType = 'UBER' | 'NINETY_NINE' | 'INDRIVE' | 'PRIVATE' | 'OTHER';
+export type PlatformType = 'UBER' | 'NINETY_NINE' | 'INDRIVE' | 'PRIVATE' | 'RENTAL_INCOME' | 'OTHER';
 
 export type ExpenseCategory = 
   | 'ELECTRIC_CHARGING'   // Recarga Elétrica (EV)
@@ -7,6 +7,9 @@ export type ExpenseCategory =
   | 'SPARK_PLUGS_BELT'    // Velas e Correia Dentada
   | 'BRAKES'              // Pastilhas e Discos de Freio
   | 'MAINTENANCE'         // Manutenção Geral / Revisão EV
+  | 'WORKSHOP_MAINTENANCE'// Oficina / Manutenção Pesada (Locador)
+  | 'DOCUMENTS'           // Documentação / IPVA / Licenciamento / Vistoria (Locador)
+  | 'TRAFFIC_FINE'        // Multa de Trânsito (Locador)
   | 'WASH'                // Lava-Jato
   | 'TOLL'                // Pedágio
   | 'PARKING'             // Estacionamento
@@ -31,9 +34,13 @@ export interface Vehicle {
   acquisitionDate?: string;
   imageUrl?: string;
   
-  // Locação vs Próprio
+  // Locação vs Próprio vs Locador de Frota
   isRented: boolean;
   monthlyRentalCost: number;
+  usageMode?: 'DRIVER' | 'RENTAL_OWNER'; // DRIVER = Motorista App | RENTAL_OWNER = Alugado para Terceiros
+  weeklyRentalIncome?: number;            // Ex: R$ 550,00 / semana
+  tenantName?: string;                    // Nome do motorista locatário
+  tenantPhone?: string;                   // Telefone do locatário
 
   // Custos Fixos Mensais do Veículo
   monthlyFinancingCost?: number;        // Parcela Mensal de Financiamento (R$)

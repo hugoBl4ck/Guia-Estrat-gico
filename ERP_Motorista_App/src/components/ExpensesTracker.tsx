@@ -92,6 +92,12 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         return <span className="bg-blue-950 text-blue-400 border border-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Shield className="w-3 h-3" /> Seguro Auto</span>;
       case 'OIL_CHANGE':
         return <span className="bg-purple-950 text-purple-400 border border-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Wrench className="w-3 h-3" /> Troca de Óleo</span>;
+      case 'WORKSHOP_MAINTENANCE':
+        return <span className="bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Wrench className="w-3 h-3" /> Oficina / Manutenção</span>;
+      case 'DOCUMENTS':
+        return <span className="bg-indigo-950 text-indigo-400 border border-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Shield className="w-3 h-3" /> Documentação / IPVA</span>;
+      case 'TRAFFIC_FINE':
+        return <span className="bg-rose-950 text-rose-400 border border-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Car className="w-3 h-3" /> Multa de Trânsito</span>;
       default:
         return <span className="bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">{cat}</span>;
     }
@@ -271,7 +277,10 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                   ) : (
                     <>
                       <option value="FUEL">Abastecimento (Etanol/Gasolina)</option>
-                      <option value="MAINTENANCE">Manutenção / Pneu / Borracharia</option>
+                      <option value="MAINTENANCE">Manutenção Preventiva / Borracharia</option>
+                      <option value="WORKSHOP_MAINTENANCE">🔧 Oficina / Manutenção Pesada (Revisão, Suspensão, Embreagem)</option>
+                      <option value="DOCUMENTS">📄 Documentação (IPVA, Licenciamento, DPVAT, Vistoria)</option>
+                      <option value="TRAFFIC_FINE">🚨 Multas de Trânsito / Infrações</option>
                       <option value="OIL_CHANGE">Troca de Óleo 5W20 + Filtros</option>
                       <option value="SPARK_PLUGS_BELT">Velas & Correia Dentada</option>
                       <option value="BRAKES">Pastilhas de Freio</option>
