@@ -277,7 +277,7 @@ export class DataRepository implements IDataRepository {
 
       // 4. Sincronizar Turno Ativo / Encerrado no Supabase
       if (state.activeShift) {
-        const payloadShift = {
+        const payloadShift: Record<string, any> = {
           id: state.activeShift.id,
           vehicle_id: state.activeShift.vehicleId || 'veh-byd-dolphin-mini',
           start_time: state.activeShift.startTime,
@@ -289,9 +289,18 @@ export class DataRepository implements IDataRepository {
           user_email: userEmail,
         };
 
-        const { error: upsertError } = await supabase
+        let { error: upsertError } = await supabase
           .from('turnos')
           .upsert(payloadShift, { onConflict: 'id' });
+
+        // Se o banco Supabase não possui a coluna 'vehicle_id', remover e tentar novamente
+        if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('vehicle_id'))) {
+          delete payloadShift.vehicle_id;
+          const retry = await supabase
+            .from('turnos')
+            .upsert(payloadShift, { onConflict: 'id' });
+          upsertError = retry.error;
+        }
 
         if (upsertError) {
           console.error('Erro no Supabase (turnos):', upsertError);
