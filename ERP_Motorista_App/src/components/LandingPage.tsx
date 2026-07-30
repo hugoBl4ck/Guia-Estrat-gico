@@ -37,7 +37,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
   
   const totalEnergyCost = monthlyKm * energyCostPerKm;
   const totalMaintCost = monthlyKm * maintenanceCostPerKm;
-  const fixedFinancingCost = 3086.58; // Parcela Banco Santander
+  // Parcela de financiamento/aluguel representativa para simulação genérica
+  const fixedFinancingCost = 1200.00; // Valor médio estimado (financiamento ou aluguel)
   const fixedAppCost = 80.00;
   
   const totalCosts = totalEnergyCost + totalMaintCost + fixedFinancingCost + fixedAppCost;
@@ -109,8 +110,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
         {/* Gradiente de fade da esquerda para manter legibilidade do texto */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#07080C] via-[#07080C]/80 to-transparent pointer-events-none" />
 
-        {/* Raio de Luz Laser Horizontal Acid Neon */}
-        <div className="absolute top-1/3 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4FF00]/40 to-transparent pointer-events-none shadow-[0_0_25px_#D4FF00]"></div>
+        {/* Laser Scan Animado — efeito idêntico ao PMA Club (percorre verticalmente em loop) */}
+        <div className="laser-scan-line" />
 
         {/* Badge Eyebrow Protocolo */}
         <div className="space-y-2 relative z-10">
@@ -422,13 +423,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
       <section id="acesso" className="py-24 border-t border-white/10 relative">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center space-y-10">
           
-          <div className="space-y-3">
-            <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">04 / O ULTIMATO</span>
-            <h2 className="text-4xl sm:text-6xl font-black text-white uppercase tracking-tight">
-              ENTRA OU ARREGUE.
+          <div className="space-y-4">
+            <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">04 / A ESCOLHA É SUA</span>
+            <h2 className="text-4xl sm:text-6xl font-black text-white uppercase tracking-tight leading-[0.95]">
+              OU VOCÊ CONTROLA
+              <br />
+              <span className="text-[#D4FF00] neon-text">SEUS NÚMEROS,</span>
+              <br />
+              OU ELES CONTROLAM
+              <br />
+              SEU DIA.
             </h2>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto">
-              Acesse o GiroCerto ERP agora e assuma o controle total do seu faturamento e das suas metas.
+            <p className="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
+              Motoristas sem controle financeiro trabalham muito e lucram pouco. O GiroCerto ERP
+              coloca você no comando — com metas reais, caixas separados e visibilidade total
+              sobre cada centavo que entra e que sai do seu volante.
             </p>
           </div>
 
