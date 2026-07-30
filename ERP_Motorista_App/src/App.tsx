@@ -422,6 +422,7 @@ export function App() {
           <BucketsView
             buckets={state.buckets}
             earnings={activeEarnings}
+            expenses={activeExpenses}
             onTransfer={handleBucketTransfer}
             onSaveBuckets={(updated) => dispatch({ type: 'UPDATE_BUCKETS', payload: updated })}
           />

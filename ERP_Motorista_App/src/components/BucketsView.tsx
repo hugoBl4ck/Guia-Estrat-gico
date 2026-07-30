@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Wallet, ShieldCheck, ArrowRight, RefreshCw, Lock, Sparkles, Zap, Calendar, CheckCircle2, Wrench, Pencil } from 'lucide-react';
-import { ReserveBucket, Earning } from '../types';
+import { ReserveBucket, Earning, Expense } from '../types';
 import { EditBucketsModal } from './EditBucketsModal';
 
 interface BucketsViewProps {
   buckets: ReserveBucket[];
   earnings?: Earning[];
+  expenses?: Expense[];
   onTransfer: (fromId: string, toId: string, amount: number) => void;
   onSaveBuckets?: (updatedBuckets: ReserveBucket[]) => void;
 }
@@ -13,33 +14,37 @@ interface BucketsViewProps {
 export const BucketsView: React.FC<BucketsViewProps> = ({
   buckets,
   earnings = [],
+  expenses = [],
   onTransfer,
   onSaveBuckets,
 }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const totalBalance = buckets.reduce((sum, b) => sum + b.currentBalance, 0);
+  const totalEarningsAmount = earnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
+  const totalExpensesAmount = (expenses || []).reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
+  const netRealBalance = Math.max(0, totalEarningsAmount - totalExpensesAmount);
+
   const maintenanceBucket = buckets.find((b) => b.type === 'MAINTENANCE');
   const maintBalance = maintenanceBucket ? maintenanceBucket.currentBalance : 0;
 
-  // Recálculo automático dos caixas virtuais se o saldo zerado for detectado ao abrir
+  // Sincronização automática dos caixas baseada no Lucro Líquido Real (Receita Bruta - Despesas Reais Lançadas)
   React.useEffect(() => {
-    if (totalBalance === 0 && earnings.length > 0 && onSaveBuckets) {
-      const totalEarningsAmount = earnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
-      if (totalEarningsAmount > 0) {
-        const autoUpdated = buckets.map((b) => {
-          let portion = 0;
-          if (b.type === 'FINANCING') portion = totalEarningsAmount * 0.35;
-          else if (b.type === 'FREE_CASH') portion = totalEarningsAmount * 0.40;
-          else if (b.type === 'MAINTENANCE') portion = totalEarningsAmount * 0.10;
-          else if (b.type === 'DEPRECIATION') portion = totalEarningsAmount * 0.10;
-          else if (b.type === 'TAX_MEI') portion = totalEarningsAmount * 0.05;
-          return { ...b, currentBalance: portion };
-        });
+    if (earnings.length > 0 && onSaveBuckets) {
+      const gross = earnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
+      const expTotal = (expenses || []).reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
+      const net = Math.max(0, gross - expTotal);
+
+      const autoUpdated = buckets.map((b) => {
+        const pct = (b.percentageAllocated ?? 0) / 100;
+        return { ...b, currentBalance: net * pct };
+      });
+
+      const isDifferent = autoUpdated.some((b, i) => Math.abs(b.currentBalance - (buckets[i]?.currentBalance || 0)) > 0.01);
+      if (isDifferent) {
         onSaveBuckets(autoUpdated);
       }
     }
-  }, [earnings.length, totalBalance]);
+  }, [earnings, expenses]);
 
   return (
     <div className="space-y-6 pb-24 text-left">
@@ -50,7 +55,7 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
             <Wallet className="w-6 h-6 text-driver-profit" />
             Sistema de Caixas Virtuais (Buckets)
           </h2>
-          <p className="text-xs text-slate-400">Proteção financeira e retenção automática para manutenção e impostos</p>
+          <p className="text-xs text-slate-400">Proteção financeira e retenção automática sobre o Lucro Líquido Real</p>
         </div>
 
         {onSaveBuckets && (
@@ -64,24 +69,28 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
         )}
       </div>
 
-      {/* Total Consolidated Balance */}
+      {/* Total Consolidated Balance (Lucro Líquido Real) */}
       <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl glow-accent relative overflow-hidden">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Patrimônio Acumulado no ERP</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Patrimônio Líquido Acumulado (Sobrando no Banco)</span>
           <Sparkles className="w-4 h-4 text-driver-accent" />
         </div>
         <p className="text-4xl font-black text-white">
-          R$ {totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          R$ {netRealBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
         <p className="text-xs text-slate-400 mt-2">
-          O dinheiro retido garante que você não terá surpresas ao trocar de pneus, realizar revisões da BYD ou pagar o MEI.
+          Saldo real disponível após abater <strong className="text-rose-400">R$ {totalExpensesAmount.toFixed(2)}</strong> de despesas (recarga, seguro, etc) da Receita Bruta de <strong className="text-emerald-400">R$ {totalEarningsAmount.toFixed(2)}</strong>.
         </p>
       </div>
 
       {/* Buckets Grid */}
       <div className="space-y-3">
         {buckets.map((b) => {
-          const progressPercent = Math.min(100, Math.round((b.currentBalance / (b.targetBalance || 1)) * 100));
+          const isTargetReached = b.currentBalance >= b.targetBalance && b.targetBalance > 0;
+          const rawPercent = (b.currentBalance / (b.targetBalance || 1)) * 100;
+          const progressPercent = Math.min(100, Math.round(rawPercent));
+          const progressPercentPrecise = rawPercent.toFixed(1);
+          const barColor = isTargetReached ? '#10B981' : b.color;
 
           return (
             <div key={b.id} className="bg-oled-card border border-oled-cardBorder rounded-3xl p-4 space-y-3 shadow-md">
@@ -89,27 +98,41 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
                 <div className="flex items-center space-x-3">
                   <div
                     className="w-3.5 h-3.5 rounded-full"
-                    style={{ backgroundColor: b.color }}
+                    style={{ backgroundColor: barColor }}
                   ></div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-white">{b.name}</h3>
-                    <p className="text-[11px] text-slate-400">Retenção de {b.percentageAllocated}% dos ganhos</p>
+                    <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                      {b.name}
+                      {isTargetReached && (
+                        <span className="text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full">
+                          ✓ Meta Batida
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Retenção de {b.percentageAllocated}% dos ganhos
+                      {b.type === 'DEPRECIATION' && <span className="text-slate-500 block text-[10px] text-blue-300/80 mt-0.5">🗓️ Meta Mensal (Fundo para Pneus + Desvalorização)</span>}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-extrabold text-white" style={{ color: b.color }}>
+                  <p className="text-base font-extrabold" style={{ color: barColor }}>
                     R$ {b.currentBalance.toFixed(2)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Meta: R$ {b.targetBalance.toFixed(2)}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Meta: R$ {b.targetBalance.toFixed(2)} <span className="font-extrabold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded ml-1">({progressPercentPrecise}%)</span>
+                  </p>
                 </div>
               </div>
 
               {/* Progress Bar */}
-              <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercent}%`, backgroundColor: b.color }}
-                ></div>
+              <div className="space-y-1">
+                <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercent}%`, backgroundColor: barColor }}
+                  ></div>
+                </div>
               </div>
             </div>
           );

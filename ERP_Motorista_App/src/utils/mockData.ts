@@ -242,16 +242,16 @@ export const INITIAL_BUCKETS: ReserveBucket[] = [
     name: 'Depreciação Veicular / Pneus',
     type: 'DEPRECIATION',
     currentBalance: 0,
-    targetBalance: 8000.00,
+    targetBalance: 500.00,
     percentageAllocated: 10,
     color: '#3B82F6'
   },
   {
     id: 'bkt-tax-mei',
-    name: 'Mensalidade App / Custo Fixo',
+    name: 'Custo Fixo (MEI + App + Lavagem R$120)',
     type: 'TAX_MEI',
     currentBalance: 0,
-    targetBalance: 80.00,
+    targetBalance: 200.00,
     percentageAllocated: 5,
     color: '#EF4444'
   }

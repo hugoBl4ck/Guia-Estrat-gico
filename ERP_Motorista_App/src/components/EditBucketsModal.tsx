@@ -18,14 +18,24 @@ export const EditBucketsModal: React.FC<EditBucketsModalProps> = ({
   onSaveBuckets,
 }) => {
   const [bucketValues, setBucketValues] = useState<{ [key: string]: string }>({});
+  const [targetValues, setTargetValues] = useState<{ [key: string]: string }>({});
+  const [percentValues, setPercentValues] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     if (!isOpen) return;
-    const initialValues: { [key: string]: string } = {};
+    const initialBalances: { [key: string]: string } = {};
+    const initialTargets: { [key: string]: string } = {};
+    const initialPercents: { [key: string]: string } = {};
+
     buckets.forEach((b) => {
-      initialValues[b.id] = b.currentBalance.toString();
+      initialBalances[b.id] = Number(b.currentBalance.toFixed(2)).toString();
+      initialTargets[b.id] = b.targetBalance.toString();
+      initialPercents[b.id] = (b.percentageAllocated || 0).toString();
     });
-    setBucketValues(initialValues);
+
+    setBucketValues(initialBalances);
+    setTargetValues(initialTargets);
+    setPercentValues(initialPercents);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -41,27 +51,22 @@ export const EditBucketsModal: React.FC<EditBucketsModalProps> = ({
     0
   );
 
-  const handleRecalculateFromEarnings = () => {
-    const newValues: { [key: string]: string } = {};
-    buckets.forEach((b) => {
-      let portion = 0;
-      if (b.type === 'FINANCING') portion = totalRealEarnings * 0.35;
-      else if (b.type === 'FREE_CASH') portion = totalRealEarnings * 0.40;
-      else if (b.type === 'MAINTENANCE') portion = totalRealEarnings * 0.10;
-      else if (b.type === 'DEPRECIATION') portion = totalRealEarnings * 0.10;
-      else if (b.type === 'TAX_MEI') portion = totalRealEarnings * 0.05;
-      newValues[b.id] = portion.toFixed(2);
-    });
-    setBucketValues(newValues);
-  };
+  const totalPercentAllocated = Object.values(percentValues).reduce(
+    (sum, val) => sum + (parseFloat(val) || 0),
+    0
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const updated = buckets.map((b) => {
-      const val = parseFloat(bucketValues[b.id] || '0');
+      const balanceVal = parseFloat(bucketValues[b.id] || '0');
+      const targetVal = parseFloat(targetValues[b.id] || '0');
+      const percentVal = parseFloat(percentValues[b.id] || '0');
       return {
         ...b,
-        currentBalance: isNaN(val) ? 0 : val,
+        currentBalance: isNaN(balanceVal) ? 0 : balanceVal,
+        targetBalance: isNaN(targetVal) ? 0 : targetVal,
+        percentageAllocated: isNaN(percentVal) ? 0 : percentVal,
       };
     });
 
@@ -78,7 +83,7 @@ export const EditBucketsModal: React.FC<EditBucketsModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden cursor-default text-left max-h-[90vh] overflow-y-auto"
+        className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl relative overflow-hidden cursor-default text-left max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}
@@ -92,62 +97,88 @@ export const EditBucketsModal: React.FC<EditBucketsModalProps> = ({
             <Pencil className="w-5 h-5 text-driver-profit" />
           </div>
           <div>
-            <h3 className="font-extrabold text-base text-white">Editar / Ajustar Caixas Virtuais</h3>
-            <p className="text-xs text-slate-400">Ajuste os saldos conforme a sua realidade financeira</p>
+            <h3 className="font-extrabold text-base text-white">Personalizar Metas e Retenções</h3>
+            <p className="text-xs text-slate-400">Defina suas próprias metas (R$) e porcentagens de retenção (%)</p>
           </div>
         </div>
 
-        {/* Botão de Recalcular pelos Ganhos Reais */}
-        <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between">
-          <div>
-            <span className="text-[11px] text-slate-400 font-bold block">Ganhos Reais Lançados:</span>
-            <span className="font-mono font-extrabold text-emerald-400 text-sm">
-              R$ {totalRealEarnings.toFixed(2)}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRecalculateFromEarnings}
-            className="bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-800 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Recalcular (65/10/20/5%)
-          </button>
+        {/* Indicador do Total de % Alocado */}
+        <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs font-mono font-bold ${
+          Math.abs(totalPercentAllocated - 100) < 0.1
+            ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
+            : 'bg-amber-950/40 border-amber-800/60 text-amber-300'
+        }`}>
+          <span>Soma das Retenções:</span>
+          <span>{totalPercentAllocated.toFixed(1)}% / 100%</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {buckets.map((b) => (
-            <div key={b.id} className="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl space-y-1">
+            <div key={b.id} className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-extrabold text-white flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: b.color }}></span>
-                  {b.name} ({b.percentageAllocated}%)
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: b.color }}></span>
+                  {b.name}
                 </span>
-                <span className="text-slate-400 text-[10px]">Meta: R$ {b.targetBalance.toFixed(2)}</span>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-slate-400 font-mono text-xs">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={bucketValues[b.id] || ''}
-                  onChange={(e) =>
-                    setBucketValues((prev) => ({ ...prev, [b.id]: e.target.value }))
-                  }
-                  className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white outline-none focus:border-emerald-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                {/* Meta Alvo R$ */}
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold block mb-1">Meta Desejada (R$)</label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500 font-mono">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={targetValues[b.id] || ''}
+                      onChange={(e) => setTargetValues((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                      className="w-full bg-black border border-slate-800 rounded-xl px-2.5 py-1.5 font-mono font-bold text-white outline-none focus:border-emerald-500 text-xs"
+                      placeholder="Ex: 5000"
+                    />
+                  </div>
+                </div>
+
+                {/* Retenção % */}
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold block mb-1">Retenção (%)</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={percentValues[b.id] || ''}
+                      onChange={(e) => setPercentValues((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                      className="w-full bg-black border border-slate-800 rounded-xl px-2.5 py-1.5 font-mono font-bold text-emerald-400 outline-none focus:border-emerald-500 text-xs"
+                      placeholder="Ex: 40"
+                    />
+                    <span className="text-slate-500 font-mono">%</span>
+                  </div>
+                </div>
+
+                {/* Saldo Atual R$ */}
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold block mb-1">Saldo Atual (R$)</label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500 font-mono">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={bucketValues[b.id] || ''}
+                      onChange={(e) => setBucketValues((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                      className="w-full bg-black border border-slate-800 rounded-xl px-2.5 py-1.5 font-mono font-bold text-white outline-none focus:border-emerald-500 text-xs"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           ))}
 
           <button
             type="submit"
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3 rounded-2xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 pt-2"
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3.5 rounded-2xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
-            Salvar Saldos Atualizados
+            Salvar Minhas Metas e Porcentagens
           </button>
         </form>
       </div>
