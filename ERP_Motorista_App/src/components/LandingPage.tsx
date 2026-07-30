@@ -94,50 +94,82 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
 
       {/* 2. Hero Section (PMA Protocol Style) */}
       <section className="relative px-6 lg:px-12 pt-20 pb-24 max-w-7xl mx-auto space-y-10">
-        
+
+        {/* EV Background Image — subtle translucent overlay on right side */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'url(/images/ev_hero.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center right',
+            opacity: 0.07,
+            mixBlendMode: 'luminosity'
+          }}
+        />
+        {/* Gradiente de fade da esquerda para manter legibilidade do texto */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#07080C] via-[#07080C]/80 to-transparent pointer-events-none" />
+
         {/* Raio de Luz Laser Horizontal Acid Neon */}
         <div className="absolute top-1/3 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4FF00]/40 to-transparent pointer-events-none shadow-[0_0_25px_#D4FF00]"></div>
 
         {/* Badge Eyebrow Protocolo */}
-        <div className="space-y-2">
+        <div className="space-y-2 relative z-10">
           <p className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">
             P R O T O C O L O &nbsp; D E &nbsp; A S C E N S Ã O &nbsp; N A &nbsp; R U A
           </p>
         </div>
 
-        {/* Título Principal Brutal PMA */}
-        <div className="space-y-6">
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-white tracking-tighter uppercase leading-[0.9]">
-            CHEGOU O <br />
-            <span className="text-[#D4FF00] drop-shadow-[0_0_30px_rgba(212,255,0,0.2)]">MELHOR MOMENTO</span> <br />
-            DA SUA VIDA DE MOTORISTA.
-          </h1>
+        {/* Layout: Texto + Imagem EV lado a lado */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative z-10">
+          {/* Coluna Esquerda: Título e Botões */}
+          <div className="space-y-6">
+            <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-white tracking-tighter uppercase leading-[0.9]">
+              CHEGOU O <br />
+              <span className="text-[#D4FF00] drop-shadow-[0_0_30px_rgba(212,255,0,0.2)]">MELHOR MOMENTO</span> <br />
+              DA SUA VIDA DE MOTORISTA.
+            </h1>
 
-          <p className="text-base sm:text-lg text-slate-400 font-medium max-w-2xl leading-relaxed">
-            A hora de acessar o <strong className="text-white font-bold underline decoration-[#D4FF00] decoration-2">lucro limpo no bolso</strong> que você planejou pro futuro. Finanças sem ilusão, metas diárias ajustadas, retenção em caixas virtuais e controle absoluto do seu volante.
-          </p>
-        </div>
+            <p className="text-base sm:text-lg text-slate-400 font-medium max-w-xl leading-relaxed">
+              A hora de acessar o <strong className="text-white font-bold underline decoration-[#D4FF00] decoration-2">lucro limpo no bolso</strong> que você planejou pro futuro. Finanças sem ilusão, metas diárias ajustadas, retenção em caixas virtuais e controle absoluto do seu volante.
+            </p>
 
-        {/* Botões de Ação Hero */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
-          <button
-            onClick={onOpenAuth}
-            className="bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-sm px-8 py-4 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95"
-          >
-            <span>QUERO O ACESSO AGORA</span>
-            <ArrowUpRight className="w-5 h-5 stroke-[3]" />
-          </button>
+            {/* Botões de Ação Hero */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+              <button
+                onClick={onOpenAuth}
+                className="bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-sm px-8 py-4 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95"
+              >
+                <span>QUERO O ACESSO AGORA</span>
+                <ArrowUpRight className="w-5 h-5 stroke-[3]" />
+              </button>
 
-          <a
-            href="#verdades"
-            className="border border-white/20 hover:border-white text-white font-mono text-xs px-6 py-4 rounded-none uppercase tracking-widest text-center transition-colors"
-          >
-            ENTENDA POR QUÊ ↓
-          </a>
+              <a
+                href="#verdades"
+                className="border border-white/20 hover:border-white text-white font-mono text-xs px-6 py-4 rounded-none uppercase tracking-widest text-center transition-colors"
+              >
+                ENTENDA POR QUÊ ↓
+              </a>
+            </div>
+          </div>
+
+          {/* Coluna Direita: Imagem EV Visível com efeito acid neon */}
+          <div className="relative hidden lg:flex items-center justify-center">
+            {/* Glow acid neon atrás da imagem */}
+            <div className="absolute inset-0 bg-[#D4FF00]/5 blur-3xl rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#07080C] to-transparent pointer-events-none z-10" />
+            <img
+              src="/images/ev_hero.png"
+              alt="Veículo elétrico na cidade à noite"
+              className="w-full max-w-2xl object-cover"
+              style={{ opacity: 0.75, maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)' }}
+            />
+            {/* Linha laser horizontal sobre a imagem */}
+            <div className="absolute left-0 right-0 h-[1px] bg-[#D4FF00]/60 shadow-[0_0_15px_#D4FF00] z-20" style={{ top: '55%' }} />
+          </div>
         </div>
 
         {/* Prova Social Rápida */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-12 border-t border-white/10 font-mono text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-12 border-t border-white/10 font-mono text-xs relative z-10">
           <div>
             <p className="text-[#D4FF00] text-2xl font-black">100%</p>
             <p className="text-slate-500 uppercase text-[10px] tracking-wider">Parcela / Aluguel Protegido</p>
@@ -158,8 +190,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
       </section>
 
       {/* 3. Section 1: "As Verdades Brutais da Rua" (Problem Section PMA Style) */}
-      <section id="verdades" className="py-24 border-t border-white/10 bg-[#0B0D13] relative">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12">
+      <section id="verdades" className="py-24 border-t border-white/10 bg-[#0B0D13] relative overflow-hidden">
+        {/* EV Aerial Background — disfarçado como texture no fundo */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'url(/images/ev_aerial.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            opacity: 0.04,
+            mixBlendMode: 'screen'
+          }}
+        />
+        <div className="absolute inset-0 bg-[#0B0D13]/70 pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12 relative z-10">
           
           <div className="space-y-2">
             <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">01 / AS VERDADES BRUTAIS</span>
@@ -211,8 +256,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
       </section>
 
       {/* 4. Section 2: "O Ecossistema GiroCerto ERP" */}
-      <section id="ecossistema" className="py-24 border-t border-white/10 relative">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12">
+      <section id="ecossistema" className="py-24 border-t border-white/10 relative overflow-hidden">
+        {/* EV Dashboard Background — interior cockpit disfarçado como textura */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'url(/images/ev_dashboard.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.05,
+            mixBlendMode: 'luminosity'
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#07080C] via-transparent to-[#07080C] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12 relative z-10">
           
           <div className="space-y-2">
             <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">02 / O ECOSSISTEMA ERP</span>
