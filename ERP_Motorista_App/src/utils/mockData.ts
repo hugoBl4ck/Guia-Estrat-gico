@@ -115,15 +115,6 @@ export const INITIAL_EXPENSES_BYD: Expense[] = [
     notes: 'Recarga Noturna Residencial Coelba (38.8 kWh - 0% a 100%)',
     expenseDate: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
     source: 'manual'
-  },
-  {
-    id: 'exp-byd-financiamento',
-    shiftId: 'shift-byd-01',
-    category: 'FINANCING',
-    amount: 3086.58,
-    notes: 'Parcela Mensal Financiamento Santander - 1/48 (BYD Dolphin Mini GS 2026)',
-    expenseDate: new Date().toISOString(),
-    source: 'manual'
   }
 ];
 

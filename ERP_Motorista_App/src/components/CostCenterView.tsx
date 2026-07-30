@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Zap, Fuel, Heart, FileSpreadsheet, Building2, CheckCircle2, TrendingUp, TrendingDown, DollarSign, Calendar, Download, Table, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Layers, Zap, Fuel, Heart, FileSpreadsheet, Building2, CheckCircle2, TrendingUp, TrendingDown, DollarSign, Calendar, Download, Table, ShieldCheck, HelpCircle, Wrench } from 'lucide-react';
 import { Vehicle, Earning, Expense } from '../types';
 import { calculateMeiTaxExemption } from '../utils/taxPolicies';
 
@@ -138,12 +138,105 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
         </div>
       </div>
 
-      {/* TABELA 2: Centros de Custos ERP */}
+      {/* TABELA 2: Plano de Retenção dos Caixas Virtuais (Provisão por Corrida) */}
+      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
+        <div className="flex items-center justify-between">
+          <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+            <Layers className="w-4 h-4 text-purple-400" />
+            TABELA 2: Retenção Automática dos Caixas Virtuais (Provisão % por Corrida)
+          </h3>
+          <span className="text-[10px] font-mono bg-purple-950 text-purple-400 border border-purple-800 px-2.5 py-0.5 rounded-full font-bold">
+            Distribuição 100% dos Ganhos
+          </span>
+        </div>
+
+        <div className="p-3 bg-purple-950/30 border border-purple-800/40 rounded-2xl text-xs text-slate-300">
+          <p className="font-bold text-purple-300">💡 Como Funciona a Retenção Diária:</p>
+          <p className="text-[11px] text-slate-300 mt-0.5">
+            A prestação do carro (R$ 3.086,58) <b>NÃO é descontada como despesa no dia a dia</b> (pois o boleto só é pago no vencimento, dia 10). Em vez disso, <b>35% de cada corrida é retido diariamente no Caixa Santander</b> para garantir o valor exato no dia do pagamento.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] bg-slate-900/60">
+                <th className="p-3 rounded-l-xl">Código</th>
+                <th className="p-3">Caixa Virtual</th>
+                <th className="p-3 font-bold text-purple-400">% Retido por Corrida</th>
+                <th className="p-3 text-right">Meta Mensal (R$)</th>
+                <th className="p-3 text-right rounded-r-xl">Vencimento / Ciclo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 text-slate-200">
+              <tr className="hover:bg-slate-900/40 bg-purple-950/20">
+                <td className="p-3 font-mono font-bold text-purple-400">CC-01</td>
+                <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-purple-400" /> Financiamento Santander / Aluguel
+                </td>
+                <td className="p-3 font-mono font-extrabold text-purple-400 bg-purple-950/60">35,0% dos ganhos</td>
+                <td className="p-3 text-right font-mono font-extrabold text-white">R$ 3086.58</td>
+                <td className="p-3 text-right font-bold text-purple-300">Dia 10 de cada mês</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/40 bg-emerald-950/20">
+                <td className="p-3 font-mono font-bold text-emerald-400">CC-02</td>
+                <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Lucro Livre (Disponível)
+                </td>
+                <td className="p-3 font-mono font-extrabold text-emerald-400 bg-emerald-950/60">40,0% dos ganhos</td>
+                <td className="p-3 text-right font-mono font-extrabold text-white">R$ 5.000,00</td>
+                <td className="p-3 text-right font-bold text-emerald-300">Disponível Imediato</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/40 bg-amber-950/20">
+                <td className="p-3 font-mono font-bold text-amber-400">CC-03</td>
+                <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5 text-amber-400" /> Manutenção EV / Revisão BYD
+                </td>
+                <td className="p-3 font-mono font-extrabold text-amber-400 bg-amber-950/60">10,0% dos ganhos</td>
+                <td className="p-3 text-right font-mono font-extrabold text-white">R$ 1.500,00</td>
+                <td className="p-3 text-right font-bold text-amber-300">Revisão 20.000 km (R$ 370)</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/40 bg-blue-950/20">
+                <td className="p-3 font-mono font-bold text-blue-400">CC-04</td>
+                <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" /> Depreciação Veicular / Pneus
+                </td>
+                <td className="p-3 font-mono font-extrabold text-blue-400 bg-blue-950/60">10,0% dos ganhos</td>
+                <td className="p-3 text-right font-mono font-extrabold text-white">R$ 8.000,00</td>
+                <td className="p-3 text-right font-bold text-blue-300">Fundo Troca de Carro</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/40 bg-rose-950/20">
+                <td className="p-3 font-mono font-bold text-rose-400">CC-05</td>
+                <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-rose-400" /> Mensalidade App & Custo Fixo
+                </td>
+                <td className="p-3 font-mono font-extrabold text-rose-400 bg-rose-950/60">5,0% dos ganhos</td>
+                <td className="p-3 text-right font-mono font-extrabold text-white">R$ 80,00</td>
+                <td className="p-3 text-right font-bold text-rose-300">Mensal</td>
+              </tr>
+
+              <tr className="bg-slate-900 font-black text-xs">
+                <td className="p-3 text-white rounded-l-xl">TOTAL</td>
+                <td className="p-3 text-white">Todas as Alocações</td>
+                <td className="p-3 font-mono text-emerald-400">100,0% dos faturamentos</td>
+                <td className="p-3 text-right font-mono text-slate-400">-</td>
+                <td className="p-3 text-right font-mono text-emerald-400 rounded-r-xl">Proteção Completa</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* TABELA 3: Apuração dos Centros de Custos ERP */}
       <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-400" />
-            TABELA 2: Apuração dos Centros de Custos ERP
+            TABELA 3: Apuração dos Centros de Custos ERP
           </h3>
         </div>
 
