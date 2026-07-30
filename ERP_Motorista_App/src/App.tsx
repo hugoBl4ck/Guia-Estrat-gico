@@ -16,6 +16,7 @@ import { NotificationDraftModal } from './components/NotificationDraftModal';
 import { AuthModal } from './components/AuthModal';
 import { VehicleOnboardingModal } from './components/VehicleOnboardingModal';
 import { GoalSelectorModal } from './components/GoalSelectorModal';
+import { LandingPage } from './components/LandingPage';
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
 
 import { repository } from './services/repository';
@@ -277,6 +278,23 @@ export function App() {
       alert('Sincronização salva no armazenamento local.');
     }
   };
+
+  if (!userEmail) {
+    return (
+      <>
+        <LandingPage onOpenAuth={() => setIsAuthOpen(true)} />
+        <AuthModal
+          isOpen={isAuthOpen}
+          onClose={() => setIsAuthOpen(false)}
+          onAuthSuccess={(email) => {
+            localStorage.setItem('erp_driver_user_email', email);
+            setUserEmail(email);
+            setIsAuthOpen(false);
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-oled-base text-slate-100 flex flex-col antialiased relative">
