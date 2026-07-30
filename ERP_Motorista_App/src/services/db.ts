@@ -28,14 +28,37 @@ export const dbService = {
       const savedBuckets = localStorage.getItem(STORAGE_KEYS.BUCKETS);
       const savedPersonalLogs = localStorage.getItem(STORAGE_KEYS.PERSONAL_LOGS);
       const savedClearedFlag = localStorage.getItem(STORAGE_KEYS.DATA_CLEARED_FLAG);
-
       const hasSavedData = savedEarnings !== null || savedExpenses !== null || savedShift !== null;
+
+      // Sanitização / Migração Automática de Caixas Virtuais (Garante que Financiamento e Custo Fixo/Lavagem sempre existam)
+      let parsedBuckets: ReserveBucket[] = [];
+      try {
+        parsedBuckets = savedBuckets ? JSON.parse(savedBuckets) : [];
+      } catch (e) {
+        parsedBuckets = [];
+      }
+
+      const hasFinancing = parsedBuckets.some((b) => b.type === 'FINANCING');
+      const hasTaxMeiUpdated = parsedBuckets.some((b) => b.type === 'TAX_MEI' && b.targetBalance >= 200);
+
+      if (!savedBuckets || !hasFinancing || !hasTaxMeiUpdated || parsedBuckets.length < 5) {
+        parsedBuckets = INITIAL_BUCKETS.map((b) => {
+          const existing = parsedBuckets.find((old) => old.type === b.type);
+          return {
+            ...b,
+            currentBalance: existing ? existing.currentBalance : 0,
+            targetBalance: b.targetBalance, // Garante metas atualizadas: R$ 3086.58 Parcela, R$ 200.00 Custo Fixo/Lavagem, R$ 500.00 Depreciação
+            name: b.name,
+          };
+        });
+        localStorage.setItem(STORAGE_KEYS.BUCKETS, JSON.stringify(parsedBuckets));
+      }
 
       return {
         earnings: savedEarnings ? (JSON.parse(savedEarnings) as Earning[]) : [],
         expenses: savedExpenses ? (JSON.parse(savedExpenses) as Expense[]) : [],
         activeShift: savedShift ? (JSON.parse(savedShift) as Shift | null) : null,
-        buckets: savedBuckets ? (JSON.parse(savedBuckets) as ReserveBucket[]) : INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
+        buckets: parsedBuckets,
         personalLogs: savedPersonalLogs ? (JSON.parse(savedPersonalLogs) as PersonalUsageLog[]) : [],
         isDataCleared: savedClearedFlag ? JSON.parse(savedClearedFlag) : !hasSavedData
       };
