@@ -93,7 +93,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Compass className="w-6 h-6 text-driver-accent" />
+            <Compass className="w-6 h-6 text-pma-acid" />
             Gestão de Turnos e Faturamento
           </h2>
           <p className="text-xs text-slate-400">Registre os blocos de corridas da Uber, 99 e InDrive</p>
@@ -109,7 +109,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
       </div>
 
       {/* Turno Ativo ou Fechado Widget */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl">
         {!activeShift ? (
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
@@ -180,7 +180,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
       </div>
 
       {/* Lista de Ganhos / Corridas com Botão de Exclusão (Trash Icon) */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Histórico de Lançamentos</h3>
           <span className="text-xs text-slate-400">{earnings.length} registros</span>
@@ -261,7 +261,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
+            className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
           >
             <button
               type="button"

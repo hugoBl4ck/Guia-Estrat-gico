@@ -3,14 +3,31 @@ import { FinanceState } from './financeReducer';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { Vehicle } from '../types';
 
+type SyncQueueJob = {
+  id: string;
+  type: 'SYNC_STATE';
+  payload: {
+    state: FinanceState;
+    userEmail: string;
+    timestamp: string;
+  };
+  status: 'pending' | 'completed' | 'failed';
+  errorMessage?: string;
+};
+
+const SYNC_QUEUE_KEY = 'girocerto_sync_queue_v1';
+
 export interface IDataRepository {
   loadData(): FinanceState;
-  saveData(state: FinanceState): void;
+  saveData(state: FinanceState, userEmail?: string): void;
   loadVehicles(): Vehicle[];
   loadCurrentVehicle(): Vehicle;
   saveVehicles(vehicles: Vehicle[]): void;
   saveCurrentVehicle(vehicle: Vehicle): void;
-  syncWithCloud(state: FinanceState): Promise<boolean>;
+  queueSyncState(state: FinanceState, userEmail: string): void;
+  flushSyncQueue(userEmail: string): Promise<boolean>;
+  getPendingSyncCount(userEmail: string): number;
+  syncWithCloud(state: FinanceState, userEmail: string): Promise<boolean>;
 }
 
 export class DataRepository implements IDataRepository {
@@ -42,7 +59,81 @@ export class DataRepository implements IDataRepository {
     dbService.saveCurrentVehicle(vehicle);
   }
 
-  public saveData(state: FinanceState): void {
+  private loadSyncQueue(): SyncQueueJob[] {
+    try {
+      const raw = localStorage.getItem(SYNC_QUEUE_KEY);
+      if (!raw) return [];
+      const queue = JSON.parse(raw) as SyncQueueJob[];
+      return Array.isArray(queue) ? queue : [];
+    } catch (err) {
+      console.warn('Falha ao carregar fila de sincronização:', err);
+      return [];
+    }
+  }
+
+  private persistSyncQueue(queue: SyncQueueJob[]): void {
+    try {
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    } catch (err) {
+      console.warn('Falha ao salvar fila de sincronização:', err);
+    }
+  }
+
+  public getPendingSyncCount(userEmail: string): number {
+    const queue = this.loadSyncQueue();
+    return queue.filter((job) => job.payload.userEmail === userEmail && job.status === 'pending').length;
+  }
+
+  public queueSyncState(state: FinanceState, userEmail: string): void {
+    if (!userEmail || userEmail.trim() === '') return;
+
+    const queue = this.loadSyncQueue().filter((job) => job.type !== 'SYNC_STATE' || job.payload.userEmail !== userEmail);
+    queue.push({
+      id: `sync-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      type: 'SYNC_STATE',
+      payload: {
+        state,
+        userEmail,
+        timestamp: new Date().toISOString(),
+      },
+      status: 'pending',
+    });
+
+    this.persistSyncQueue(queue);
+  }
+
+  public async flushSyncQueue(userEmail: string): Promise<boolean> {
+    if (!userEmail || userEmail.trim() === '' || !isSupabaseConfigured() || !supabase) return false;
+
+    const queue = this.loadSyncQueue();
+    const pendingJobs = queue.filter((job) => job.payload.userEmail === userEmail && job.status === 'pending');
+    if (pendingJobs.length === 0) return true;
+
+    let allSuccessful = true;
+    const updatedQueue = [...queue];
+
+    for (const job of pendingJobs) {
+      if (job.type === 'SYNC_STATE') {
+        const success = await this.syncWithCloud(job.payload.state, job.payload.userEmail);
+        const queueIndex = updatedQueue.findIndex((q) => q.id === job.id);
+        if (queueIndex === -1) continue;
+
+        if (success) {
+          updatedQueue[queueIndex] = { ...job, status: 'completed' };
+        } else {
+          updatedQueue[queueIndex] = { ...job, status: 'failed', errorMessage: 'sync failed' };
+          allSuccessful = false;
+          break;
+        }
+      }
+    }
+
+    const finalQueue = updatedQueue.filter((job) => job.status !== 'completed');
+    this.persistSyncQueue(finalQueue);
+    return allSuccessful;
+  }
+
+  public saveData(state: FinanceState, userEmail?: string): void {
     // 1. Persistência local instantânea (Offline-first)
     if (state.earnings) dbService.saveEarnings(state.earnings);
     if (state.expenses) dbService.saveExpenses(state.expenses);
@@ -51,16 +142,14 @@ export class DataRepository implements IDataRepository {
     if (state.personalLogs) dbService.savePersonalLogs(state.personalLogs);
     dbService.saveDataClearedFlag(state.isDataCleared);
 
-    // 2. Sincronização assíncrona em segundo plano com o Supabase Cloud se configurado
-    if (isSupabaseConfigured() && navigator.onLine) {
-      this.syncWithCloud(state).catch((err) => {
-        console.warn('Sincronização com o Supabase em segundo plano falhou (modo offline mantido):', err);
-      });
+    // 2. Registrar sync em fila mesmo quando offline, somente se o usuário estiver identificado
+    if (userEmail && userEmail.trim() !== '' && isSupabaseConfigured()) {
+      this.queueSyncState(state, userEmail);
     }
   }
 
-  public async syncWithCloud(state: FinanceState, userEmail: string = 'hugovieira.eng@gmail.com'): Promise<boolean> {
-    if (!isSupabaseConfigured() || !supabase) return false;
+  public async syncWithCloud(state: FinanceState, userEmail: string): Promise<boolean> {
+    if (!userEmail || userEmail.trim() === '' || !isSupabaseConfigured() || !supabase) return false;
 
     try {
       // 1. Sincronizar Faturamentos no Supabase (Upsert + Delete de excluídos)

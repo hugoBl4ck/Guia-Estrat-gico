@@ -129,7 +129,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left max-h-[90vh] overflow-y-auto">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left max-h-[90vh] overflow-y-auto">
         
         <button
           onClick={onClose}

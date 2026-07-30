@@ -70,10 +70,10 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
       </div>
 
       {/* Total Consolidated Balance (Lucro Líquido Real) */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl glow-accent relative overflow-hidden">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl glow-accent relative overflow-hidden">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Patrimônio Líquido Acumulado (Sobrando no Banco)</span>
-          <Sparkles className="w-4 h-4 text-driver-accent" />
+           <Sparkles className="w-4 h-4 text-pma-acid" />
         </div>
         <p className="text-4xl font-black text-white">
           R$ {netRealBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -93,7 +93,7 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
           const barColor = isTargetReached ? '#10B981' : b.color;
 
           return (
-            <div key={b.id} className="bg-oled-card border border-oled-cardBorder rounded-3xl p-4 space-y-3 shadow-md">
+            <div key={b.id} className="bg-pma-card border border-white/10 rounded-3xl p-4 space-y-3 shadow-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div
@@ -140,7 +140,7 @@ export const BucketsView: React.FC<BucketsViewProps> = ({
       </div>
 
       {/* Plano de Revisão Oficial BYD Dolphin Mini (20.000 KM ou 12 Meses) */}
-      <div className="bg-oled-card border border-amber-500/50 rounded-3xl p-5 shadow-xl space-y-4">
+       <div className="bg-pma-card border border-amber-500/50 rounded-3xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-400" />

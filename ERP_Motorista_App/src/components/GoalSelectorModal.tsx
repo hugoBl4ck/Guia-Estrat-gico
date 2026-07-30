@@ -76,7 +76,7 @@ export const GoalSelectorModal: React.FC<GoalSelectorModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden cursor-default text-left max-h-[90vh] overflow-y-auto"
+        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden cursor-default text-left max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}

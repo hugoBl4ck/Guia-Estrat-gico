@@ -15,6 +15,10 @@ interface NavbarProps {
   onRestoreMockData: () => void;
   isDataCleared: boolean;
   userEmail?: string;
+  isOnline: boolean;
+  isSyncing: boolean;
+  pendingSyncCount: number;
+  lastSyncStatus: string;
   onOpenAuth: () => void;
   onLogout?: () => void;
   onSyncCloud?: () => void;
@@ -32,6 +36,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRestoreMockData,
   isDataCleared,
   userEmail = '',
+  isOnline,
+  isSyncing,
+  pendingSyncCount,
+  lastSyncStatus,
   onOpenAuth,
   onLogout,
   onSyncCloud,
@@ -44,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const currentAppUrl = typeof window !== 'undefined' ? window.location.href : 'https://erp-motorista-app.vercel.app';
 
   return (
-    <header className="bg-oled-card border-b border-oled-cardBorder sticky top-0 z-40 px-4 py-3 shadow-md">
+    <header className="bg-pma-dark border-b border-white/10 sticky top-0 z-40 px-4 py-3 shadow-md">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Brand & Vehicle Selector */}
@@ -152,9 +160,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Indicador de Status do Supabase Cloud Sync */}
-          <div className="hidden md:flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-800/80 text-emerald-400 px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold" title="Conectado e sincronizado com o Supabase Cloud em tempo real">
-            <UploadCloud className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            <span>NUVEM SUPABASE OK</span>
+          <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold" title={lastSyncStatus}>
+            {isSyncing ? (
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+            ) : (
+              <UploadCloud className={`w-3.5 h-3.5 ${isOnline ? 'text-emerald-400' : 'text-amber-400'}`} />
+            )}
+            <span className={isOnline ? 'text-emerald-400' : 'text-amber-400'}>
+              {isOnline ? (pendingSyncCount > 0 ? `Pendente ${pendingSyncCount}` : 'Sincronizado') : 'Offline'}
+            </span>
+            {onSyncCloud && (
+              <button
+                onClick={onSyncCloud}
+                className="hidden sm:inline-flex items-center gap-1 bg-slate-900 border border-slate-800 text-slate-200 px-2 py-1 rounded-lg text-[10px] hover:border-emerald-400 transition-colors"
+                title="Forçar sincronização agora"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Sincronizar
+              </button>
+            )}
           </div>
 
           {/* User Account / Auth Button */}
@@ -194,10 +218,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         }}
       />
 
-      {/* Modal de Conexão Mobile no Celular */}
-      {showMobileConnectModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
+       {/* Modal de Conexão Mobile no Celular */}
+       {showMobileConnectModal && (
+         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+           <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
             <button
               onClick={() => setShowMobileConnectModal(false)}
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
@@ -233,10 +257,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      {/* Modal de Confirmação para Limpar Lançamentos Temporários */}
-      {showResetConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
+       {/* Modal de Confirmação para Limpar Lançamentos Temporários */}
+       {showResetConfirmModal && (
+         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+           <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-2">
               <Trash2 className="w-6 h-6" />
             </div>

@@ -110,7 +110,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
       {/* Big KPI Cards Grid */}
       <div className="grid grid-cols-3 gap-3">
         {/* Entradas */}
-        <div className="bg-oled-card border border-emerald-800/60 rounded-3xl p-4 shadow-xl">
+         <div className="bg-pma-card border border-emerald-800/60 rounded-3xl p-4 shadow-xl">
           <span className="text-[10px] font-extrabold uppercase text-emerald-400 flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" /> RECEITA BRUTA
           </span>
@@ -121,7 +121,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         </div>
 
         {/* Saídas */}
-        <div className="bg-oled-card border border-rose-800/60 rounded-3xl p-4 shadow-xl">
+         <div className="bg-pma-card border border-rose-800/60 rounded-3xl p-4 shadow-xl">
           <span className="text-[10px] font-extrabold uppercase text-rose-400 flex items-center gap-1">
             <TrendingDown className="w-3.5 h-3.5" /> DESPESAS
           </span>
@@ -144,7 +144,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
       </div>
 
       {/* Barra Visual Comparativa Receitas (Verde) x Despesas (Vermelha) */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="font-extrabold text-sm text-white flex items-center justify-between">
           <span>Proporção Operacional (Entradas x Saídas)</span>
           <span className="text-xs text-slate-400">Total: R$ {(totalRevenue + totalExpenses).toFixed(2)}</span>
@@ -167,7 +167,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
       </div>
 
       {/* Detalhamento Diário Receitas por Aplicativo */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-emerald-400" />
           Faturamento por Plataforma (Entradas)

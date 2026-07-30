@@ -87,7 +87,7 @@ export const ElectricChargingCalculator: React.FC<ElectricChargingCalculatorProp
       </div>
 
       {/* Inputs de Recarga por kWh */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-4">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
         <h3 className="font-extrabold text-sm text-white">Simulação Personalizada por kWh</h3>
 
         <div className="grid grid-cols-2 gap-3">
@@ -142,7 +142,7 @@ export const ElectricChargingCalculator: React.FC<ElectricChargingCalculatorProp
       </div>
 
       {/* Paridade Casa x Eletroposto Rápido */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
           <Scale className="w-4 h-4 text-emerald-400" />
           Paridade Carga Completa: Coelba x Posto Rápido

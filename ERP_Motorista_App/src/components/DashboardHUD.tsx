@@ -164,28 +164,28 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   return (
     <div className="space-y-6 pb-24">
       
-      {/* Botões de Ação Direta no Topo (Estilo PMA Acid Neon #D4FF00) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          onClick={onOpenAddEarning}
-          className="w-full bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black py-4 px-4 rounded-none text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(212,255,0,0.25)] uppercase tracking-wider active:scale-95 transition-all group"
-        >
-          <Plus className="w-4 h-4 stroke-[3] group-hover:scale-125 transition-transform" />
-          <span>➕ LANÇAR CORRIDAS DO DIA</span>
-        </button>
+       {/* Botões de Ação Direta no Topo (Estilo PMA Acid Neon) */}
+       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+         <button
+           onClick={onOpenAddEarning}
+           className="w-full bg-pma-acid hover:bg-pma-acidHover text-black font-black py-4 px-4 rounded-none text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(212,255,0,0.25)] uppercase tracking-wider active:scale-95 transition-all group"
+         >
+           <Plus className="w-4 h-4 stroke-[3] group-hover:scale-125 transition-transform" />
+           <span>➕ LANÇAR CORRIDAS DO DIA</span>
+         </button>
 
-        <button
-          onClick={() => onNavigateToTab('reports')}
-          className="w-full bg-[#0B0D13] hover:bg-[#141722] text-[#D4FF00] border border-[#D4FF00]/40 font-mono font-bold py-4 px-4 rounded-none text-xs flex items-center justify-center gap-2 uppercase tracking-wider shadow-lg active:scale-95 transition-all"
-        >
-          <FileSpreadsheet className="w-4 h-4 text-[#D4FF00]" />
-          <span>📊 VER RELATÓRIOS DIÁRIOS</span>
-        </button>
-      </div>
+         <button
+           onClick={() => onNavigateToTab('reports')}
+           className="w-full bg-pma-card hover:bg-oled-hover text-pma-acid border border-pma-acid/40 font-mono font-bold py-4 px-4 rounded-none text-xs flex items-center justify-center gap-2 uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+         >
+           <FileSpreadsheet className="w-4 h-4 text-pma-acid" />
+           <span>📊 VER RELATÓRIOS DIÁRIOS</span>
+         </button>
+       </div>
 
       {/* CARD DE GESTÃO DO LOCADOR (SE O VEÍCULO ESTIVER ALUGADO PARA TERCEIROS) */}
       {vehicle.usageMode === 'RENTAL_OWNER' && (
-        <div className="bg-[#0B0D13] border border-purple-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
+        <div className="bg-pma-card border border-purple-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
           <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 bg-purple-400 rounded-full animate-ping"></span>
@@ -230,7 +230,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
       {/* CARD DE MONITORAMENTO INTELIGENTE DA PARCELA DO FINANCIAMENTO (FOCO DO MÊS) */}
       {targetFinancingTotal > 0 ? (
-        <div className="bg-[#0B0D13] border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
+        <div className="bg-pma-card border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
           <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 bg-amber-400 rounded-full animate-ping"></span>
@@ -289,10 +289,10 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
                 Para quitar os <strong className="text-white">R$ {remainingFinancingAmount.toFixed(2)}</strong> restantes até o dia <strong className="text-white">{finDueDay}</strong>, você precisa acumular de Lucro Líquido:
               </p>
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <span className="bg-[#D4FF00] text-black font-black px-3 py-1 text-xs">
+                <span className="bg-pma-acid text-black font-black px-3 py-1 text-xs">
                   💰 R$ {requiredDailyNetProfitForFinancing.toFixed(2)} / dia de Lucro Líquido
                 </span>
-                <span className="bg-black text-[#D4FF00] border border-[#D4FF00]/40 font-bold px-3 py-1 text-xs">
+                <span className="bg-pma-dark text-pma-acid border border-pma-acid/40 font-bold px-3 py-1 text-xs">
                   🚖 ~{requiredTripsPerDayForFinancing} corridas/dia (Média R$ {estimatedNetPerTrip.toFixed(2)}/corrida)
                 </span>
               </div>
@@ -300,7 +300,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </div>
         </div>
       ) : (
-        <div className="bg-[#0B0D13] border border-emerald-500/60 rounded-none p-4 shadow-2xl flex items-center justify-between text-left">
+        <div className="bg-pma-card border border-emerald-500/60 rounded-none p-4 shadow-2xl flex items-center justify-between text-left">
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></span>
             <div>
@@ -334,19 +334,19 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       )}
 
       {/* Top Banner: Status Operacional HUD */}
-      <div className="bg-[#0B0D13] border border-white/10 rounded-none p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4FF00]/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="bg-pma-card border border-white/10 rounded-none p-6 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-pma-acid/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#D4FF00] flex items-center gap-1.5 bg-[#D4FF00]/10 border border-[#D4FF00]/30 px-3 py-1">
-            <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-pulse"></span>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-pma-acid flex items-center gap-1.5 bg-pma-acid/10 border border-pma-acid/30 px-3 py-1">
+            <span className="w-2 h-2 rounded-full bg-pma-acid animate-pulse"></span>
             LUCRO REAL LÍQUIDO (HOJE)
           </span>
           <button
             onClick={() => setShowAutoSyncModal(true)}
-            className="bg-black text-[#D4FF00] border border-[#D4FF00]/40 text-[10px] font-mono font-bold px-3 py-1.5 rounded-none flex items-center gap-1.5 uppercase tracking-wider hover:border-[#D4FF00] transition-colors"
+            className="bg-pma-dark text-pma-acid border border-pma-acid/40 text-[10px] font-mono font-bold px-3 py-1.5 rounded-none flex items-center gap-1.5 uppercase tracking-wider hover:border-pma-acid transition-colors"
           >
-            <Radio className="w-3 h-3 text-[#D4FF00] animate-pulse" />
+            <Radio className="w-3 h-3 text-pma-acid animate-pulse" />
             AUTO-SYNC UBER/99
           </button>
         </div>
@@ -391,7 +391,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       </div>
 
       {/* Widget Financiamento / Aluguel & Apólice de Seguro */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-sm text-white flex items-center gap-2">
             <Building2 className="w-4 h-4 text-amber-400" />
@@ -431,10 +431,10 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </div>
       </div>
 
-      {/* Métricas Avançadas R$/KM e R$/Hora */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Card R$ / KM */}
-        <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-4 shadow-xl relative overflow-hidden">
+       {/* Métricas Avançadas R$/KM e R$/Hora */}
+       <div className="grid grid-cols-2 gap-3">
+         {/* Card R$ / KM */}
+         <div className="bg-pma-card border border-white/10 rounded-3xl p-4 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
               <Route className="w-3.5 h-3.5 text-driver-profit" /> R$ / KM RODADO
@@ -453,8 +453,8 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </p>
         </div>
 
-        {/* Card R$ / Hora */}
-        <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-4 shadow-xl relative overflow-hidden">
+         {/* Card R$ / Hora */}
+         <div className="bg-pma-card border border-white/10 rounded-3xl p-4 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-amber-400" /> R$ / HORA RODADA
@@ -475,15 +475,15 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       </div>
 
       {/* Card de Metas Diárias e Acumuladas do Mês (Estilo PMA Acid Neon) */}
-      <div className="bg-[#0B0D13] border border-white/10 rounded-none p-6 shadow-xl space-y-4">
+      <div className="bg-pma-card border border-white/10 rounded-none p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#D4FF00] bg-[#D4FF00]/10 border border-[#D4FF00]/30 px-3 py-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-[#D4FF00]" /> METAS DE OPERAÇÃO (Ticket R$ 11)
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-pma-acid bg-pma-acid/10 border border-pma-acid/30 px-3 py-1 flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-pma-acid" /> METAS DE OPERAÇÃO (Ticket R$ 11)
           </span>
 
           <button
             onClick={onOpenGoalSelector}
-            className="text-xs font-mono font-bold text-[#D4FF00] hover:text-[#b8de00] bg-black border border-[#D4FF00]/40 px-3 py-1 uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+            className="text-xs font-mono font-bold text-pma-acid hover:text-pma-acidHover bg-pma-dark border border-pma-acid/40 px-3 py-1 uppercase tracking-wider flex items-center gap-1.5 transition-colors"
           >
             🎯 Meta: {targetTrips} Corridas/Dia (Alterar)
           </button>
@@ -493,7 +493,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         <div className="space-y-2 pt-1 border-b border-white/10 pb-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">Escolha seu Perfil de Meta Diária:</span>
-            <span className="text-[11px] font-mono font-bold text-[#D4FF00] bg-[#D4FF00]/10 border border-[#D4FF00]/30 px-2.5 py-0.5">
+            <span className="text-[11px] font-mono font-bold text-pma-acid bg-pma-acid/10 border border-pma-acid/30 px-2.5 py-0.5">
               Meta: R$ {targetDailyRevenue.toFixed(2)}/dia
             </span>
           </div>
@@ -503,8 +503,8 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
               onClick={() => setGoalProfile('LEVE')}
               className={`p-3 text-xs font-black uppercase tracking-wider flex flex-col items-center transition-all ${
                 goalProfile === 'LEVE'
-                  ? 'bg-[#D4FF00] text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]'
-                  : 'bg-black text-slate-400 border border-white/10 hover:text-white'
+                  ? 'bg-pma-acid text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]'
+                  : 'bg-pma-dark text-slate-400 border border-white/10 hover:text-white'
               }`}
             >
               <span>🛡️ LEVE</span>
@@ -516,7 +516,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
               className={`p-3 text-xs font-black uppercase tracking-wider flex flex-col items-center transition-all ${
                 goalProfile === 'MODERADA'
                   ? 'bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.3)]'
-                  : 'bg-black text-slate-400 border border-white/10 hover:text-white'
+                  : 'bg-pma-dark text-slate-400 border border-white/10 hover:text-white'
               }`}
             >
               <span>⚡ MODERADA</span>
@@ -528,7 +528,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
               className={`p-3 text-xs font-black uppercase tracking-wider flex flex-col items-center transition-all ${
                 goalProfile === 'AGRESSIVA'
                   ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                  : 'bg-black text-slate-400 border border-white/10 hover:text-white'
+                  : 'bg-pma-dark text-slate-400 border border-white/10 hover:text-white'
               }`}
             >
               <span>🚀 AGRESSIVA</span>
@@ -536,7 +536,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             </button>
           </div>
 
-          <p className="text-[11px] text-[#D4FF00] font-mono pt-1 leading-relaxed">
+          <p className="text-[11px] text-pma-acid font-mono pt-1 leading-relaxed">
             {goalDescription}
           </p>
         </div>
@@ -589,7 +589,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       </div>
 
       {/* Break-Even Progress Bar (Ponto de Equilíbrio Diário) */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <Gauge className={`w-5 h-5 ${isBreakEvenPassed ? 'text-driver-profit' : 'text-driver-warning'}`} />
@@ -627,7 +627,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onOpenVoice}
-          className="bg-gradient-to-br from-emerald-950/80 to-slate-900 border border-emerald-800/60 p-4 rounded-3xl text-left hover:border-emerald-500 transition-all group shadow-lg"
+          className="bg-gradient-to-br from-emerald-950/80 to-pma-dark border border-emerald-800/60 p-4 rounded-3xl text-left hover:border-emerald-500 transition-all group shadow-lg"
         >
           <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Zap className="w-5 h-5" />
@@ -638,7 +638,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
         <button
           onClick={() => onNavigateToTab('flex')}
-          className="bg-gradient-to-br from-slate-900 to-amber-950/30 border border-amber-800/40 p-4 rounded-3xl text-left hover:border-amber-500 transition-all group shadow-lg"
+          className="bg-gradient-to-br from-pma-dark to-amber-950/30 border border-amber-800/40 p-4 rounded-3xl text-left hover:border-amber-500 transition-all group shadow-lg"
         >
           <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Car className="w-5 h-5" />
@@ -649,13 +649,13 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       </div>
 
       {/* Platform Breakdown Cards */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-extrabold text-sm text-white flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-driver-profit" />
+            <DollarSign className="w-4 h-4 text-pma-acid" />
             Ganhos por Plataforma (Hoje)
           </h2>
-          <button onClick={() => onNavigateToTab('shifts')} className="text-xs text-driver-accent font-bold hover:underline flex items-center">
+          <button onClick={() => onNavigateToTab('shifts')} className="text-xs text-pma-acid font-bold hover:underline flex items-center">
             Ver todas <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
@@ -713,7 +713,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       {/* Modal explicativo do Auto-Sync Uber/99 */}
       {showAutoSyncModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl text-left">
+          <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl text-left">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2">
               <Radio className="w-6 h-6 animate-pulse" />
             </div>

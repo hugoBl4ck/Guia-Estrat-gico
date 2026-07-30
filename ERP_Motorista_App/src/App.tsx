@@ -71,26 +71,32 @@ export function App() {
   const [isAddEarningOpen, setIsAddEarningOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [earningToEdit, setEarningToEdit] = useState<Earning | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof window !== 'undefined' ? navigator.onLine : true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [lastSyncStatus, setLastSyncStatus] = useState('Nenhuma sincronização ainda');
 
   // Efeito para salvar o estado financeiro no Repositório a cada mutação
   useEffect(() => {
     try {
-      repository.saveData(state);
+      repository.saveData(state, userEmail);
+      if (userEmail) {
+        setPendingSyncCount(repository.getPendingSyncCount(userEmail));
+      }
     } catch (e) {
       console.warn('Erro ao salvar estado:', e);
     }
-  }, [state]);
+  }, [state, userEmail]);
 
   // Efeito para sincronização e busca inicial automática no Supabase Cloud (com Merge por ID)
   useEffect(() => {
+    if (!userEmail) return;
     repository.fetchFromCloud(userEmail).then((cloudData) => {
       if (cloudData) {
-        // Merge Inteligente por ID de Despesas (Nuvem carrega primeiro, Estado local atualizado substitui)
         const expensesMap = new Map();
         (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
         (state.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
 
-        // Merge Inteligente por ID de Ganhos
         const earningsMap = new Map();
         (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
         (state.earnings || []).forEach((e) => earningsMap.set(e.id, e));
@@ -106,6 +112,31 @@ export function App() {
       }
     });
   }, [userEmail]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const flushQueue = async () => {
+      if (!userEmail || !isOnline) return;
+      setIsSyncing(true);
+      const success = await repository.flushSyncQueue(userEmail);
+      setIsSyncing(false);
+      setPendingSyncCount(repository.getPendingSyncCount(userEmail));
+      setLastSyncStatus(success ? 'Sincronizado com sucesso' : 'Aguardando próximo envio');
+    };
+    flushQueue();
+  }, [userEmail, isOnline]);
 
   // Efeitos para persistência contínua de veículos
   useEffect(() => {
@@ -310,11 +341,17 @@ export function App() {
   };
 
   const handleSyncCloud = async () => {
-    const ok = await repository.syncWithCloud(state, userEmail);
-    if (ok) {
+    if (!userEmail) return;
+    setIsSyncing(true);
+    const success = await repository.flushSyncQueue(userEmail);
+    setIsSyncing(false);
+    setPendingSyncCount(repository.getPendingSyncCount(userEmail));
+    setLastSyncStatus(success ? 'Sincronização manual concluída' : 'Falha na sincronização manual');
+
+    if (success) {
       alert(`Banco de dados de corridas e despesas transferido e sincronizado com sucesso para ${userEmail}!`);
     } else {
-      alert('Sincronização salva no armazenamento local.');
+      alert('Sincronização salva no armazenamento local ou pendente.');
     }
   };
 
@@ -336,7 +373,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-oled-base text-slate-100 flex flex-col antialiased relative">
+    <div className="min-h-screen bg-pma-dark text-slate-100 flex flex-col antialiased relative">
       {/* Top Navbar com Marca GiroCerto ERP */}
       <Navbar
         vehicles={vehicles}
@@ -350,6 +387,11 @@ export function App() {
         onRestoreMockData={handleRestoreMockData}
         isDataCleared={state.isDataCleared}
         userEmail={userEmail}
+        isOnline={isOnline}
+        pendingSyncCount={pendingSyncCount}
+        isSyncing={isSyncing}
+        lastSyncStatus={lastSyncStatus}
+        onSyncCloud={handleSyncCloud}
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={() => {
           localStorage.removeItem('erp_driver_user_email');

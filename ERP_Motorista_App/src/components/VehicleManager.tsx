@@ -162,7 +162,7 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Car className="w-6 h-6 text-driver-accent" />
+            <Car className="w-6 h-6 text-pma-acid" />
             Gestão de Frota & Veículos
           </h2>
           <p className="text-xs text-slate-400">Cadastre múltiplos veículos com CPK e custos dinâmicos</p>
@@ -185,9 +185,9 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
           return (
             <div
               key={v.id}
-              className={`bg-oled-card border p-5 rounded-3xl space-y-3 transition-all shadow-xl ${
-                isActive ? 'border-emerald-500 glow-accent' : 'border-oled-cardBorder opacity-90'
-              }`}
+               className={`bg-pma-card border p-5 rounded-3xl space-y-3 transition-all shadow-xl ${
+                 isActive ? 'border-emerald-500 glow-accent' : 'border-white/10 opacity-90'
+               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -281,7 +281,7 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
       {/* Modal Cadastro / Edição de Veículo */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left max-h-[90vh] overflow-y-auto">
+          <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"

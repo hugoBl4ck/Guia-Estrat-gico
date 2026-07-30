@@ -77,7 +77,7 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
       </div>
 
       {/* TABELA 1: Demonstrativo de Resultados DRE */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
@@ -139,7 +139,7 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
       </div>
 
       {/* TABELA 2: Plano de Retenção dos Caixas Virtuais (Provisão por Corrida) */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
             <Layers className="w-4 h-4 text-purple-400" />
@@ -232,7 +232,7 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
       </div>
 
       {/* TABELA 3: Apuração dos Centros de Custos ERP */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-400" />
@@ -309,7 +309,7 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
       </div>
 
       {/* TABELA 3: Apuração de Isenção Fiscal MEI */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />

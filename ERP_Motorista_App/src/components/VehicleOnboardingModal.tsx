@@ -80,7 +80,7 @@ export const VehicleOnboardingModal: React.FC<VehicleOnboardingModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-oled-card border border-emerald-800/80 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left cursor-default max-h-[90vh] overflow-y-auto"
+        className="bg-pma-card border border-emerald-800/80 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left cursor-default max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}

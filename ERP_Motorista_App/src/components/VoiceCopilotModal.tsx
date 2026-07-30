@@ -251,7 +251,7 @@ export const VoiceCopilotModal: React.FC<VoiceCopilotModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative shadow-2xl cursor-default"
+        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative shadow-2xl cursor-default"
       >
         <button
           onClick={onClose}

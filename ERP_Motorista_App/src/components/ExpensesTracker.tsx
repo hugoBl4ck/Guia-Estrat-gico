@@ -141,7 +141,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
       </div>
 
       {/* Expenses History List com Botão de Exclusão e Origem */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Histórico de Despesas Registradas</h3>
           <span className="text-xs text-slate-400">{expenses.length} lançamentos</span>
@@ -234,7 +234,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
+            className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
           >
             <button
               type="button"

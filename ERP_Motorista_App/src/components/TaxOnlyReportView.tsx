@@ -56,7 +56,7 @@ export const TaxOnlyReportView: React.FC<TaxOnlyReportViewProps> = ({
       </div>
 
       {/* Tabela de Isenção Simplificada */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
           <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
           Demonstrativo de Isenção do Imposto de Renda
@@ -91,7 +91,7 @@ export const TaxOnlyReportView: React.FC<TaxOnlyReportViewProps> = ({
       </div>
 
       {/* Limite Anual do MEI (R$ 81.000,00) */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <div className="flex justify-between items-center text-xs font-bold text-white">
           <span className="flex items-center gap-1.5">
             <Building2 className="w-4 h-4 text-blue-400" /> Limite Anual MEI (R$ 81.000,00):
@@ -112,7 +112,7 @@ export const TaxOnlyReportView: React.FC<TaxOnlyReportViewProps> = ({
       </div>
 
       {/* Guia DAS-SIMEI */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-2">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-2">
         <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
           <Building2 className="w-4 h-4 text-blue-400" />
           Guia Mensal DAS-SIMEI

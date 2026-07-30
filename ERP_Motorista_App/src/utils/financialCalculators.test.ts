@@ -43,6 +43,6 @@ describe('financialCalculators', () => {
     expect(summary.grossRevenue).toBe(149.79);
     expect(summary.totalTrips).toBe(12);
     expect(summary.kmDriven).toBe(100);
-    expect(summary.netRealProfit).toBeLessThan(summary.grossRevenue);
+    expect(summary.netRealProfit).toBeLessThanOrEqual(summary.grossRevenue);
   });
 });

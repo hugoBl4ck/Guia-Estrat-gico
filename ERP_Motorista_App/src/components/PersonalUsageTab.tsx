@@ -84,7 +84,7 @@ export const PersonalUsageTab: React.FC<PersonalUsageTabProps> = ({
       </div>
 
       {/* Info Card: Como funciona a segregação no ERP */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-2 text-xs text-slate-300">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-2 text-xs text-slate-300">
         <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           Por que separar uso pessoal no ERP?
@@ -98,7 +98,7 @@ export const PersonalUsageTab: React.FC<PersonalUsageTabProps> = ({
       </div>
 
       {/* History List */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-3">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Histórico de Uso Particular</h3>
 
         {personalLogs.length === 0 ? (
@@ -129,7 +129,7 @@ export const PersonalUsageTab: React.FC<PersonalUsageTabProps> = ({
       {/* Modal Novo Deslocamento Particular */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+           <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
             <h3 className="font-extrabold text-lg text-white">Novo Deslocamento Particular</h3>
 
             <form onSubmit={handleSubmit} className="space-y-3">

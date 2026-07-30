@@ -78,7 +78,7 @@ export const NotificationDraftModal: React.FC<NotificationDraftModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-oled-card border border-oled-cardBorder rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left cursor-default"
+        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left cursor-default"
       >
         
         <button

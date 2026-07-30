@@ -64,7 +64,7 @@ export const TaxReportModal: React.FC<TaxReportModalProps> = ({
       </div>
 
       {/* Tax Exemption Card */}
-      <div className="bg-oled-card border border-oled-cardBorder rounded-3xl p-5 shadow-xl space-y-4">
+       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
             <ShieldCheck className="w-4 h-4" />
