@@ -14,7 +14,11 @@ import {
   DollarSign,
   Fuel,
   Wrench,
-  Award
+  Award,
+  Layers,
+  Building2,
+  Clock,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -33,7 +37,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
   
   const totalEnergyCost = monthlyKm * energyCostPerKm;
   const totalMaintCost = monthlyKm * maintenanceCostPerKm;
-  const fixedFinancingCost = 3086.58; // Parcela exemplo
+  const fixedFinancingCost = 3086.58; // Parcela Banco Santander
   const fixedAppCost = 80.00;
   
   const totalCosts = totalEnergyCost + totalMaintCost + fixedFinancingCost + fixedAppCost;
@@ -41,306 +45,410 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
   const realNetMarginPercent = Math.round((realNetProfit / (monthlyRevenue || 1)) * 100);
 
   return (
-    <div className="min-h-screen bg-oled-base text-slate-100 font-sans selection:bg-emerald-500 selection:text-black pb-20">
+    <div className="min-h-screen bg-[#07080C] text-slate-100 font-sans selection:bg-[#D4FF00] selection:text-black pb-28 relative overflow-x-hidden">
       
-      {/* 1. Header / Navbar Superior */}
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+      {/* Linhas de Grade de Fundo (Estilo PMA Club) */}
+      <div className="fixed inset-0 grid grid-cols-6 pointer-events-none opacity-[0.04]">
+        <div className="border-r border-white"></div>
+        <div className="border-r border-white"></div>
+        <div className="border-r border-white"></div>
+        <div className="border-r border-white"></div>
+        <div className="border-r border-white"></div>
+        <div></div>
+      </div>
+
+      {/* 1. Header / Navbar Superior Minimalista estilo PMA */}
+      <header className="sticky top-0 z-50 bg-[#07080C]/90 backdrop-blur-xl border-b border-white/10 px-6 lg:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={onOpenAuth}>
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-950/60">
-            <Car className="w-5 h-5 text-black font-extrabold" />
+          <div className="w-8 h-8 rounded-none bg-[#D4FF00] flex items-center justify-center shadow-[0_0_15px_rgba(212,255,0,0.3)]">
+            <Car className="w-5 h-5 text-black font-black" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-black text-lg text-white tracking-tight">GiroCerto</span>
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">PRO</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium">ERP para Motoristas de Aplicativo</p>
+            <span className="font-black text-xl text-white tracking-widest uppercase">GIROCERTO<span className="text-[#D4FF00]">.ERP</span></span>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center space-x-6 text-xs font-semibold text-slate-300">
-          <a href="#recursos" className="hover:text-emerald-400 transition-colors">Recursos</a>
-          <a href="#caixas" className="hover:text-emerald-400 transition-colors">Caixas Virtuais</a>
-          <a href="#simulador" className="hover:text-emerald-400 transition-colors">Simulador de Lucro</a>
+        <div className="hidden md:flex items-center space-x-8 text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
+          <a href="#verdades" className="hover:text-[#D4FF00] transition-colors">01. Verdades</a>
+          <a href="#ecossistema" className="hover:text-[#D4FF00] transition-colors">02. Ecossistema</a>
+          <a href="#simulador" className="hover:text-[#D4FF00] transition-colors">03. Simulador</a>
+          <a href="#acesso" className="hover:text-[#D4FF00] transition-colors">04. Acesso</a>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <button
             onClick={onOpenAuth}
-            className="text-xs font-bold text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors"
+            className="text-xs font-mono font-bold text-slate-300 hover:text-white uppercase tracking-wider transition-colors"
           >
             Entrar
           </button>
           <button
             onClick={onOpenAuth}
-            className="bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5"
+            className="bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-xs px-5 py-2.5 rounded-none uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_20px_rgba(212,255,0,0.25)] active:scale-95"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Criar Conta Grátis
+            <span>ENTRAR</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* 2. Hero Section */}
-      <section className="relative px-4 lg:px-8 pt-12 pb-20 max-w-6xl mx-auto text-center space-y-8">
-        {/* Glow de fundo */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      {/* 2. Hero Section (PMA Protocol Style) */}
+      <section className="relative px-6 lg:px-12 pt-20 pb-24 max-w-7xl mx-auto space-y-10">
+        
+        {/* Raio de Luz Laser Horizontal Acid Neon */}
+        <div className="absolute top-1/3 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4FF00]/40 to-transparent pointer-events-none shadow-[0_0_25px_#D4FF00]"></div>
 
-        {/* Badge Eyebrow */}
-        <div className="inline-flex items-center gap-2 bg-emerald-950/60 border border-emerald-800/80 px-4 py-1.5 rounded-full text-emerald-400 text-xs font-bold shadow-inner">
-          <Award className="w-3.5 h-3.5 text-emerald-400" />
-          O ERP nº 1 para Motoristas de Uber, 99 & Veículos EV (BYD / Combustão)
+        {/* Badge Eyebrow Protocolo */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">
+            P R O T O C O L O &nbsp; D E &nbsp; A S C E N S Ã O &nbsp; N A &nbsp; R U A
+          </p>
         </div>
 
-        {/* Título Principal */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight max-w-4xl mx-auto leading-tight">
-          Nunca Mais Pague Para <br className="hidden sm:block" />
-          <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-            Trabalhar no Aplicativo.
-          </span>
-        </h1>
+        {/* Título Principal Brutal PMA */}
+        <div className="space-y-6">
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-white tracking-tighter uppercase leading-[0.9]">
+            CHEGOU O <br />
+            <span className="text-[#D4FF00] drop-shadow-[0_0_30px_rgba(212,255,0,0.2)]">MELHOR MOMENTO</span> <br />
+            DA SUA VIDA DE MOTORISTA.
+          </h1>
 
-        {/* Subtítulo */}
-        <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
-          Descubra o <strong className="text-slate-200">Custo por KM (CPK) exato</strong> do seu veículo, separe automaticamente a parcela do carro e saiba com precisão quanto sobra limpo na sua conta bancária.
-        </p>
+          <p className="text-base sm:text-lg text-slate-400 font-medium max-w-2xl leading-relaxed">
+            A hora de acessar o <strong className="text-white font-bold underline decoration-[#D4FF00] decoration-2">lucro limpo no bolso</strong> que você planejou pro futuro. Finanças sem ilusão, metas diárias ajustadas, retenção em caixas virtuais e controle absoluto do seu volante.
+          </p>
+        </div>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        {/* Botões de Ação Hero */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
           <button
             onClick={onOpenAuth}
-            className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm px-8 py-4 rounded-2xl shadow-xl shadow-emerald-950 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-sm px-8 py-4 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95"
           >
-            Começar a Usar Grátis Agora
-            <ArrowRight className="w-4 h-4 text-black" />
+            <span>QUERO O ACESSO AGORA</span>
+            <ArrowUpRight className="w-5 h-5 stroke-[3]" />
           </button>
 
           <a
-            href="#simulador"
-            className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-slate-200 font-extrabold text-sm px-6 py-4 rounded-2xl border border-slate-800 flex items-center justify-center gap-2 transition-all"
+            href="#verdades"
+            className="border border-white/20 hover:border-white text-white font-mono text-xs px-6 py-4 rounded-none uppercase tracking-widest text-center transition-colors"
           >
-            <Calculator className="w-4 h-4 text-emerald-400" />
-            Simular Meu Lucro Real
+            ENTENDA POR QUÊ ↓
           </a>
         </div>
 
-        {/* Preview Card Interativo do Dashboard */}
-        <div className="pt-8 max-w-4xl mx-auto">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6 text-left relative overflow-hidden backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                <span className="text-xs font-mono text-slate-400 pl-2">Painel de Controle Financeiro em Tempo Real</span>
-              </div>
-              <span className="text-xs font-bold text-emerald-400 bg-emerald-950 border border-emerald-800 px-3 py-1 rounded-full">
-                ● AO VIVO (BYD Dolphin Mini 2026)
-              </span>
-            </div>
-
-            {/* Grid de Metricas do Dashboard */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-black/60 border border-slate-800 rounded-2xl p-4">
-                <span className="text-[11px] font-bold uppercase text-slate-400 block mb-1">Break-Even Diário</span>
-                <p className="text-2xl font-black text-emerald-400">R$ 115,54 / dia</p>
-                <p className="text-[10px] text-slate-400 mt-1">Parcela Santander + Seguro + App</p>
-              </div>
-
-              <div className="bg-black/60 border border-slate-800 rounded-2xl p-4">
-                <span className="text-[11px] font-bold uppercase text-slate-400 block mb-1">Custo por KM (CPK Real)</span>
-                <p className="text-2xl font-black text-cyan-400">R$ 0,38 / km</p>
-                <p className="text-[10px] text-slate-400 mt-1">Recarga Coelba + Manutenção + Depreciação</p>
-              </div>
-
-              <div className="bg-black/60 border border-slate-800 rounded-2xl p-4">
-                <span className="text-[11px] font-bold uppercase text-slate-400 block mb-1">Caixa Financiamento</span>
-                <p className="text-2xl font-black text-purple-400">35% Retido</p>
-                <p className="text-[10px] text-slate-400 mt-1">Acumulando R$ 3.086,58 para a Parcela</p>
-              </div>
-            </div>
+        {/* Prova Social Rápida */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-12 border-t border-white/10 font-mono text-xs">
+          <div>
+            <p className="text-[#D4FF00] text-2xl font-black">R$ 3.086,58</p>
+            <p className="text-slate-500 uppercase text-[10px] tracking-wider">Parcela Santander Protegida</p>
+          </div>
+          <div>
+            <p className="text-[#D4FF00] text-2xl font-black">35%</p>
+            <p className="text-slate-500 uppercase text-[10px] tracking-wider">Retenção Diária no Caixa</p>
+          </div>
+          <div>
+            <p className="text-[#D4FF00] text-2xl font-black">3 METAS</p>
+            <p className="text-slate-500 uppercase text-[10px] tracking-wider">Leve / Moderada / Agressiva</p>
+          </div>
+          <div>
+            <p className="text-[#D4FF00] text-2xl font-black">100%</p>
+            <p className="text-slate-500 uppercase text-[10px] tracking-wider">Isenção Fiscal MEI Calibrada</p>
           </div>
         </div>
       </section>
 
-      {/* 3. Recursos Principais */}
-      <section id="recursos" className="px-4 lg:px-8 py-16 max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-3">
-          <h2 className="text-3xl font-extrabold text-white">4 Pilares da Gestão para Motoristas</h2>
-          <p className="text-sm text-slate-400 max-w-xl mx-auto">
-            Esqueça as planilhas complexas ou anotações em papel. O GiroCerto ERP automatiza todo o controle financeiro para você focar em dirigir.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 space-y-3 hover:border-emerald-500/40 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400">
-              <Calculator className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Calculadora Inteligente de CPK</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Cálculo exato de Custo por Quilômetro Rodado para carros elétricos (BYD, GWM) e a combustão. Separe os custos de recarga residencial (Coelba), eletropostos ou combustível.
-            </p>
+      {/* 3. Section 1: "As Verdades Brutais da Rua" (Problem Section PMA Style) */}
+      <section id="verdades" className="py-24 border-t border-white/10 bg-[#0B0D13] relative">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12">
+          
+          <div className="space-y-2">
+            <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">01 / AS VERDADES BRUTAIS</span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight">
+              SEM MÉTODO, VOCÊ É ESCRAVO DA CORRIDA.
+            </h2>
           </div>
 
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 space-y-3 hover:border-purple-500/40 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400">
-              <Wallet className="w-6 h-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Verdade 01 */}
+            <div className="p-8 bg-[#07080C] border border-white/10 space-y-4 relative overflow-hidden group hover:border-[#D4FF00]/50 transition-colors">
+              <span className="font-mono text-3xl font-black text-[#D4FF00]">01.</span>
+              <h3 className="text-xl font-bold text-white uppercase">O Mito do Faturamento Bruto</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Faturar R$ 6.000,00 no mês sem descontar a parcela do financiamento Santander (R$ 3.086,58), o seguro Aliro e a recarga elétrica Coelba é uma ilusão que destrói a sua saúde financeira.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-white">Caixas Virtuais (Buckets)</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Retenção automática em 5 caixas: **35% Financiamento/Aluguel**, **40% Lucro Livre**, **10% Manutenção**, **10% Depreciação** e **5% Mensalidade do App**.
-            </p>
-          </div>
 
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 space-y-3 hover:border-cyan-500/40 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400">
-              <TrendingUp className="w-6 h-6" />
+            {/* Verdade 02 */}
+            <div className="p-8 bg-[#07080C] border border-white/10 space-y-4 relative overflow-hidden group hover:border-[#D4FF00]/50 transition-colors">
+              <span className="font-mono text-3xl font-black text-[#D4FF00]">02.</span>
+              <h3 className="text-xl font-bold text-white uppercase">A Armadilha do Boleto sem Reserva</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                O boleto do carro vence dia 16 e se você não retiver 35% de cada corrida todo dia em um Caixa Virtual dedicado, no dia 15 bate o desespero de onde tirar o dinheiro.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-white">Indicador de Break-Even Diário</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Saiba em tempo real a partir de qual corrida a parcela do seu carro e os custos fixos do dia foram pagos. O velocímetro acende em verde indicando Lucro Puro.
-            </p>
-          </div>
 
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 space-y-3 hover:border-amber-500/40 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-amber-950 border border-amber-800 flex items-center justify-center text-amber-400">
-              <Shield className="w-6 h-6" />
+            {/* Verdade 03 */}
+            <div className="p-8 bg-[#07080C] border border-white/10 space-y-4 relative overflow-hidden group hover:border-[#D4FF00]/50 transition-colors">
+              <span className="font-mono text-3xl font-black text-[#D4FF00]">03.</span>
+              <h3 className="text-xl font-bold text-white uppercase">O Custo Oculto da Rodagem (CPK)</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Cada quilômetro rodado no BYD Dolphin Mini ou no carro a combustão tem um custo real de depreciação e desgaste de pneus. Não calcular o CPK é rodar no prejuízo sem saber.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-white">Lançamento de Recibos por Foto / OCR</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Tire foto da nota do posto ou comprovante de recarga e o ERP extrai automaticamente o valor, quantidade de kWh/litros e data do lançamento.
-            </p>
+
+            {/* Verdade 04 */}
+            <div className="p-8 bg-[#07080C] border border-white/10 space-y-4 relative overflow-hidden group hover:border-[#D4FF00]/50 transition-colors">
+              <span className="font-mono text-3xl font-black text-[#D4FF00]">04.</span>
+              <h3 className="text-xl font-bold text-white uppercase">Falta de Metas Claras por Perfil</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Rodar sem saber se sua meta diária hoje é a 🛡️ LEVE (Ponto de Equilíbrio), ⚡ MODERADA (Lucro Limpo) ou 🚀 AGRESSIVA (Amortização com 50% de desconto no juro) faz você parar cedo ou rodar exausto.
+              </p>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* 4. Simulador Interativo de Lucro Real */}
-      <section id="simulador" className="px-4 lg:px-8 py-16 max-w-4xl mx-auto space-y-8">
-        <div className="text-center space-y-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-3 py-1 rounded-full">
-            Simulador de Lucro Líquido
-          </span>
-          <h2 className="text-3xl font-extrabold text-white">Quanto Realmente Sobra no Seu Bolso?</h2>
-          <p className="text-xs text-slate-400">Ajuste os valores abaixo para simular o resultado mensal real do seu veículo</p>
+      {/* 4. Section 2: "O Ecossistema GiroCerto ERP" */}
+      <section id="ecossistema" className="py-24 border-t border-white/10 relative">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 space-y-12">
+          
+          <div className="space-y-2">
+            <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">02 / O ECOSSISTEMA ERP</span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight">
+              A FERRAMENTA DEFINITIVA DA SUA OPERAÇÃO.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            {/* Pilar 1 */}
+            <div className="p-8 bg-[#0B0D13] border border-white/10 space-y-4">
+              <div className="w-12 h-12 bg-[#D4FF00]/10 border border-[#D4FF00]/30 flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-[#D4FF00]" />
+              </div>
+              <h3 className="text-xl font-black text-white uppercase">5 Caixas Virtuais Automáticos</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Separação diária automática por corrida: 35% Santander, 40% Lucro Livre, 10% Manutenção, 10% Depreciação e 5% Mensalidade do App.
+              </p>
+            </div>
+
+            {/* Pilar 2 */}
+            <div className="p-8 bg-[#0B0D13] border border-white/10 space-y-4">
+              <div className="w-12 h-12 bg-[#D4FF00]/10 border border-[#D4FF00]/30 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-[#D4FF00]" />
+              </div>
+              <h3 className="text-xl font-black text-white uppercase">3 Perfis de Metas Diárias</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Alterne entre Meta Leve (Ponto de Equilíbrio), Moderada (Lucro no Bolso) e Agressiva (Amortização com ~50% de desconto no juro Santander).
+              </p>
+            </div>
+
+            {/* Pilar 3 */}
+            <div className="p-8 bg-[#0B0D13] border border-white/10 space-y-4">
+              <div className="w-12 h-12 bg-[#D4FF00]/10 border border-[#D4FF00]/30 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-[#D4FF00]" />
+              </div>
+              <h3 className="text-xl font-black text-white uppercase">Calculadora EV & CPK Real</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Comparativo de recarga em casa Coelba (R$ 1,21/kWh) vs Eletroposto (R$ 1,69/kWh) vs Combustão. Controle de custo por km com precisão cirúrgica.
+              </p>
+            </div>
+
+          </div>
         </div>
+      </section>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
-          {/* Seleção do Tipo de Veículo */}
-          <div className="flex items-center justify-center gap-4 border-b border-slate-800 pb-6">
-            <button
-              onClick={() => setIsElectric(true)}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all ${
-                isElectric
-                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
-                  : 'bg-black text-slate-400 border border-slate-800'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              Veículo Elétrico (BYD / GWM)
-            </button>
-            <button
-              onClick={() => setIsElectric(false)}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all ${
-                !isElectric
-                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
-                  : 'bg-black text-slate-400 border border-slate-800'
-              }`}
-            >
-              <Fuel className="w-4 h-4" />
-              Combustão / Flex
-            </button>
+      {/* 5. Section 3: Interactive Profit & CPK Simulator */}
+      <section id="simulador" className="py-24 border-t border-white/10 bg-[#0B0D13] relative">
+        <div className="max-w-5xl mx-auto px-6 lg:px-12 space-y-10">
+          
+          <div className="text-center space-y-3">
+            <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">03 / SIMULADOR INTERATIVO</span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight">
+              CALCULE O SEU LUCRO LIMPO REAL.
+            </h2>
+            <p className="text-xs text-slate-400 max-w-xl mx-auto">
+              Simule o seu faturamento mensal e veja a mágica do ERP descontando financiamento, recargas e manutenção.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Range 1: Faturamento Bruto Mensal */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-300">Faturamento Mensal Bruto:</span>
-                <span className="text-emerald-400 font-mono">R$ {monthlyRevenue.toLocaleString('pt-BR')}</span>
-              </div>
-              <input
-                type="range"
-                min="2000"
-                max="15000"
-                step="500"
-                value={monthlyRevenue}
-                onChange={(e) => setMonthlyRevenue(Number(e.target.value))}
-                className="w-full accent-emerald-500 bg-black rounded-lg cursor-pointer"
-              />
+          <div className="p-8 bg-[#07080C] border border-white/15 space-y-8 shadow-2xl">
+            
+            {/* Seletor Tipo de Veículo */}
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setIsElectric(true)}
+                aria-pressed={isElectric}
+                className={`px-6 py-3 font-mono font-bold text-xs uppercase transition-all ${
+                  isElectric ? 'bg-[#D4FF00] text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]' : 'bg-white/5 text-slate-400 border border-white/10'
+                }`}
+              >
+                ⚡ Elétrico (BYD Dolphin Mini)
+              </button>
+
+              <button
+                onClick={() => setIsElectric(false)}
+                aria-pressed={!isElectric}
+                className={`px-6 py-3 font-mono font-bold text-xs uppercase transition-all ${
+                  !isElectric ? 'bg-[#D4FF00] text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]' : 'bg-white/5 text-slate-400 border border-white/10'
+                }`}
+              >
+                ⛽ Combustão (Gasolina / Flex)
+              </button>
             </div>
 
-            {/* Range 2: KM Rodados no Mês */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-300">Quilometragem Rodada no Mês:</span>
-                <span className="text-cyan-400 font-mono">{monthlyKm.toLocaleString('pt-BR')} km</span>
+            {/* Sliders */}
+            <div className="space-y-6">
+              
+              {/* Slider 1: Faturamento Mensal */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-mono font-bold">
+                  <span className="text-slate-400 uppercase">Faturamento Bruto Mensal:</span>
+                  <span className="text-[#D4FF00] text-base">R$ {monthlyRevenue.toLocaleString('pt-BR')}</span>
+                </div>
+                <input
+                  type="range"
+                  min="3000"
+                  max="12000"
+                  step="500"
+                  value={monthlyRevenue}
+                  onChange={(e) => setMonthlyRevenue(Number(e.target.value))}
+                  className="w-full h-2 bg-white/10 rounded-none appearance-none cursor-pointer accent-[#D4FF00]"
+                />
               </div>
-              <input
-                type="range"
-                min="1000"
-                max="8000"
-                step="250"
-                value={monthlyKm}
-                onChange={(e) => setMonthlyKm(Number(e.target.value))}
-                className="w-full accent-cyan-500 bg-black rounded-lg cursor-pointer"
-              />
+
+              {/* Slider 2: KM Rodado Mensal */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-mono font-bold">
+                  <span className="text-slate-400 uppercase">Quilometragem Mensal Rodada:</span>
+                  <span className="text-white text-base">{monthlyKm.toLocaleString('pt-BR')} km</span>
+                </div>
+                <input
+                  type="range"
+                  min="1500"
+                  max="6000"
+                  step="250"
+                  value={monthlyKm}
+                  onChange={(e) => setMonthlyKm(Number(e.target.value))}
+                  className="w-full h-2 bg-white/10 rounded-none appearance-none cursor-pointer accent-[#D4FF00]"
+                />
+              </div>
+
             </div>
+
+            {/* Quadro de Resultados */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-white/10 font-mono text-center">
+              <div className="p-4 bg-white/5 border border-white/10">
+                <p className="text-[10px] text-slate-500 uppercase">Custos Totais Mensais</p>
+                <p className="text-xl font-black text-rose-400 mt-1">-R$ {totalCosts.toFixed(2)}</p>
+              </div>
+
+              <div className="p-4 bg-[#D4FF00]/10 border border-[#D4FF00]/40">
+                <p className="text-[10px] text-[#D4FF00] uppercase font-bold">Lucro Limpo no Bolso</p>
+                <p className="text-2xl font-black text-white mt-1">R$ {realNetProfit.toFixed(2)}</p>
+              </div>
+
+              <div className="p-4 bg-white/5 border border-white/10">
+                <p className="text-[10px] text-slate-500 uppercase">Margem Real de Lucro</p>
+                <p className="text-xl font-black text-[#D4FF00] mt-1">{realNetMarginPercent}%</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Section 4: Pricing / Access Ultimatum PMA Style */}
+      <section id="acesso" className="py-24 border-t border-white/10 relative">
+        <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center space-y-10">
+          
+          <div className="space-y-3">
+            <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">04 / O ULTIMATO</span>
+            <h2 className="text-4xl sm:text-6xl font-black text-white uppercase tracking-tight">
+              ENTRA OU ARREGUE.
+            </h2>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto">
+              Acesse o GiroCerto ERP agora e assuma o controle total do seu faturamento e das suas metas.
+            </p>
           </div>
 
-          {/* Resultado da Simulação */}
-          <div className="p-6 bg-black/80 border border-slate-800 rounded-2xl space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center border-b border-slate-800 pb-4">
+          <div className="p-10 bg-[#0B0D13] border-2 border-[#D4FF00] space-y-8 relative shadow-[0_0_50px_rgba(212,255,0,0.15)] text-left">
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
               <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase block">Energia/Combustível</span>
-                <span className="text-sm font-extrabold text-rose-400 font-mono">-R$ {totalEnergyCost.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase block">Financiamento/Aluguel</span>
-                <span className="text-sm font-extrabold text-purple-400 font-mono">-R$ {fixedFinancingCost.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase block">Manutenção/Revisão</span>
-                <span className="text-sm font-extrabold text-amber-400 font-mono">-R$ {totalMaintCost.toFixed(2)}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase block">Mensalidade App</span>
-                <span className="text-sm font-extrabold text-slate-400 font-mono">-R$ {fixedAppCost.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-between pt-2">
-              <div>
-                <span className="text-xs text-slate-400 font-bold block">Lucro Real Líquido no Seu Bolso</span>
-                <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
-                  R$ {realNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="text-[10px] font-mono font-bold text-[#D4FF00] uppercase tracking-widest bg-[#D4FF00]/10 px-3 py-1 border border-[#D4FF00]/30">
+                  ACESSO PRO COMPLETO
                 </span>
+                <h3 className="text-2xl font-black text-white uppercase mt-2">GiroCerto ERP — Plano Vitalício</h3>
               </div>
-              <div className="mt-2 sm:mt-0 text-right">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Margem Real de Lucro</span>
-                <span className="text-lg font-black text-emerald-300 font-mono">{realNetMarginPercent}% Líquido</span>
+              <div className="text-right font-mono">
+                <p className="text-xs text-slate-400 uppercase">Apenas</p>
+                <p className="text-4xl font-black text-[#D4FF00]">R$ 0,00</p>
+                <p className="text-[10px] text-slate-500 uppercase">No período de testes de lançamento</p>
               </div>
             </div>
+
+            {/* Inclusões */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-medium text-slate-300">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                <span>5 Caixas Virtuais de Reserva Automáticos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                <span>3 Perfis de Metas Diárias (Leve / Moderada / Agressiva)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                <span>Calculadora EV Coelba vs Eletroposto vs Gasolina</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                <span>Sincronização Cloud Supabase em Segundo Plano</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                <span>Relatórios DRE Diários & Isenção Fiscal MEI</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                <span>Modo de Voz Hands-Free para Motoristas</span>
+              </div>
+            </div>
+
+            {/* CTA Final Acid Neon */}
+            <button
+              onClick={onOpenAuth}
+              className="w-full bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-base py-5 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.35)] active:scale-95"
+            >
+              <span>GARANTIR MEU ACESSO GRATUITO AGORA</span>
+              <ArrowRight className="w-5 h-5 stroke-[3]" />
+            </button>
+
           </div>
         </div>
       </section>
 
-      {/* 5. Banner de Encerramento e Chamada Final */}
-      <section className="px-4 lg:px-8 pt-12 max-w-4xl mx-auto text-center space-y-6">
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border border-emerald-800/60 rounded-3xl p-8 sm:p-12 space-y-6 shadow-2xl">
-          <h2 className="text-3xl font-black text-white">Pronto para Assumir o Controle das Suas Finanças?</h2>
-          <p className="text-sm text-slate-300 max-w-xl mx-auto">
-            Crie sua conta gratuitamente em menos de 1 minuto e comece a gerenciar suas corridas com inteligência de verdade.
+      {/* 7. Barra Flutuante Fixa Inferior (Sticky Bar PMA Style) */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#07080C]/95 backdrop-blur-md border-t border-white/15 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-3 h-3 rounded-full bg-[#D4FF00] animate-pulse"></div>
+          <p className="text-xs font-mono font-bold text-white uppercase hidden sm:block">
+            GIROCERTO ERP &nbsp;|&nbsp; O Sistema Definitivo para o Motorista de Aplicativo
           </p>
-          <button
-            onClick={onOpenAuth}
-            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm px-8 py-4 rounded-2xl shadow-xl shadow-emerald-500/20 transition-all inline-flex items-center gap-2 cursor-pointer"
-          >
-            Criar Minha Conta Grátis
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
-      </section>
+
+        <button
+          onClick={onOpenAuth}
+          className="bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-xs px-6 py-2.5 rounded-none uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(212,255,0,0.3)] active:scale-95 flex items-center gap-1"
+        >
+          <span>ACESSAR AGORA</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
     </div>
   );
 };
