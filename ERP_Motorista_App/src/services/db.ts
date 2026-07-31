@@ -113,7 +113,13 @@ export const dbService = {
   async loadVehiclesFromIndexedDB(): Promise<Vehicle[]> {
     try {
       const stored = await migrateFromLocalStorage<Vehicle[]>(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES);
-      return stored ?? VEHICLES_LIST;
+      if (!stored || !Array.isArray(stored) || stored.length === 0) {
+        return VEHICLES_LIST;
+      }
+      const vehicleMap = new Map<string, Vehicle>();
+      VEHICLES_LIST.forEach((v) => vehicleMap.set(v.id, v));
+      stored.forEach((v) => vehicleMap.set(v.id, v));
+      return Array.from(vehicleMap.values());
     } catch (error) {
       return VEHICLES_LIST;
     }

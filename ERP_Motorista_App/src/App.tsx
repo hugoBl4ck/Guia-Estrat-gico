@@ -24,6 +24,7 @@ import confetti from 'canvas-confetti';
 import { repository } from './services/repository';
 import { dbService } from './services/db';
 import { financeReducer } from './services/financeReducer';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
 import {
   VEHICLES_LIST,
@@ -91,68 +92,86 @@ export function App() {
 
   useEffect(() => {
     const loadIndexedDBState = async () => {
-      const storedEmail = await dbService.loadUserEmailFromIndexedDB();
-      if (storedEmail) {
-        setUserEmail(storedEmail);
-      }
+      try {
+        let storedEmail = await dbService.loadUserEmailFromIndexedDB();
 
-      const [dbData, dbVehicles, dbCurrentVehicle] = await Promise.all([
-        repository.loadDataAsync(),
-        repository.loadVehiclesAsync(),
-        repository.loadCurrentVehicleAsync()
-      ]);
-
-      let currentStateData = dbData || {
-        earnings: [],
-        expenses: [],
-        activeShift: null,
-        buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
-        personalLogs: [],
-        isDataCleared: true,
-      };
-
-      if (dbData) {
-        dispatch({ type: 'SET_ALL', payload: dbData });
-      }
-
-      if (dbVehicles && dbVehicles.length > 0) {
-        setVehicles(dbVehicles);
-      }
-
-      if (dbCurrentVehicle) {
-        setCurrentVehicle(dbCurrentVehicle);
-      }
-
-      // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
-      if (storedEmail) {
-        try {
-          const cloudData = await repository.fetchFromCloud(storedEmail);
-          if (cloudData) {
-            const expensesMap = new Map();
-            (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
-            (currentStateData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
-
-            const earningsMap = new Map();
-            (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
-            (currentStateData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
-
-            const mergedState = {
-              ...currentStateData,
-              earnings: Array.from(earningsMap.values()),
-              expenses: Array.from(expensesMap.values()),
-              buckets: cloudData.buckets || currentStateData.buckets,
-            };
-
-            dispatch({ type: 'SET_ALL', payload: mergedState });
-            await repository.saveData(mergedState, storedEmail);
+        // Se Supabase estiver configurado e houver uma sessão ativa de Auth, restaura a sessão
+        if (isSupabaseConfigured() && supabase) {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData?.session?.user?.email) {
+              storedEmail = sessionData.session.user.email;
+              await dbService.saveUserEmail(storedEmail);
+            }
+          } catch (sessionErr) {
+            console.warn('Erro ao checar sessão do Supabase:', sessionErr);
           }
-        } catch (cloudErr) {
-          console.warn('Falha na sincronização inicial Supabase:', cloudErr);
         }
-      }
 
-      setIsLoadingUserEmail(false);
-      isHydratedRef.current = true;
+        if (storedEmail) {
+          setUserEmail(storedEmail);
+        }
+
+        const [dbData, dbVehicles, dbCurrentVehicle] = await Promise.all([
+          repository.loadDataAsync(),
+          repository.loadVehiclesAsync(),
+          repository.loadCurrentVehicleAsync()
+        ]);
+
+        let currentStateData = dbData || {
+          earnings: [],
+          expenses: [],
+          activeShift: null,
+          buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
+          personalLogs: [],
+          isDataCleared: true,
+        };
+
+        if (dbData) {
+          dispatch({ type: 'SET_ALL', payload: dbData });
+        }
+
+        if (dbVehicles && dbVehicles.length > 0) {
+          setVehicles(dbVehicles);
+        }
+
+        if (dbCurrentVehicle) {
+          setCurrentVehicle(dbCurrentVehicle);
+        }
+
+        // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
+        if (storedEmail) {
+          try {
+            const cloudData = await repository.fetchFromCloud(storedEmail);
+            if (cloudData) {
+              const expensesMap = new Map();
+              (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+              (currentStateData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+
+              const earningsMap = new Map();
+              (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+              (currentStateData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+
+              const mergedState = {
+                ...currentStateData,
+                earnings: Array.from(earningsMap.values()),
+                expenses: Array.from(expensesMap.values()),
+                buckets: cloudData.buckets || currentStateData.buckets,
+              };
+
+              dispatch({ type: 'SET_ALL', payload: mergedState });
+              await repository.saveData(mergedState, storedEmail);
+            }
+          } catch (cloudErr) {
+            console.warn('Falha na sincronização inicial Supabase:', cloudErr);
+          }
+        }
+      } catch (err) {
+        console.error('Erro na inicialização do aplicativo:', err);
+      } finally {
+        setIsLoadingUserEmail(false);
+        isHydratedRef.current = true;
+      }
     };
 
     loadIndexedDBState();

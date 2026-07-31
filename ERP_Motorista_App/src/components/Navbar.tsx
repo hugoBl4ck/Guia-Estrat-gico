@@ -51,81 +51,87 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  // URL dinamica oficial do aplicativo (Vercel ou Local)
   const currentAppUrl = typeof window !== 'undefined' ? window.location.href : 'https://erp-motorista-app.vercel.app';
 
+  // Fallback seguro caso currentVehicle venha undefined no primeiro render
+  const safeVehicle = currentVehicle || vehicles[0] || {
+    id: 'default',
+    model: 'Veículo GiroCerto',
+    licensePlate: 'GC-2026',
+    isElectric: true,
+  };
+
   return (
-    <header className="bg-pma-dark border-b border-white/10 sticky top-0 z-40 px-4 py-3 shadow-md">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <header className="bg-pma-dark border-b border-white/10 sticky top-0 z-40 px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg">
+      <div className="max-w-7xl mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-4">
         
-        {/* Brand & Vehicle Selector */}
-        <div className="flex items-center space-x-4">
-          <GiroCertoLogo variant="horizontal" size="md" />
+        {/* Brand & Vehicle Selector Area */}
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+          <GiroCertoLogo variant="horizontal" size="sm" className="hidden sm:inline-flex" />
+          <GiroCertoLogo variant="horizontal" size="sm" showBadge={false} className="sm:hidden" />
           
           <button
             onClick={() => setShowMobileConnectModal(true)}
-            className="hidden sm:flex bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] font-bold px-2 py-0.5 rounded-full items-center gap-1 hover:border-emerald-400 transition-colors"
+            className="hidden lg:flex bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] font-bold px-2 py-0.5 rounded-full items-center gap-1 hover:border-emerald-400 transition-colors"
             title="Clique para ver o link do Celular"
           >
             <Smartphone className="w-3 h-3 text-emerald-400" />
             VER NO CELULAR
           </button>
 
-          <div className="h-8 w-px bg-white/10 hidden md:block" />
+          <div className="h-6 w-px bg-white/10 hidden md:block" />
 
-            {/* Vehicle Selector Dropdown & Config Button */}
-            <div className="relative mt-0.5 flex items-center gap-1.5">
-              <select
-                value={currentVehicle.id}
-                onChange={(e) => {
-                  const selected = vehicles.find((v) => v.id === e.target.value);
-                  if (selected) onSelectVehicle(selected);
-                }}
-                className="bg-slate-900 border border-slate-800 hover:border-emerald-500 text-xs text-slate-200 font-bold rounded-lg px-2 py-1 pr-6 outline-none appearance-none cursor-pointer"
-              >
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.isElectric ? '⚡ ' : '⛽ '}{v.model} ({v.licensePlate})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-[140px] top-1.5 pointer-events-none" />
-
-              {/* Botão de Configurar Veículo / Financiamento */}
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                title="Ajustar parcela do financiamento e tarifas"
-              >
-                <Settings className="w-3 h-3" />
-                Financiamento
-              </button>
-
-              {/* Botão de Limpar Lançamentos Temporários */}
-              <button
-                onClick={() => setShowResetConfirmModal(true)}
-                className="bg-slate-900 hover:bg-rose-950 text-rose-400 border border-slate-800 hover:border-rose-800 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                title="Limpar lançamentos mantendo os dados do veículo"
-              >
-                <Trash2 className="w-3 h-3" />
-                Limpar
-              </button>
-            </div>
+          {/* Vehicle Selector Dropdown com posicionamento dinâmico */}
+          <div className="relative inline-flex items-center">
+            <select
+              value={safeVehicle.id}
+              onChange={(e) => {
+                const selected = vehicles.find((v) => v.id === e.target.value);
+                if (selected) onSelectVehicle(selected);
+              }}
+              className="bg-slate-900 border border-slate-800 hover:border-emerald-500 text-xs text-slate-200 font-bold rounded-lg px-2.5 py-1.5 pr-7 outline-none appearance-none cursor-pointer max-w-[130px] sm:max-w-[210px] truncate shadow-inner"
+            >
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.isElectric ? '⚡ ' : '⛽ '}{v.model} ({v.licensePlate})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
           </div>
 
-        {/* Shift Live Indicator & Mobile Button */}
-        <div className="flex items-center space-x-2">
+          {/* Botão de Configurar Financiamento */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 text-[10px] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1 transition-colors shrink-0"
+            title="Ajustar parcela do financiamento e tarifas"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Financiamento</span>
+          </button>
+
+          {/* Botão de Limpar Lançamentos Temporários */}
+          <button
+            onClick={() => setShowResetConfirmModal(true)}
+            className="hidden sm:flex bg-slate-900 hover:bg-rose-950 text-rose-400 border border-slate-800 hover:border-rose-800 text-[10px] font-bold px-2 py-1.5 rounded-lg items-center gap-1 transition-colors shrink-0"
+            title="Limpar lançamentos mantendo os dados do veículo"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>Limpar</span>
+          </button>
+        </div>
+
+        {/* Shift Live Indicator & Action Control Buttons */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2">
           {activeShift && activeShift.status === 'OPEN' ? (
-            <div className="flex items-center space-x-2 bg-emerald-950/70 border border-emerald-800/80 px-2.5 py-1 rounded-xl">
-              <Radio className="w-4 h-4 text-driver-profit animate-pulse" />
-              <div className="text-left">
-                <p className="text-[9px] font-bold uppercase text-emerald-400 tracking-wider">Em Rodagem</p>
-              </div>
+            <div className="flex items-center space-x-1.5 bg-emerald-950/80 border border-emerald-800/80 px-2 py-1 rounded-xl">
+              <Radio className="w-3.5 h-3.5 text-driver-profit animate-pulse shrink-0" />
+              <span className="text-[9px] font-bold uppercase text-emerald-400 tracking-wider hidden xs:inline">Em Rodagem</span>
 
               {onEndShift && (
                 <button
                   onClick={onEndShift}
-                  className="bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors ml-1"
+                  className="bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors ml-0.5"
                   title="Encerrar turno ativo"
                 >
                   <Square className="w-2.5 h-2.5 fill-white" />
@@ -134,23 +140,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
           ) : (
-            <div className="hidden sm:flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-slate-400">
+            <div className="hidden lg:flex items-center space-x-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-slate-400">
               <span className="w-2 h-2 rounded-full bg-slate-500"></span>
-              <span className="text-xs font-medium">Turno Fechado</span>
+              <span className="text-[11px] font-medium">Turno Fechado</span>
             </div>
           )}
 
           {/* Voice Copilot Button */}
           <button
             onClick={onOpenVoice}
-            className="flex items-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold px-3 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+            className="flex items-center space-x-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold px-2.5 sm:px-3 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
           >
-            <Zap className="w-4 h-4 fill-black" />
+            <Zap className="w-3.5 h-3.5 fill-black shrink-0" />
             <span className="hidden md:inline">Voz Hands-Free</span>
+            <span className="md:hidden text-[11px]">Voz</span>
           </button>
 
           {/* Indicador de Status do Supabase Cloud Sync */}
-          <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold" title={lastSyncStatus}>
+          <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold" title={lastSyncStatus}>
             {isSyncing ? (
               <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
             ) : (
@@ -168,35 +175,35 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onSyncCloud && (
               <button
                 onClick={onSyncCloud}
-                className="hidden sm:inline-flex items-center gap-1 bg-slate-900 border border-slate-800 text-slate-200 px-2 py-1 rounded-lg text-[10px] hover:border-emerald-400 transition-colors"
+                className="hidden lg:inline-flex items-center gap-1 bg-slate-900 border border-slate-800 text-slate-200 px-2 py-0.5 rounded text-[10px] hover:border-emerald-400 transition-colors"
                 title="Forçar sincronização agora"
               >
                 <RefreshCw className="w-3 h-3" />
-                Sincronizar
+                Sync
               </button>
             )}
           </div>
 
           {/* User Account / Auth Button */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={onOpenAuth}
-              className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-emerald-800/80 text-emerald-400 font-bold px-3 py-2 rounded-xl text-xs transition-all"
+              className="flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 border border-emerald-800/80 text-emerald-400 font-bold px-2.5 py-1.5 rounded-xl text-xs transition-all"
               title={userEmail ? `Logado como ${userEmail}` : 'Fazer Login / Criar Conta'}
             >
-              <User className="w-4 h-4 text-emerald-400" />
-              <span className="hidden lg:inline max-w-[130px] truncate text-[11px]">
-                {userEmail ? userEmail.split('@')[0] : 'Entrar / Cadastrar'}
+              <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline max-w-[100px] md:max-w-[130px] truncate text-[11px]">
+                {userEmail ? userEmail.split('@')[0] : 'Entrar'}
               </span>
             </button>
 
             {userEmail && onLogout && (
               <button
                 onClick={onLogout}
-                className="p-2 bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800 rounded-xl transition-all"
+                className="p-1.5 bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800 rounded-xl transition-all"
                 title="Sair da Conta (Logout)"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -208,16 +215,16 @@ export const Navbar: React.FC<NavbarProps> = ({
       <VehicleSettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
-        vehicle={currentVehicle}
+        vehicle={safeVehicle}
         onUpdateVehicle={(updated) => {
           if (onUpdateVehicle) onUpdateVehicle(updated);
         }}
       />
 
-       {/* Modal de Conexão Mobile no Celular */}
-       {showMobileConnectModal && (
-         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-           <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
+      {/* Modal de Conexão Mobile no Celular */}
+      {showMobileConnectModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
             <button
               onClick={() => setShowMobileConnectModal(false)}
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
@@ -225,64 +232,54 @@ export const Navbar: React.FC<NavbarProps> = ({
               <X className="w-4 h-4" />
             </button>
 
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
               <Smartphone className="w-6 h-6" />
             </div>
 
             <h3 className="font-extrabold text-lg text-white">GiroCerto ERP no Seu Celular</h3>
+            <p className="text-xs text-slate-300">
+              Para usar o sistema no suporte veicular, abra a URL abaixo no navegador do celular:
+            </p>
 
-            <div className="space-y-3 text-xs text-slate-300 text-left bg-slate-900 p-4 rounded-2xl border border-slate-800">
-              <p className="font-bold text-emerald-400">1. Acesse o aplicativo no seu navegador:</p>
-              
-              <div className="p-3 bg-black border border-emerald-800/60 rounded-xl font-mono text-xs text-center text-driver-profit font-extrabold select-all break-all">
-                {currentAppUrl}
-              </div>
-
-              <p className="text-[11px] text-slate-400 pt-1">
-                💡 <b>Dica de Instalação (PWA)</b>: No Chrome ou Safari do celular, abra o menu de opções e toque em <b>"Adicionar à Tela de Início"</b>!
-              </p>
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs font-mono text-emerald-400 break-all select-all font-bold">
+              {currentAppUrl}
             </div>
 
-            <button
-              onClick={() => setShowMobileConnectModal(false)}
-              className="w-full bg-driver-profit text-black font-extrabold py-3 rounded-2xl text-xs"
-            >
-              Entendido!
-            </button>
+            <p className="text-[11px] text-slate-400">
+              Dica: No celular, toque em "Adicionar à Tela Iniciar" no menu do Chrome/Safari para instalar como App PWA!
+            </p>
           </div>
         </div>
       )}
 
-       {/* Modal de Confirmação para Limpar Lançamentos Temporários */}
-       {showResetConfirmModal && (
-         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-           <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-2">
+      {/* Modal de Confirmação para Resetar Lançamentos */}
+      {showResetConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-pma-card border border-rose-800/80 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
 
-            <h3 className="font-extrabold text-lg text-white">Limpar Lançamentos Temporários?</h3>
-            <p className="text-xs text-slate-300">
-              Isso manterá todos os seus custos fixos reais cadastrados e limpará apenas os lançamentos de teste do dia.
+            <h3 className="font-extrabold text-lg text-white">Limpar Lançamentos?</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Isso apagara o histórico de corridas e despesas temporárias deste navegador. Os veículos e configurações serão mantidos.
             </p>
 
             <div className="flex gap-2 pt-2">
               <button
-                type="button"
                 onClick={() => setShowResetConfirmModal(false)}
-                className="flex-1 bg-slate-900 text-slate-300 font-bold py-3 rounded-2xl text-xs"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-2.5 text-xs rounded-xl border border-slate-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                type="button"
                 onClick={() => {
                   onResetData();
                   setShowResetConfirmModal(false);
                 }}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-2xl text-xs shadow-lg"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-2.5 text-xs rounded-xl transition-colors shadow-lg shadow-rose-600/20"
               >
-                Sim, Limpar Lançamentos
+                Sim, Limpar
               </button>
             </div>
           </div>
