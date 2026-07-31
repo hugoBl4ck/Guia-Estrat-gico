@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, Calendar, Download, PieChart, Sparkles, Zap, Fuel, ArrowUpRight, Shield, Share2, Pencil, Trash2 } from 'lucide-react';
 import { Vehicle, Earning, Expense } from '../types';
 import { ShareReportModal } from './ShareReportModal';
+import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod } from './ReportPeriodFilter';
 
 interface DailyReportViewProps {
   vehicle: Vehicle;
@@ -19,9 +20,12 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   onDeleteEarning,
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [periodMode, setPeriodMode] = useState<ReportPeriodMode>('MENSAL');
+  const [customStart, setCustomStart] = useState<string | undefined>();
+  const [customEnd, setCustomEnd] = useState<string | undefined>();
 
-  const activeEarnings = earnings.filter((e) => !e.isDeleted);
-  const activeExpenses = expenses.filter((exp) => !exp.isDeleted);
+  const activeEarnings = filterItemsByPeriod(earnings, periodMode, customStart, customEnd);
+  const activeExpenses = filterItemsByPeriod(expenses, periodMode, customStart, customEnd);
 
   const totalRevenue = activeEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
   const totalExpenses = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -106,6 +110,15 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Filtro de Período Configurável e Fixo (Mensal, 15d, Semanal, Período, Hoje) */}
+      <ReportPeriodFilter
+        onPeriodChange={(mode, start, end) => {
+          setPeriodMode(mode);
+          setCustomStart(start);
+          setCustomEnd(end);
+        }}
+      />
 
       {/* Big KPI Cards Grid */}
       <div className="grid grid-cols-3 gap-3">

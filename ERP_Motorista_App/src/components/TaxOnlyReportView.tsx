@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldCheck, FileSpreadsheet, Building2, HelpCircle, CheckCircle2, AlertCircle, Percent, DollarSign } from 'lucide-react';
 import { Vehicle, Earning, Expense } from '../types';
 import { calculateMeiTaxExemption, TAX_POLICIES } from '../utils/taxPolicies';
+import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod } from './ReportPeriodFilter';
 
 interface TaxOnlyReportViewProps {
   vehicle: Vehicle;
@@ -14,8 +15,15 @@ export const TaxOnlyReportView: React.FC<TaxOnlyReportViewProps> = ({
   earnings,
   expenses,
 }) => {
-  const totalRevenue = earnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const [periodMode, setPeriodMode] = useState<ReportPeriodMode>('MENSAL');
+  const [customStart, setCustomStart] = useState<string | undefined>();
+  const [customEnd, setCustomEnd] = useState<string | undefined>();
+
+  const activeEarnings = filterItemsByPeriod(earnings, periodMode, customStart, customEnd);
+  const activeExpenses = filterItemsByPeriod(expenses, periodMode, customStart, customEnd);
+
+  const totalRevenue = activeEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const totalExpenses = activeExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
   // Regra Desacoplada de Isenção MEI via taxPolicies.ts
   const meiTax = calculateMeiTaxExemption(totalRevenue, totalExpenses);
@@ -34,6 +42,15 @@ export const TaxOnlyReportView: React.FC<TaxOnlyReportViewProps> = ({
         </h2>
         <p className="text-xs text-slate-400">Apuração de isenção de 60% por lei e declaração fiscal DASN-SIMEI</p>
       </div>
+
+      {/* Filtro de Período Configurável e Fixo (Mensal, 15d, Semanal, Período, Hoje) */}
+      <ReportPeriodFilter
+        onPeriodChange={(mode, start, end) => {
+          setPeriodMode(mode);
+          setCustomStart(start);
+          setCustomEnd(end);
+        }}
+      />
 
       {/* Card Resumo do Imposto */}
       <div className="bg-gradient-to-br from-emerald-950 to-slate-900 border border-emerald-800 p-5 rounded-3xl shadow-xl space-y-4 glow-profit">

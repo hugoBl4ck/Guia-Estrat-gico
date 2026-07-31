@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layers, Zap, Fuel, Heart, FileSpreadsheet, Building2, CheckCircle2, TrendingUp, TrendingDown, DollarSign, Calendar, Download, Table, ShieldCheck, HelpCircle, Wrench } from 'lucide-react';
 import { Vehicle, Earning, Expense } from '../types';
 import { calculateMeiTaxExemption } from '../utils/taxPolicies';
+import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod } from './ReportPeriodFilter';
 
 interface CostCenterViewProps {
   vehicle: Vehicle;
@@ -14,8 +15,15 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
   earnings,
   expenses,
 }) => {
-  const totalRevenue = earnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const [periodMode, setPeriodMode] = useState<ReportPeriodMode>('MENSAL');
+  const [customStart, setCustomStart] = useState<string | undefined>();
+  const [customEnd, setCustomEnd] = useState<string | undefined>();
+
+  const activeEarnings = filterItemsByPeriod(earnings, periodMode, customStart, customEnd);
+  const activeExpenses = filterItemsByPeriod(expenses, periodMode, customStart, customEnd);
+
+  const totalRevenue = activeEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const totalExpenses = activeExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const netResult = totalRevenue - totalExpenses;
 
   // Calculo de Isencao MEI desacoplado via taxPolicies.ts
@@ -75,6 +83,15 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
           Baixar Excel (.csv)
         </button>
       </div>
+
+      {/* Filtro de Período Configurável e Fixo (Mensal, 15d, Semanal, Período, Hoje) */}
+      <ReportPeriodFilter
+        onPeriodChange={(mode, start, end) => {
+          setPeriodMode(mode);
+          setCustomStart(start);
+          setCustomEnd(end);
+        }}
+      />
 
       {/* TABELA 1: Demonstrativo de Resultados DRE */}
        <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
