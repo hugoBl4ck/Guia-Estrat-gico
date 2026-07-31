@@ -124,8 +124,11 @@ export interface Expense {
   updatedAt?: string;
   vehicleId?: string;
   
-  // Origem e NF-e (Item 2)
+  // Origem, Parcelamento e NF-e
   source?: 'manual' | 'ocr' | 'xml' | 'voice';
+  paymentMethod?: 'MONEY' | 'PIX' | 'CREDIT_CARD' | 'DEBIT_CARD';
+  installmentsCount?: number;
+  installmentNumber?: number;
   nfeKey?: string;
   cnpjIssuer?: string;
   issuerName?: string;

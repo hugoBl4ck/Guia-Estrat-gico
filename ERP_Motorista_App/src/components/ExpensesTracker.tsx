@@ -38,6 +38,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [odometerKm, setOdometerKm] = useState('');
   const [notes, setNotes] = useState('');
   const [expenseDateInput, setExpenseDateInput] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [installmentsCount, setInstallmentsCount] = useState<number>(1);
 
   // Electric specific
   const [kwhAmount, setKwhAmount] = useState('');
@@ -51,29 +52,62 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(amount);
-    if (isNaN(val)) return;
+    if (isNaN(val) || val <= 0) return;
 
-    const expenseDateIso = new Date(`${expenseDateInput}T12:00:00`).toISOString();
+    const baseDate = new Date(`${expenseDateInput}T12:00:00`);
 
-    onAddExpense({
-      category,
-      amount: val,
-      expenseDate: expenseDateIso,
-      odometerKm: odometerKm ? parseFloat(odometerKm) : undefined,
-      notes: notes || undefined,
-      kwhAmount: category === 'ELECTRIC_CHARGING' && kwhAmount ? parseFloat(kwhAmount) : undefined,
-      tariffPerKwh: category === 'ELECTRIC_CHARGING' && tariffPerKwh ? parseFloat(tariffPerKwh) : undefined,
-      chargingType: category === 'ELECTRIC_CHARGING' && vehicle.isElectric ? chargingType : undefined,
-      fuelLiters: category === 'FUEL' && fuelLiters ? parseFloat(fuelLiters) : undefined,
-      pricePerLiter: category === 'FUEL' && pricePerLiter ? parseFloat(pricePerLiter) : undefined,
-      source: 'manual',
-    });
+    if (installmentsCount > 1) {
+      const installmentVal = Math.round((val / installmentsCount) * 100) / 100;
+      for (let i = 0; i < installmentsCount; i++) {
+        const dueDate = new Date(baseDate);
+        dueDate.setMonth(dueDate.getMonth() + i);
+
+        const installmentNote = notes
+          ? `${notes} (Parcela ${i + 1}/${installmentsCount})`
+          : `Despesa no Cartão (${i + 1}/${installmentsCount}x)`;
+
+        onAddExpense({
+          category,
+          amount: installmentVal,
+          expenseDate: dueDate.toISOString(),
+          odometerKm: i === 0 && odometerKm ? parseFloat(odometerKm) : undefined,
+          notes: installmentNote,
+          kwhAmount: category === 'ELECTRIC_CHARGING' && kwhAmount ? parseFloat(kwhAmount) / installmentsCount : undefined,
+          tariffPerKwh: category === 'ELECTRIC_CHARGING' && tariffPerKwh ? parseFloat(tariffPerKwh) : undefined,
+          chargingType: category === 'ELECTRIC_CHARGING' && vehicle.isElectric ? chargingType : undefined,
+          fuelLiters: category === 'FUEL' && fuelLiters ? parseFloat(fuelLiters) / installmentsCount : undefined,
+          pricePerLiter: category === 'FUEL' && pricePerLiter ? parseFloat(pricePerLiter) : undefined,
+          paymentMethod: 'CREDIT_CARD',
+          installmentsCount,
+          installmentNumber: i + 1,
+          source: 'manual',
+        });
+      }
+    } else {
+      onAddExpense({
+        category,
+        amount: val,
+        expenseDate: baseDate.toISOString(),
+        odometerKm: odometerKm ? parseFloat(odometerKm) : undefined,
+        notes: notes || undefined,
+        kwhAmount: category === 'ELECTRIC_CHARGING' && kwhAmount ? parseFloat(kwhAmount) : undefined,
+        tariffPerKwh: category === 'ELECTRIC_CHARGING' && tariffPerKwh ? parseFloat(tariffPerKwh) : undefined,
+        chargingType: category === 'ELECTRIC_CHARGING' && vehicle.isElectric ? chargingType : undefined,
+        fuelLiters: category === 'FUEL' && fuelLiters ? parseFloat(fuelLiters) : undefined,
+        pricePerLiter: category === 'FUEL' && pricePerLiter ? parseFloat(pricePerLiter) : undefined,
+        paymentMethod: 'MONEY',
+        installmentsCount: 1,
+        installmentNumber: 1,
+        source: 'manual',
+      });
+    }
 
     setAmount('');
     setNotes('');
     setOdometerKm('');
     setKwhAmount('');
     setFuelLiters('');
+    setInstallmentsCount(1);
     setExpenseDateInput(new Date().toISOString().slice(0, 10));
     setShowModal(false);
   };
@@ -178,6 +212,11 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     )}
                     {exp.source === 'ocr' && (
                       <span className="bg-rose-950 text-rose-400 border border-rose-800 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded">FOTO OCR</span>
+                    )}
+                    {exp.installmentsCount && exp.installmentsCount > 1 && (
+                      <span className="bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
+                        💳 Cartão {exp.installmentNumber}/{exp.installmentsCount}x
+                      </span>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-400">
@@ -346,10 +385,34 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="ex: 20.00"
+                  placeholder="ex: 300.00"
                   required
                   className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-mono focus:border-rose-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 font-semibold block mb-1">Forma de Pagamento / Parcelas</label>
+                <select
+                  value={installmentsCount}
+                  onChange={(e) => setInstallmentsCount(parseInt(e.target.value, 10))}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-purple-500"
+                >
+                  <option value={1}>💵 À Vista (1x - Dinheiro / Pix / Débito)</option>
+                  <option value={2}>💳 2x no Cartão de Crédito</option>
+                  <option value={3}>💳 3x no Cartão de Crédito</option>
+                  <option value={4}>💳 4x no Cartão de Crédito</option>
+                  <option value={5}>💳 5x no Cartão de Crédito</option>
+                  <option value={6}>💳 6x no Cartão de Crédito</option>
+                  <option value={10}>💳 10x no Cartão de Crédito</option>
+                  <option value={12}>💳 12x no Cartão de Crédito</option>
+                </select>
+
+                {installmentsCount > 1 && amount && parseFloat(amount) > 0 && (
+                  <p className="text-[11px] text-purple-300 font-mono mt-1.5 bg-purple-950/60 p-2.5 rounded-xl border border-purple-800/60">
+                    💳 Lança automaticamente <strong>{installmentsCount} parcelas de R$ {(parseFloat(amount) / installmentsCount).toFixed(2)}/mês</strong> nos próximos {installmentsCount} meses.
+                  </p>
+                )}
               </div>
 
               <div>
