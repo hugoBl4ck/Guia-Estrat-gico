@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogIn, UserPlus, Mail, Lock, X, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { GiroCertoLogo } from './GiroCertoLogo';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -112,9 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </button>
 
         <div className="flex items-center space-x-3 pt-1">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-            <ShieldCheck className="w-6 h-6 text-driver-profit" />
-          </div>
+          <GiroCertoLogo variant="icon" size="md" />
           <div>
             <h3 className="font-extrabold text-base text-white">
               {isSignUp ? 'Criar Conta de Motorista' : 'Login de Acesso ERP'}

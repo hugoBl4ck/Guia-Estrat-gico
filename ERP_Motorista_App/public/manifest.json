@@ -3,13 +3,14 @@
   "name": "GiroCerto ERP - Gestão Financeira para Motoristas",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
-      "type": "image/png",
+      "src": "/logo-icon.svg",
+      "type": "image/svg+xml",
       "sizes": "512x512"
     }
   ],

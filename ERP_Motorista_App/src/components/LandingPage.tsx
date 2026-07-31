@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GiroCertoLogo } from './GiroCertoLogo';
 import { 
   Shield, 
   Zap, 
@@ -61,12 +62,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
       {/* 1. Header / Navbar Superior Minimalista estilo PMA */}
       <header className="sticky top-0 z-50 bg-[#07080C]/90 backdrop-blur-xl border-b border-white/10 px-6 lg:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={onOpenAuth}>
-          <div className="w-8 h-8 rounded-none bg-[#D4FF00] flex items-center justify-center shadow-[0_0_15px_rgba(212,255,0,0.3)]">
-            <Car className="w-5 h-5 text-black font-black" />
-          </div>
-          <div>
-            <span className="font-black text-xl text-white tracking-widest uppercase">GIROCERTO<span className="text-[#D4FF00]">.ERP</span></span>
-          </div>
+          <GiroCertoLogo variant="horizontal" size="md" />
         </div>
 
         <div className="hidden md:flex items-center space-x-8 text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">

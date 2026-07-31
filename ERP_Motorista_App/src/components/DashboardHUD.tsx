@@ -643,28 +643,42 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </div>
       </div>
 
-      {/* Quick Action Grid */}
+      {/* Quick Action Grid (Single-Tap Driver Ergonomics min-h 64px) */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onOpenVoice}
-          className="bg-gradient-to-br from-emerald-950/80 to-pma-dark border border-emerald-800/60 p-4 rounded-3xl text-left hover:border-emerald-500 transition-all group shadow-lg"
+          className="bg-gradient-to-br from-emerald-950/80 to-pma-dark border border-emerald-500/50 p-4 rounded-3xl text-left hover:border-emerald-400 active:scale-95 transition-all group shadow-lg min-h-[64px] flex flex-col justify-between"
         >
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <Zap className="w-5 h-5" />
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Zap className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+              VOZ Copilot
+            </span>
           </div>
-          <p className="font-extrabold text-sm text-white">Lançar por Voz</p>
-          <p className="text-xs text-slate-400 mt-0.5">Fale "Uber 15 reais 4 km"</p>
+          <div className="mt-2">
+            <p className="font-extrabold text-sm text-white">Lançar por Voz</p>
+            <p className="text-xs text-slate-400 mt-0.5">Fale "Uber 15 reais 4 km"</p>
+          </div>
         </button>
 
         <button
           onClick={() => onNavigateToTab('flex')}
-          className="bg-gradient-to-br from-pma-dark to-amber-950/30 border border-amber-800/40 p-4 rounded-3xl text-left hover:border-amber-500 transition-all group shadow-lg"
+          className="bg-gradient-to-br from-pma-dark to-amber-950/30 border border-amber-500/40 p-4 rounded-3xl text-left hover:border-amber-400 active:scale-95 transition-all group shadow-lg min-h-[64px] flex flex-col justify-between"
         >
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <Car className="w-5 h-5" />
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Car className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+              Custo/KM
+            </span>
           </div>
-          <p className="font-extrabold text-sm text-white">Calculadora EV</p>
-          <p className="text-xs text-slate-400 mt-0.5">Coelba (R$ 1,21) x Eletroposto (R$ 1,69)</p>
+          <div className="mt-2">
+            <p className="font-extrabold text-sm text-white">Calculadora EV</p>
+            <p className="text-xs text-slate-400 mt-0.5">Coelba (R$ 1,21) x Eletroposto (R$ 1,69)</p>
+          </div>
         </button>
       </div>
 

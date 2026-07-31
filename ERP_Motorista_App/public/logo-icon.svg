@@ -1,0 +1,24 @@
+<svg width="128" height="128" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="giroGradIcon" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D4FF00" />
+      <stop offset="60%" stop-color="#00E676" />
+      <stop offset="100%" stop-color="#00F0FF" />
+    </linearGradient>
+    <linearGradient id="certoGradIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#00E676" />
+    </linearGradient>
+    <radialGradient id="bgGlowIcon" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="url(#bgGlowIcon)" />
+  <rect width="84" height="84" x="8" y="8" rx="22" fill="#0A0D14" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" />
+  <circle cx="50" cy="50" r="30" stroke="rgba(255, 255, 255, 0.08)" stroke-width="6" stroke-linecap="round" stroke-dasharray="140 50" transform="rotate(135 50 50)" />
+  <path d="M 26,58 A 28,28 0 1,1 74,48" fill="none" stroke="url(#giroGradIcon)" stroke-width="7" stroke-linecap="round" />
+  <circle cx="23" cy="46" r="3" fill="#D4FF00" opacity="0.9" />
+  <circle cx="28" cy="34" r="2.5" fill="#D4FF00" opacity="0.6" />
+  <path d="M 42,50 L 52,60 L 76,32" fill="none" stroke="url(#certoGradIcon)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

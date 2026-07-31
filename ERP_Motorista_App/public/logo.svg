@@ -1,0 +1,38 @@
+<svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="giroGradFull" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D4FF00" />
+      <stop offset="60%" stop-color="#00E676" />
+      <stop offset="100%" stop-color="#00F0FF" />
+    </linearGradient>
+    <linearGradient id="certoGradFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#00E676" />
+    </linearGradient>
+    <radialGradient id="bgGlowFull" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Emblem Icon (Offset X=10) -->
+  <g transform="translate(10, 0)">
+    <circle cx="50" cy="50" r="46" fill="url(#bgGlowFull)" />
+    <rect width="80" height="80" x="10" y="10" rx="20" fill="#0A0D14" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.5" />
+    <circle cx="50" cy="50" r="28" stroke="rgba(255, 255, 255, 0.08)" stroke-width="5" stroke-linecap="round" stroke-dasharray="130 45" transform="rotate(135 50 50)" />
+    <path d="M 27,57 A 26,26 0 1,1 73,47" fill="none" stroke="url(#giroGradFull)" stroke-width="6.5" stroke-linecap="round" />
+    <circle cx="24" cy="46" r="3" fill="#D4FF00" opacity="0.9" />
+    <path d="M 43,50 L 52,59 L 75,33" fill="none" stroke="url(#certoGradFull)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Typography Text -->
+  <g transform="translate(108, 0)">
+    <text x="0" y="52" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="34" letter-spacing="0.5">GIRO<tspan fill="#00E676">CERTO</tspan></text>
+    
+    <!-- ERP Badge -->
+    <rect x="236" y="24" width="46" height="26" rx="6" fill="#042F1A" stroke="rgba(0, 230, 118, 0.4)" stroke-width="1" />
+    <text x="246" y="42" fill="#00E676" font-family="monospace" font-weight="800" font-size="14" letter-spacing="1">ERP</text>
+    
+    <text x="2" y="74" fill="#94A3B8" font-family="monospace" font-weight="700" font-size="12" letter-spacing="2">DRIVER FINANCE SYSTEM</text>
+  </g>
+</svg>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle } from 'lucide-react';
 import { Vehicle, Shift } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
+import { GiroCertoLogo } from './GiroCertoLogo';
 
 interface NavbarProps {
   vehicles: Vehicle[];
@@ -58,31 +59,19 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Brand & Vehicle Selector */}
-        <div className="flex items-center space-x-3">
-          {currentVehicle.imageUrl ? (
-            <img
-              src={currentVehicle.imageUrl}
-              alt={currentVehicle.model}
-              className="w-11 h-11 rounded-xl object-cover border border-emerald-500/40 bg-slate-900 shrink-0"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-driver-accent to-emerald-500 flex items-center justify-center font-black text-lg text-black shadow-lg shadow-emerald-500/20">
-              GC
-            </div>
-          )}
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="font-extrabold text-base tracking-tight text-white">GiroCerto <span className="text-emerald-400 font-mono text-xs">ERP</span></h1>
-              
-              <button
-                onClick={() => setShowMobileConnectModal(true)}
-                className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 hover:border-emerald-400 transition-colors"
-                title="Clique para ver o link do Celular"
-              >
-                <Smartphone className="w-3 h-3 text-emerald-400" />
-                VER NO CELULAR
-              </button>
-            </div>
+        <div className="flex items-center space-x-4">
+          <GiroCertoLogo variant="horizontal" size="md" />
+          
+          <button
+            onClick={() => setShowMobileConnectModal(true)}
+            className="hidden sm:flex bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] font-bold px-2 py-0.5 rounded-full items-center gap-1 hover:border-emerald-400 transition-colors"
+            title="Clique para ver o link do Celular"
+          >
+            <Smartphone className="w-3 h-3 text-emerald-400" />
+            VER NO CELULAR
+          </button>
+
+          <div className="h-8 w-px bg-white/10 hidden md:block" />
 
             {/* Vehicle Selector Dropdown & Config Button */}
             <div className="relative mt-0.5 flex items-center gap-1.5">
@@ -123,7 +112,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
           </div>
-        </div>
 
         {/* Shift Live Indicator & Mobile Button */}
         <div className="flex items-center space-x-2">
