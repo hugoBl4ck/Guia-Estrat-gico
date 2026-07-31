@@ -136,7 +136,7 @@ export const NotificationDraftModal: React.FC<NotificationDraftModalProps> = ({
                 Rascunho Pendente de Confirmação
               </span>
               <span className="text-[10px] font-bold text-white bg-emerald-950 border border-emerald-800 px-2 py-0.5 rounded-full uppercase">
-                {draft.platform === 'UBER' ? 'Uber' : draft.platform === 'NINETY_NINE' ? '99Pop' : 'InDrive'}
+                {draft.platform === 'UBER' ? 'Uber' : draft.platform === 'NINETY_NINE' ? '99Pop' : draft.platform === 'PRIVATE' ? 'Corrida Particular' : 'InDrive'}
               </span>
             </div>
 

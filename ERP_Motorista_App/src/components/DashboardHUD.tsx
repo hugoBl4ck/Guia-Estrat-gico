@@ -695,14 +695,16 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
                       ? 'bg-white text-black'
                       : e.platform === 'NINETY_NINE'
                       ? 'bg-orange-500 text-white'
-                      : 'bg-purple-600 text-white'
+                      : e.platform === 'PRIVATE'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-emerald-600 text-white'
                   }`}
                 >
-                  {e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : 'IND'}
+                  {e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : e.platform === 'PRIVATE' ? 'PART' : 'IND'}
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">
-                    {e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : 'InDrive'}
+                    {e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}
                   </p>
                   <p className="text-[11px] text-slate-400">{e.totalTrips} corridas ({e.rideDistanceKm} km)</p>
                 </div>
