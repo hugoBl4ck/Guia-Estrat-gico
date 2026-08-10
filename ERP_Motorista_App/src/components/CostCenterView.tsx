@@ -310,62 +310,6 @@ export const CostCenterView: React.FC<CostCenterViewProps> = ({
                 <td className="p-3 text-right text-slate-400">R$ 0,00</td>
                 <td className="p-3 text-right font-bold text-purple-300">R$ 0,00</td>
               </tr>
-
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-3 font-mono font-bold text-blue-400">CC-04</td>
-                <td className="p-3 font-bold text-white flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-blue-400" /> Administrative MEI
-                </td>
-                <td className="p-3 text-right text-slate-400">R$ 0,00</td>
-                <td className="p-3 text-right text-driver-danger font-bold">-R$ 75,00</td>
-                <td className="p-3 text-right font-bold text-blue-300">-R$ 75,00</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* TABELA 3: Apuração de Isenção Fiscal MEI */}
-       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3 overflow-hidden">
-        <div className="flex items-center justify-between">
-          <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            TABELA 3: Apuração de Isenção de Imposto de Renda MEI (60% Isento)
-          </h3>
-        </div>
-
-        <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-2xl space-y-1.5 text-xs text-slate-300">
-          <p className="font-bold text-emerald-400 flex items-center gap-1">
-            <HelpCircle className="w-3.5 h-3.5" /> Regra Legal Desacoplada (IN RFB 1.500/2014 & LC 123/2006)
-          </p>
-          <p>
-            • <b>60% do Faturamento Bruto</b> é <b>100% ISENTO de Imposto de Renda (IRPF)</b>.<br/>
-            • <b>40% Remanescente</b> é a parcela tributável da qual se subtraem as despesas do livro caixa.<br/>
-            • Como as despesas superam os 40%, a <b>Base Tributável é R$ 0,00 (100% ISENTO)</b>.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] bg-slate-900/60">
-                <th className="p-3 rounded-l-xl">Faturamento Bruto (100%)</th>
-                <th className="p-3 text-right text-emerald-400 font-bold">Parcela 60% Isenta (Lei)</th>
-                <th className="p-3 text-right text-amber-400 font-bold">Parcela 40% Remanescente</th>
-                <th className="p-3 text-right text-rose-400 font-bold">Despesas Abatidas</th>
-                <th className="p-3 text-right rounded-r-xl text-emerald-400 font-bold">Imposto IRPF a Pagar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-200">
-              <tr>
-                <td className="p-3 font-bold text-white">R$ {totalRevenue.toFixed(2)}</td>
-                <td className="p-3 text-right font-mono font-extrabold text-emerald-400">R$ {meiTax.exemptIncome.toFixed(2)}</td>
-                <td className="p-3 text-right font-mono font-bold text-amber-400">R$ {meiTax.grossRemnant.toFixed(2)}</td>
-                <td className="p-3 text-right font-mono font-bold text-rose-400">-R$ {totalExpenses.toFixed(2)}</td>
-                <td className="p-3 text-right font-mono font-black text-emerald-400 bg-emerald-950/40">
-                  R$ 0,00 (ISENTO)
-                </td>
-              </tr>
             </tbody>
           </table>
         </div>

@@ -1,7 +1,8 @@
-import { Earning, Expense, Shift, ReserveBucket, PersonalUsageLog, Vehicle } from '../types';
+import { Earning, Expense, Shift, ReserveBucket, PersonalUsageLog, Vehicle, Driver } from '../types';
 import {
   VEHICLES_LIST,
-  INITIAL_BUCKETS
+  INITIAL_BUCKETS,
+  INITIAL_DRIVERS
 } from '../utils/mockData';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
   PERSONAL_LOGS: 'girocerto_personal_logs_v1',
   VEHICLES: 'girocerto_vehicles_v1',
   CURRENT_VEHICLE: 'girocerto_current_vehicle_v1',
+  DRIVERS: 'girocerto_drivers_v1',
   DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1',
   USER_EMAIL: 'erp_driver_user_email'
 };
@@ -216,6 +218,26 @@ export const dbService = {
       }
     } catch (error) {
       console.error('Erro ao salvar email do usuário no IndexedDB:', error);
+    }
+  },
+
+  async loadDriversFromIndexedDB(): Promise<Driver[]> {
+    try {
+      const stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS);
+      if (!stored || !Array.isArray(stored) || stored.length === 0) {
+        return INITIAL_DRIVERS;
+      }
+      return stored;
+    } catch (error) {
+      return INITIAL_DRIVERS;
+    }
+  },
+
+  async saveDrivers(drivers: Driver[]) {
+    try {
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS, drivers);
+    } catch (error) {
+      console.error('Erro ao salvar motoristas no IndexedDB:', error);
     }
   }
 };

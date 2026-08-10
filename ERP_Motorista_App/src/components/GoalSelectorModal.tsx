@@ -51,7 +51,7 @@ export const GoalSelectorModal: React.FC<GoalSelectorModalProps> = ({
       title: 'Plano 2: Recomendado (Lucro & Reservas)',
       dailyTrips: 30,
       monthlyTrips: 900,
-      description: 'Meta oficial GiroCerto: Paga todas as despesas + Reserva de Manutenção e R$ 4.463,00 de Lucro Livre no bolso. 30 corridas/dia.',
+      description: 'Paga despesas operacionais + Reserva de Manutenção e acúmulo de Lucro Líquido Disponível. 30 corridas/dia.',
     },
     {
       id: 'HIGH_PROFIT',

@@ -1,23 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X } from 'lucide-react';
-import { Expense, ExpenseCategory, Vehicle, ChargingLocationType } from '../types';
+import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket } from '../types';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
+import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
 
 interface ExpensesTrackerProps {
   vehicle: Vehicle;
   expenses: Expense[];
+  buckets?: ReserveBucket[];
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   onDeleteExpense: (id: string) => void;
+  onUpdateVehicle?: (updated: Vehicle) => void;
 }
 
 export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   vehicle,
   expenses,
+  buckets,
   onAddExpense,
   onDeleteExpense,
+  onUpdateVehicle,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
+
+  // Ordenação da tabela de despesas
+  type SortKey = 'date' | 'category' | 'description' | 'amount';
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedExpenses = [...(expenses || [])].sort((a, b) => {
+    let valA: string | number = '';
+    let valB: string | number = '';
+    if (sortKey === 'date') {
+      valA = new Date(a.expenseDate).getTime();
+      valB = new Date(b.expenseDate).getTime();
+    } else if (sortKey === 'amount') {
+      valA = a.amount;
+      valB = b.amount;
+    } else if (sortKey === 'category') {
+      valA = a.category;
+      valB = b.category;
+    } else {
+      valA = a.notes || a.category;
+      valB = b.notes || b.category;
+    }
+    if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ChevronsUpDown className="w-3 h-3 text-slate-600" />;
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-pma-acid" />
+      : <ChevronDown className="w-3 h-3 text-pma-acid" />;
+  };
 
   useEffect(() => {
     if (!showModal) return;
@@ -81,6 +128,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           installmentsCount,
           installmentNumber: i + 1,
           source: 'manual',
+          vehicleId: vehicle.id,
         });
       }
     } else {
@@ -99,6 +147,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentsCount: 1,
         installmentNumber: 1,
         source: 'manual',
+        vehicleId: vehicle.id,
       });
     }
 
@@ -174,84 +223,256 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         </div>
       </div>
 
-      {/* Expenses History List com Botão de Exclusão e Origem */}
-      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
-        <div className="flex items-center justify-between">
+      {/* Resumo de Total de Despesas por Centro de Custo (CC-01, CC-02, CC-03, CC-04) */}
+      {(() => {
+        const cc1Rodagem = (expenses || []).reduce((sum, exp) => {
+          if (exp.isDeleted) return sum;
+          return ['ELECTRIC_CHARGING', 'FUEL'].includes(exp.category) ? sum + exp.amount : sum;
+        }, 0);
+
+        const cc2Manutencao = (expenses || []).reduce((sum, exp) => {
+          if (exp.isDeleted) return sum;
+          return ['MAINTENANCE', 'OIL_CHANGE', 'BRAKES', 'WORKSHOP_MAINTENANCE', 'SPARK_PLUGS_BELT'].includes(exp.category) ? sum + exp.amount : sum;
+        }, 0);
+
+        const cc3Protecao = (expenses || []).reduce((sum, exp) => {
+          if (exp.isDeleted) return sum;
+          return ['INSURANCE', 'WASH', 'PARKING', 'TOLL'].includes(exp.category) ? sum + exp.amount : sum;
+        }, 0);
+
+        const cc4Outros = (expenses || []).reduce((sum, exp) => {
+          if (exp.isDeleted) return sum;
+          return ['DOCUMENTS', 'IPVA_LICENSING', 'FINANCING', 'OTHER', 'TRAFFIC_FINE'].includes(exp.category) ? sum + exp.amount : sum;
+        }, 0);
+
+        const grandTotal = cc1Rodagem + cc2Manutencao + cc3Protecao + cc4Outros;
+        const getPct = (val: number) => (grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(1) : '0.0');
+
+        return (
+          <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-rose-400" />
+                  Total de Despesas por Centro de Custo
+                </h3>
+                <p className="text-[11px] text-slate-400">Detalhamento dos custos por centro operacional</p>
+              </div>
+
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] text-slate-400 block font-bold uppercase">Total Acumulado das Despesas</span>
+                <span className="text-xl font-black text-rose-400 font-mono">
+                  R$ {grandTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              {/* CC-01 */}
+              <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+                <div className="flex items-center justify-between text-blue-400 font-bold">
+                  <span className="text-[10px] uppercase font-mono">CC-01 Rodagem (EV/Combustível)</span>
+                  <span className="text-[10px] bg-blue-950 px-2 py-0.5 rounded-full border border-blue-800/80">{getPct(cc1Rodagem)}%</span>
+                </div>
+                <p className="text-lg font-black text-white font-mono">
+                  R$ {cc1Rodagem.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <span className="text-[10px] text-slate-500 block">Recargas elétricas, postos e energia</span>
+              </div>
+
+              {/* CC-02 */}
+              <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+                <div className="flex items-center justify-between text-amber-400 font-bold">
+                  <span className="text-[10px] uppercase font-mono">CC-02 Manutenção & Pneus</span>
+                  <span className="text-[10px] bg-amber-950 px-2 py-0.5 rounded-full border border-amber-800/80">{getPct(cc2Manutencao)}%</span>
+                </div>
+                <p className="text-lg font-black text-white font-mono">
+                  R$ {cc2Manutencao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <span className="text-[10px] text-slate-500 block">Revisões, borracharia, óleo e oficina</span>
+              </div>
+
+              {/* CC-03 */}
+              <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+                <div className="flex items-center justify-between text-purple-400 font-bold">
+                  <span className="text-[10px] uppercase font-mono">CC-03 Proteção & Conservação</span>
+                  <span className="text-[10px] bg-purple-950 px-2 py-0.5 rounded-full border border-purple-800/80">{getPct(cc3Protecao)}%</span>
+                </div>
+                <p className="text-lg font-black text-white font-mono">
+                  R$ {cc3Protecao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <span className="text-[10px] text-slate-500 block">Seguro auto, lava-jato, pedágio e garagem</span>
+              </div>
+
+              {/* CC-04 */}
+              <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+                <div className="flex items-center justify-between text-rose-400 font-bold">
+                  <span className="text-[10px] uppercase font-mono">CC-04 Documentos & Outros</span>
+                  <span className="text-[10px] bg-rose-950 px-2 py-0.5 rounded-full border border-rose-800/80">{getPct(cc4Outros)}%</span>
+                </div>
+                <p className="text-lg font-black text-white font-mono">
+                  R$ {cc4Outros.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <span className="text-[10px] text-slate-500 block">IPVA, licenciamento, taxas e multas</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {buckets && (() => {
+        const maintenanceBucket = buckets.find((b) => b.type === 'MAINTENANCE');
+        const maintBalance = maintenanceBucket ? maintenanceBucket.currentBalance : 0;
+        return (
+          <MaintenanceScheduleCard
+            vehicle={vehicle}
+            currentOdometerKm={vehicle.currentOdometerKm}
+            maintenanceBucketBalance={maintBalance}
+            onUpdateVehicle={onUpdateVehicle}
+          />
+        );
+      })()}
+
+      {/* Expenses Table com Ordenação */}
+      <div className="bg-pma-card border border-white/10 rounded-3xl overflow-hidden shadow-xl">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Histórico de Despesas Registradas</h3>
           <span className="text-xs text-slate-400">{expenses.length} lançamentos</span>
         </div>
 
         {expenses.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">Nenhuma despesa lançada.</p>
+          <p className="text-xs text-slate-500 py-8 text-center">Nenhuma despesa lançada.</p>
         ) : (
-          expenses.map((exp) => (
-            <div key={exp.id} className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center">
-                  {exp.category === 'ELECTRIC_CHARGING' ? (
-                    <Zap className="w-5 h-5 text-emerald-400" />
-                  ) : exp.category === 'MAINTENANCE' ? (
-                    <Wrench className="w-5 h-5 text-amber-400" />
-                  ) : exp.category === 'WASH' ? (
-                    <Car className="w-5 h-5 text-teal-400" />
-                  ) : exp.category === 'FUEL' ? (
-                    <Fuel className="w-5 h-5 text-amber-400" />
-                  ) : exp.category === 'INSURANCE' ? (
-                    <Shield className="w-5 h-5 text-blue-400" />
-                  ) : (
-                    <Wrench className="w-5 h-5 text-purple-400" />
-                  )}
-                </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/10 bg-slate-900/60">
+                  <th
+                    onClick={() => handleSort('date')}
+                    className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors"
+                  >
+                    <span className="flex items-center gap-1">
+                      Data <SortIcon col="date" />
+                    </span>
+                  </th>
+                  <th
+                    onClick={() => handleSort('category')}
+                    className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors hidden sm:table-cell"
+                  >
+                    <span className="flex items-center gap-1">
+                      Categoria <SortIcon col="category" />
+                    </span>
+                  </th>
+                  <th
+                    onClick={() => handleSort('description')}
+                    className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors"
+                  >
+                    <span className="flex items-center gap-1">
+                      Descrição <SortIcon col="description" />
+                    </span>
+                  </th>
+                  <th
+                    onClick={() => handleSort('amount')}
+                    className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors"
+                  >
+                    <span className="flex items-center justify-end gap-1">
+                      Valor <SortIcon col="amount" />
+                    </span>
+                  </th>
+                  <th className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 text-center">Excluir</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedExpenses.map((exp, idx) => (
+                  <tr
+                    key={exp.id}
+                    className={`border-b border-white/5 hover:bg-white/5 transition-colors ${
+                      idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-900/30'
+                    }`}
+                  >
+                    {/* Data */}
+                    <td className="px-4 py-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
+                      {new Date(exp.expenseDate).toLocaleDateString('pt-BR')}
+                    </td>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-xs font-bold text-white">{exp.notes || exp.category}</p>
-                    {getCategoryBadge(exp.category)}
-                    {exp.source === 'xml' && (
-                      <span className="bg-blue-950 text-blue-400 border border-blue-800 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded">NF-e XML</span>
-                    )}
-                    {exp.source === 'ocr' && (
-                      <span className="bg-rose-950 text-rose-400 border border-rose-800 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded">FOTO OCR</span>
-                    )}
-                    {exp.installmentsCount && exp.installmentsCount > 1 && (
-                      <span className="bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
-                        💳 Cartão {exp.installmentNumber}/{exp.installmentsCount}x
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    {exp.category === 'ELECTRIC_CHARGING' && exp.kwhAmount
-                      ? `${exp.kwhAmount} kWh (R$ ${exp.tariffPerKwh}/kWh)`
-                      : exp.category === 'FUEL' && exp.fuelLiters
-                      ? `${exp.fuelLiters}L`
-                      : exp.category === 'MAINTENANCE'
-                      ? 'Manutenção Operacional / Borracharia'
-                      : 'Despesa Veicular'}
-                  </p>
-                </div>
-              </div>
+                    {/* Categoria */}
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      {getCategoryBadge(exp.category)}
+                    </td>
 
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-sm font-extrabold text-driver-danger">
-                    -R$ {exp.amount.toFixed(2)}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-mono">
-                    {new Date(exp.expenseDate).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
+                    {/* Descrição */}
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-white text-[11px] leading-tight">
+                          {(!exp.notes || exp.notes === exp.category) ? (
+                            exp.category === 'ELECTRIC_CHARGING'
+                              ? (exp.kwhAmount ? `Recarga Elétrica EV (${exp.kwhAmount} kWh)` : 'Recarga Elétrica EV')
+                              : exp.category === 'FUEL'
+                              ? (exp.fuelLiters ? `Abastecimento (${exp.fuelLiters}L)` : 'Abastecimento / Combustível')
+                              : exp.category === 'MAINTENANCE'
+                              ? 'Manutenção / Revisão'
+                              : exp.category === 'OIL_CHANGE'
+                              ? 'Troca de Óleo e Filtros'
+                              : exp.category === 'WORKSHOP_MAINTENANCE'
+                              ? 'Oficina / Manutenção'
+                              : exp.category === 'WASH'
+                              ? 'Lava-Jato'
+                              : exp.category === 'INSURANCE'
+                              ? 'Seguro Auto'
+                              : exp.notes || exp.category
+                          ) : exp.notes}
+                        </span>
+                        <div className="flex items-center flex-wrap gap-1 sm:hidden">{getCategoryBadge(exp.category)}</div>
+                        {exp.source === 'xml' && (
+                          <span className="bg-blue-950 text-blue-400 border border-blue-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded w-fit">NF-e XML</span>
+                        )}
+                        {exp.source === 'ocr' && (
+                          <span className="bg-rose-950 text-rose-400 border border-rose-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded w-fit">FOTO OCR</span>
+                        )}
+                        {exp.installmentsCount && exp.installmentsCount > 1 && (
+                          <span className="text-[9px] text-purple-300 font-mono">
+                            💳 {exp.installmentNumber}/{exp.installmentsCount}x
+                          </span>
+                        )}
+                        {exp.category === 'ELECTRIC_CHARGING' && exp.kwhAmount && (
+                          <span className="text-[10px] text-slate-500">{exp.kwhAmount} kWh @ R$ {exp.tariffPerKwh}/kWh</span>
+                        )}
+                      </div>
+                    </td>
 
-                {/* Botão de Exclusão de Despesa */}
-                <button
-                  onClick={() => onDeleteExpense(exp.id)}
-                  className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition-colors"
-                  title="Apagar esta despesa"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))
+                    {/* Valor */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-extrabold text-driver-danger font-mono text-sm">-R$ {exp.amount.toFixed(2)}</span>
+                    </td>
+
+                    {/* Ação */}
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO\n\nTem certeza que deseja apagar esta despesa no valor de R$ ${exp.amount.toFixed(2)}?\n\nEsta ação não poderá ser desfeita.`)) {
+                            onDeleteExpense(exp.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-600 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition-colors"
+                        title="Apagar esta despesa"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-white/10 bg-slate-900/60">
+                  <td colSpan={3} className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</td>
+                  <td className="px-4 py-2.5 text-right font-extrabold text-driver-danger font-mono text-sm">
+                    -R$ {(expenses || []).reduce((s, e) => s + e.amount, 0).toFixed(2)}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
       </div>
 

@@ -18,6 +18,8 @@ import { AuthModal } from './components/AuthModal';
 import { VehicleOnboardingModal } from './components/VehicleOnboardingModal';
 import { GoalSelectorModal } from './components/GoalSelectorModal';
 import { LandingPage } from './components/LandingPage';
+import { AnalyticsChartsModal } from './components/AnalyticsChartsModal';
+import { DriverRegistrationModal } from './components/DriverRegistrationModal';
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -35,9 +37,10 @@ import {
   INITIAL_EARNINGS_FORD_KA,
   INITIAL_EXPENSES_FORD_KA,
   INITIAL_BUCKETS,
+  INITIAL_DRIVERS,
   getInitialVehicleForUser
 } from './utils/mockData';
-import { Vehicle, Earning, Expense, Shift, PersonalUsageLog } from './types';
+import { Vehicle, Earning, Expense, Shift, PersonalUsageLog, Driver } from './types';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
@@ -46,11 +49,15 @@ export function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
   const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
+  const [isAnalyticsChartsOpen, setIsAnalyticsChartsOpen] = useState(false);
+  const [isDriverRegistrationOpen, setIsDriverRegistrationOpen] = useState(false);
   const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
   const isHydratedRef = useRef<boolean>(false);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => [VEHICLES_LIST[0]]);
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => VEHICLES_LIST[0]);
+  const [drivers, setDrivers] = useState<Driver[]>(() => INITIAL_DRIVERS);
+  const [currentDriverName, setCurrentDriverName] = useState<string>('Hugo');
 
   // Carregar estado inicial via IndexedDB de forma assíncrona
   const [state, dispatch] = useReducer(financeReducer, {
@@ -112,10 +119,11 @@ export function App() {
           setUserEmail(storedEmail);
         }
 
-        const [dbData, dbVehicles, dbCurrentVehicle] = await Promise.all([
+        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers] = await Promise.all([
           repository.loadDataAsync(),
           repository.loadVehiclesAsync(),
-          repository.loadCurrentVehicleAsync()
+          repository.loadCurrentVehicleAsync(),
+          dbService.loadDriversFromIndexedDB()
         ]);
 
         let currentStateData = dbData || {
@@ -137,6 +145,10 @@ export function App() {
 
         if (dbCurrentVehicle) {
           setCurrentVehicle(dbCurrentVehicle);
+        }
+
+        if (dbDrivers && dbDrivers.length > 0) {
+          setDrivers(dbDrivers);
         }
 
         // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
@@ -229,49 +241,71 @@ export function App() {
     saveCurrentVehicle();
   }, [currentVehicle]);
 
-  // Filtrar dados ativos excluindo itens com Soft Delete (com salvaguarda de usuario logado)
-  const activeEarnings = userEmail ? (state.earnings || []).filter((e) => !e.isDeleted) : [];
-  const activeExpenses = userEmail ? (state.expenses || []).filter((exp) => !exp.isDeleted) : [];
+  useEffect(() => {
+    const saveDrivers = async () => {
+      try {
+        await dbService.saveDrivers(drivers);
+      } catch (e) {
+        console.warn('Erro ao salvar motoristas:', e);
+      }
+    };
+
+    saveDrivers();
+  }, [drivers]);
+
+  const handleSaveDriver = (newDriver: Driver) => {
+    setDrivers((prev) => {
+      const idx = prev.findIndex((d) => d.id === newDriver.id || d.name.toLowerCase() === newDriver.name.toLowerCase());
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = newDriver;
+        return updated;
+      }
+      return [...prev, newDriver];
+    });
+    setCurrentDriverName(newDriver.name);
+  };
+
+  const handleDeleteDriver = (driverId: string) => {
+    setDrivers((prev) => prev.filter((d) => d.id !== driverId));
+  };
+
+  // Filtrar dados ativos por Veículo Selecionado (currentVehicle.id) e excluindo Soft Delete
+  const activeEarnings = userEmail
+    ? (state.earnings || []).filter((e) => {
+        if (e.isDeleted) return false;
+        if (e.vehicleId) return e.vehicleId === currentVehicle.id;
+        return currentVehicle.id === (vehicles[0]?.id || 'default');
+      })
+    : [];
+
+  const activeExpenses = userEmail
+    ? (state.expenses || []).filter((exp) => {
+        if (exp.isDeleted) return false;
+        if (exp.vehicleId) return exp.vehicleId === currentVehicle.id;
+        return currentVehicle.id === (vehicles[0]?.id || 'default');
+      })
+    : [];
 
   // Recalcular em tempo real o saldo de cada caixa virtual com base no Lucro Líquido Real (Receita Bruta - Despesas Reais)
   const totalEarningsAmount = activeEarnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
   const totalExpensesAmount = activeExpenses.reduce((sum, exp) => sum + (exp.isDeleted ? 0 : exp.amount), 0);
   const netRealBalance = Math.max(0, totalEarningsAmount - totalExpensesAmount);
 
-  // Algoritmo de Cascata Prioritária (100% do Lucro Líquido vai PRIMEIRO para o Financiamento Santander)
-  let remainingNetProfit = netRealBalance;
+  // Migração automática de caixas legados do IndexedDB para a nova estrutura limpa sem MEI
+  const rawBuckets = state.buckets && state.buckets.length > 0 ? state.buckets : INITIAL_BUCKETS;
+  const hasFuelBucket = rawBuckets.some((b) => b.type === 'FUEL');
+  const hasDeprBucket = rawBuckets.some((b) => b.type === 'DEPRECIATION');
+  const hasTaxMeiBucket = rawBuckets.some((b) => b.type === 'TAX_MEI');
+  const activeBuckets = (!hasFuelBucket || hasDeprBucket || hasTaxMeiBucket) ? INITIAL_BUCKETS : rawBuckets;
 
-  // Ordem de prioridade financeira real do motorista:
-  // 1. Financiamento (Garante a ferramenta de trabalho / prestação)
-  // 2. Custos Fixos (MEI / App / Lavagem R$120)
-  // 3. Manutenção EV / Revisão
-  // 4. Depreciação / Pneus
-  // 5. Lucro Livre (Sobra limpa no bolso)
-  const priorityOrder = ['FINANCING', 'TAX_MEI', 'MAINTENANCE', 'DEPRECIATION', 'FREE_CASH'];
-  const bucketBalancesMap: Record<string, number> = {};
-
-  for (const type of priorityOrder) {
-    const bucket = state.buckets.find((b) => b.type === type);
-    if (!bucket) continue;
-
-    if (type === 'FREE_CASH') {
-      bucketBalancesMap[type] = Math.max(0, remainingNetProfit);
-      remainingNetProfit = 0;
-    } else {
-      const needed = bucket.targetBalance || 0;
-      const allocated = Math.min(remainingNetProfit, needed);
-      bucketBalancesMap[type] = allocated;
-      remainingNetProfit = Math.max(0, remainingNetProfit - allocated);
-    }
-  }
-
-  const calculatedBuckets = state.buckets.map((b) => {
-    const currentBalance = bucketBalancesMap[b.type] ?? 0;
-    const percentageAllocated = netRealBalance > 0 ? Math.round((currentBalance / netRealBalance) * 100) : 0;
+  const calculatedBuckets = activeBuckets.map((bucket) => {
+    const pct = (bucket.percentageAllocated ?? 0) / 100;
+    // O saldo de cada caixa reflete a participação real sobre o Lucro Líquido acumulado no banco (R$ 570,65)
+    const currentBalance = Math.max(0, netRealBalance * pct);
     return {
-      ...b,
+      ...bucket,
       currentBalance,
-      percentageAllocated,
     };
   });
 
@@ -342,13 +376,15 @@ export function App() {
     setCurrentVehicle(vehicle);
   };
 
-  const handleStartShift = async (startKm: number) => {
+  const handleStartShift = async (startKm: number, driverName?: string) => {
+    const selectedDriver = driverName || currentDriverName || 'Hugo';
     const newShift: Shift = {
       id: `shift-${Date.now()}`,
       startTime: new Date().toISOString(),
       startOdometerKm: startKm,
       status: 'OPEN',
-      vehicleId: currentVehicle.id
+      vehicleId: currentVehicle.id,
+      driverName: selectedDriver,
     };
     dispatch({ type: 'START_SHIFT', payload: newShift });
 
@@ -374,6 +410,17 @@ export function App() {
     dispatch({ type: 'END_SHIFT' });
   };
 
+  const handleAddDriver = (name: string) => {
+    const clean = name.trim();
+    if (!clean) return;
+    const exists = drivers.some((d) => d.name.toLowerCase() === clean.toLowerCase());
+    if (!exists) {
+      const newDrv: Driver = { id: `drv-${Date.now()}`, name: clean };
+      setDrivers((prev) => [...prev, newDrv]);
+    }
+    setCurrentDriverName(clean);
+  };
+
   const handleAddEarning = (earningData: Omit<Earning, 'id'>) => {
     const getLocalDateString = (d: Date | string) => {
       const dateObj = typeof d === 'string' ? new Date(d) : d;
@@ -392,7 +439,8 @@ export function App() {
       ...earningData,
       id: `earning-${Date.now()}`,
       recordedAt: earningData.recordedAt || new Date().toISOString(),
-      vehicleId: currentVehicle.id
+      vehicleId: currentVehicle.id,
+      driverName: earningData.driverName || currentDriverName || 'Hugo',
     };
     dispatch({ type: 'ADD_EARNING', payload: newEarning });
 
@@ -515,6 +563,8 @@ export function App() {
         activeShift={state.activeShift}
         onEndShift={handleEndShift}
         onOpenVoice={() => setIsVoiceOpen(true)}
+        onOpenAnalyticsCharts={() => setIsAnalyticsChartsOpen(true)}
+        onOpenDriverRegistration={() => setIsDriverRegistrationOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         onResetData={handleResetData}
         onRestoreMockData={handleRestoreMockData}
@@ -567,6 +617,8 @@ export function App() {
           <ShiftManager
             activeShift={state.activeShift}
             earnings={activeEarnings}
+            drivers={drivers}
+            currentDriverName={currentDriverName}
             onStartShift={handleStartShift}
             onEndShift={handleEndShift}
             onAddEarning={handleAddEarning}
@@ -579,8 +631,10 @@ export function App() {
           <ExpensesTracker
             vehicle={currentVehicle}
             expenses={activeExpenses}
+            buckets={calculatedBuckets}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
+            onUpdateVehicle={handleUpdateVehicle}
           />
         )}
 
@@ -599,6 +653,7 @@ export function App() {
             buckets={calculatedBuckets}
             earnings={activeEarnings}
             expenses={activeExpenses}
+            vehicle={currentVehicle}
             onTransfer={handleBucketTransfer}
             onSaveBuckets={(updated) => dispatch({ type: 'UPDATE_BUCKETS', payload: updated })}
           />
@@ -651,6 +706,9 @@ export function App() {
         onAddEarning={handleAddEarning}
         onEditEarning={handleEditEarning}
         earningToEdit={earningToEdit}
+        drivers={drivers}
+        currentDriverName={currentDriverName}
+        onAddDriver={handleAddDriver}
       />
 
       {/* Modal Leitor de Notificações / Clipboard */}
@@ -686,6 +744,25 @@ export function App() {
         onClose={() => setIsGoalSelectorOpen(false)}
         currentDailyGoal={dailyGoalTrips}
         onSelectGoal={(newTrips) => setDailyGoalTrips(newTrips)}
+      />
+
+      {/* Modal de Painel de Análise Visual & Gráficos Sob Demanda */}
+      <AnalyticsChartsModal
+        isOpen={isAnalyticsChartsOpen}
+        onClose={() => setIsAnalyticsChartsOpen(false)}
+        vehicle={currentVehicle}
+        earnings={activeEarnings}
+        expenses={activeExpenses}
+        buckets={calculatedBuckets}
+      />
+
+      {/* Modal de Cadastro de Motorista (Nome, Telefone e Foto) */}
+      <DriverRegistrationModal
+        isOpen={isDriverRegistrationOpen}
+        onClose={() => setIsDriverRegistrationOpen(false)}
+        drivers={drivers}
+        onSaveDriver={handleSaveDriver}
+        onDeleteDriver={handleDeleteDriver}
       />
     </div>
   );

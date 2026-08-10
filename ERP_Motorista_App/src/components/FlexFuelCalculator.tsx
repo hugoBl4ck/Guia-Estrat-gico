@@ -108,7 +108,7 @@ export const FlexFuelCalculator: React.FC<FlexFuelCalculatorProps> = ({ vehicle 
             <p className="text-lg font-black text-emerald-400 mt-0.5">
               R$ {difference1000Km.toFixed(2)}
             </p>
-            <p className="text-[9px] text-slate-400">a mais no seu bolso por mês</p>
+            <p className="text-[9px] text-slate-400">de economia estimada a cada 1.000 km</p>
           </div>
 
           <div className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800">

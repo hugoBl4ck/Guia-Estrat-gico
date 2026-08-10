@@ -265,7 +265,11 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
                 
                 {vehicles.length > 1 && (
                   <button
-                    onClick={() => onDeleteVehicle(v.id)}
+                    onClick={() => {
+                      if (window.confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO DE VEÍCULO\n\nTem certeza que deseja remover o veículo ${v.model} (${v.licensePlate}) da sua frota?\n\nEsta ação não poderá ser desfeita.`)) {
+                        onDeleteVehicle(v.id);
+                      }
+                    }}
                     className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950 rounded-xl"
                     title="Excluir Veículo"
                   >

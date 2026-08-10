@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { MessageSquare, Mail, Smartphone, Copy, CheckCircle2, X, Share2 } from 'lucide-react';
+import { MessageSquare, Mail, Smartphone, Copy, CheckCircle2, X, Share2, Clock } from 'lucide-react';
 import { Vehicle, Earning, Expense } from '../types';
 import { calculateMeiTaxExemption } from '../utils/taxPolicies';
+import { calculateHoursBetween } from '../utils/financialCalculators';
 
 interface ShareReportModalProps {
   isOpen: boolean;
@@ -32,8 +33,41 @@ export const ShareReportModal: React.FC<ShareReportModalProps> = ({
   const totalKm = activeEarnings.reduce((sum, e) => sum + e.rideDistanceKm, 0);
   const marginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
+  const totalWorkedHours = activeEarnings.reduce((sum, e) => {
+    if (e.workedHours && e.workedHours > 0) return sum + e.workedHours;
+    if (e.startTime && e.endTime) {
+      const calc = calculateHoursBetween(e.startTime, e.endTime);
+      if (calc && calc > 0) return sum + calc;
+    }
+    return sum;
+  }, 0);
+
+  const grossPerHour = totalWorkedHours > 0 ? (totalRevenue / totalWorkedHours) : 0;
+  const netPerHour = totalWorkedHours > 0 ? (netProfit / totalWorkedHours) : 0;
+
   const meiTax = calculateMeiTaxExemption(totalRevenue, totalExpenses);
   const todayStr = new Date().toLocaleDateString('pt-BR');
+
+  // Agrupar por motorista
+  const driverStatsMap: { [name: string]: { trips: number; revenue: number; hours: number } } = {};
+  activeEarnings.forEach((e) => {
+    const dName = e.driverName || 'Ari';
+    if (!driverStatsMap[dName]) {
+      driverStatsMap[dName] = { trips: 0, revenue: 0, hours: 0 };
+    }
+    const itemHours = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || 0) : 0);
+    driverStatsMap[dName].trips += e.totalTrips || 1;
+    driverStatsMap[dName].revenue += e.grossAmount + e.tipsAmount;
+    driverStatsMap[dName].hours += itemHours;
+  });
+
+  const driverSummaryText = Object.keys(driverStatsMap)
+    .map((name) => {
+      const d = driverStatsMap[name];
+      const hStr = d.hours > 0 ? ` • ${d.hours.toFixed(1)}h (R$ ${(d.revenue / d.hours).toFixed(2)}/h)` : '';
+      return `• Motorista ${name}: ${d.trips} corridas (R$ ${d.revenue.toFixed(2)})${hStr}`;
+    })
+    .join('\n');
 
   // Texto Formatado para WhatsApp / E-mail / SMS
   const reportText = 
@@ -44,6 +78,9 @@ export const ShareReportModal: React.FC<ShareReportModalProps> = ({
 💵 *Faturamento Bruto*: R$ ${totalRevenue.toFixed(2)} (${totalTrips} corridas)
 🛑 *Despesas Operacionais*: -R$ ${totalExpenses.toFixed(2)}
 💰 *Lucro Real Líquido*: R$ ${netProfit.toFixed(2)} (Margem: ${marginPercent.toFixed(1)}%)
+${totalWorkedHours > 0 ? `⏰ *Horas Trabalhadas*: ${totalWorkedHours.toFixed(1)} h (R$ ${grossPerHour.toFixed(2)}/h bruto • R$ ${netPerHour.toFixed(2)}/h líq.)\n` : ''}
+👤 *Corridas por Motorista*:
+${driverSummaryText}
 
 📊 *Indicadores de Desempenho*:
 • KM Total Rodado: ${totalKm.toFixed(1)} km

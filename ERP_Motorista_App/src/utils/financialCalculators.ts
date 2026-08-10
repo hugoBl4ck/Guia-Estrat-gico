@@ -94,6 +94,35 @@ export function evaluateElectricCharging(kwhAdded: number, tariffPerKwh: number,
 }
 
 /**
+ * Calcula a duração em horas decimais entre dois horários "HH:MM" (ex: "08:00" e "17:30" => 9.5h)
+ * Suporta também viradas de turno noturno (ex: "22:00" às "04:00" => 6.0h).
+ */
+export function calculateHoursBetween(startTime?: string, endTime?: string): number | undefined {
+  if (!startTime || !endTime) return undefined;
+  
+  const startParts = startTime.split(':').map(Number);
+  const endParts = endTime.split(':').map(Number);
+  
+  if (startParts.length < 2 || endParts.length < 2) return undefined;
+  const [startH, startM] = startParts;
+  const [endH, endM] = endParts;
+  
+  if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return undefined;
+  
+  const startMinutes = startH * 60 + startM;
+  let endMinutes = endH * 60 + endM;
+  
+  if (endMinutes < startMinutes) {
+    // Virada de madrugada (ex: 22:00 até 04:00)
+    endMinutes += 24 * 60;
+  }
+  
+  const diffMinutes = endMinutes - startMinutes;
+  const hours = diffMinutes / 60;
+  return roundCurrency(hours);
+}
+
+/**
  * Consolidação e Resumo Financeiro Dinâmico do Turno por Veículo
  */
 export function calculateShiftSummary(
@@ -112,20 +141,33 @@ export function calculateShiftSummary(
     kmDriven = activeShift.endOdometerKm - activeShift.startOdometerKm;
   }
 
-  let activeHours = 4.5;
-  if (activeShift && activeShift.startTime) {
+  // 1. Somar horas trabalhadas explicitamente informadas nos lançamentos
+  const explicitWorkedHours = earnings.reduce((sum, e) => {
+    if (e.workedHours && e.workedHours > 0) {
+      return sum + e.workedHours;
+    }
+    if (e.startTime && e.endTime) {
+      const calc = calculateHoursBetween(e.startTime, e.endTime);
+      if (calc && calc > 0) return sum + calc;
+    }
+    return sum;
+  }, 0);
+
+  let activeHours = explicitWorkedHours > 0 ? explicitWorkedHours : 4.5;
+  if (explicitWorkedHours <= 0 && activeShift && activeShift.startTime) {
     const start = new Date(activeShift.startTime).getTime();
     const end = activeShift.endTime ? new Date(activeShift.endTime).getTime() : new Date().getTime();
     activeHours = Math.max(0.5, (end - start) / (1000 * 60 * 60));
   }
+  activeHours = roundCurrency(activeHours);
 
   const totalOperatingCost = roundCurrency(actualExpensesTotal);
   const netRealProfit = roundCurrency(grossRevenue - totalOperatingCost);
 
   const grossEarnedPerKm = kmDriven > 0 ? roundCurrency(grossRevenue / kmDriven) : 0;
   const netEarnedPerKm = kmDriven > 0 ? roundCurrency(netRealProfit / kmDriven) : 0;
-  const grossEarnedPerHour = roundCurrency(grossRevenue / activeHours);
-  const netEarnedPerHour = roundCurrency(netRealProfit / activeHours);
+  const grossEarnedPerHour = activeHours > 0 ? roundCurrency(grossRevenue / activeHours) : 0;
+  const netEarnedPerHour = activeHours > 0 ? roundCurrency(netRealProfit / activeHours) : 0;
   const profitMarginPercent = grossRevenue > 0 ? roundCurrency((netRealProfit / grossRevenue) * 100) : 0;
 
   return {

@@ -24,6 +24,15 @@ export type ChargingLocationType = 'RESIDENTIAL' | 'FAST_CHARGER_PAID' | 'FREE_C
 export type VehiclePowerType = 'ELECTRIC' | 'COMBUSTION' | 'HYBRID' | 'GNV';
 export type FuelType = 'GASOLINA' | 'ETANOL' | 'FLEX' | 'DIESEL' | 'GNV';
 
+export interface MaintenanceScheduleEntry {
+  intervalKm: number;
+  intervalMonths: number;
+  estimatedCost: number;
+  description: string;
+  isMajorService: boolean;
+  plannedDate?: string;
+}
+
 export interface Vehicle {
   id: string;
   model: string;
@@ -77,6 +86,17 @@ export interface Vehicle {
   precoGasolinaPorLitro?: number;
   consumoEtanolKml?: number;
   consumoGasolinaKml?: number;
+
+  // Cronograma de revisões oficiais (opcional, preenchido no onboarding)
+  maintenanceSchedule?: MaintenanceScheduleEntry[];
+}
+
+export interface Driver {
+  id: string;
+  name: string;
+  phone?: string;
+  photoUrl?: string;
+  isDefault?: boolean;
 }
 
 export interface Earning {
@@ -91,6 +111,10 @@ export interface Earning {
   isDeleted?: boolean;
   updatedAt?: string;
   vehicleId?: string;
+  driverName?: string;
+  startTime?: string;      // Horário inicial opcional (ex: "07:30")
+  endTime?: string;        // Horário final opcional (ex: "17:30")
+  workedHours?: number;    // Total de horas trabalhadas opcional (ex: 10.0)
 }
 
 export interface EarningDraft {
@@ -151,12 +175,13 @@ export interface Shift {
   status: 'OPEN' | 'PAUSED' | 'CLOSED';
   notes?: string;
   vehicleId?: string;
+  driverName?: string;
 }
 
 export interface ReserveBucket {
   id: string;
   name: string;
-  type: 'MAINTENANCE' | 'DEPRECIATION' | 'TAX_MEI' | 'FREE_CASH' | 'FINANCING';
+  type: 'MAINTENANCE' | 'FUEL' | 'TAX_MEI' | 'FREE_CASH' | 'FINANCING' | 'DEPRECIATION';
   currentBalance: number;
   targetBalance: number;
   percentageAllocated: number;
@@ -170,4 +195,12 @@ export interface CpkBreakdown {
   cpkDepreciation: number;
   cpkInsurance: number;
   cpkTotal: number;
+}
+
+export interface MaintenanceScheduleEntry {
+  intervalKm: number;
+  intervalMonths: number;
+  estimatedCost: number;
+  description: string;
+  isMajorService: boolean;
 }

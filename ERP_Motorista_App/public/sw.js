@@ -1,21 +1,7 @@
-// GiroCerto ERP - Service Worker Daemon (Cache Offline & PWA Sync)
-const CACHE_NAME = 'girocerto-erp-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.ico',
-  '/robots.txt'
-];
+// GiroCerto ERP - Service Worker Daemon (Network First para Navegação & Assets para evitar F5)
+const CACHE_NAME = 'girocerto-erp-v3';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return Promise.allSettled(
-        ASSETS_TO_CACHE.map((url) => cache.add(url).catch((err) => console.warn('Cache SW ignorou:', url, err)))
-      );
-    })
-  );
   self.skipWaiting();
 });
 
@@ -37,51 +23,50 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
   const isSameOrigin = requestUrl.origin === self.location.origin;
-  const isNavigationRequest = event.request.mode === 'navigate';
 
-  if (isNavigationRequest && isSameOrigin) {
+  // 1. Navegação e Documentos HTML: Sempre Tentar a Rede Primeiro (Network First)
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => {
-        const networkResponse = fetch(event.request)
-          .then((response) => {
-            if (response && response.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', response.clone()));
-            }
-            return response;
-          })
-          .catch(() => cached);
-
-        return cached || networkResponse;
-      })
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
     );
     return;
   }
 
-  if (isSameOrigin) {
+  // 2. Bundles de Código (JS e CSS da compilação): Network First para garantir a versão atualizada da Vercel
+  if (isSameOrigin && (requestUrl.pathname.endsWith('.js') || requestUrl.pathname.endsWith('.css'))) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) {
-          return cached;
-        }
-        return fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
-            }
-            return networkResponse;
-          })
-          .catch(() => {
-            if (event.request.destination === 'document') {
-              return caches.match('/index.html');
-            }
-            return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-          });
-      })
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
 
+  // 3. Demais arquivos estáticos (Imagens, Favicon, Fontes): Cache First com Fallback para Rede
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        if (response && response.status === 200 && isSameOrigin) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      });
+    })
   );
 });

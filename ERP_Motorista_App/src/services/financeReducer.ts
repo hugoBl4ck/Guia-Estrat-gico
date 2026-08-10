@@ -124,11 +124,45 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
 
     case 'ADD_EXPENSE': {
       const snapshot: FinanceState = { ...state, previousSnapshot: undefined };
+
+      // Mapeamento completo: categoria de despesa → tipo de caixa a debitar
+      const getBucketTypeForExpense = (expense: Expense): string => {
+        const cat = expense.category;
+        switch (cat) {
+          case 'ELECTRIC_CHARGING':
+          case 'FUEL':
+            return 'FUEL'; // Custo de energia / abastecimento
+
+          case 'MAINTENANCE':
+          case 'OIL_CHANGE':
+          case 'BRAKES':
+          case 'WORKSHOP_MAINTENANCE':
+          case 'SPARK_PLUGS_BELT':
+            return 'MAINTENANCE'; // Revisões, pneus, óleo, peças e oficina
+
+          case 'WASH':
+          case 'DOCUMENTS':
+          case 'IPVA_LICENSING':
+          case 'TAX_MEI':
+          case 'PARKING':
+          case 'TOLL':
+            return 'TAX_MEI'; // Custos fixos operacionais
+
+          case 'INSURANCE':
+            return 'FINANCING'; // Seguro é compromisso fixo mensal
+
+          case 'TRAFFIC_FINE':
+          case 'PERSONAL_USE':
+          case 'OTHER':
+          default:
+            return 'FREE_CASH'; // Perdas inesperadas saem do lucro livre
+        }
+      };
+
+      const targetBucketType = getBucketTypeForExpense(action.payload);
       const updatedBuckets = state.buckets.map((b) => {
-        if (action.payload.category === 'MAINTENANCE' || action.payload.category === 'OIL_CHANGE' || action.payload.category === 'BRAKES') {
-          if (b.type === 'MAINTENANCE') return { ...b, currentBalance: Math.max(0, b.currentBalance - action.payload.amount) };
-        } else {
-          if (b.type === 'FREE_CASH') return { ...b, currentBalance: Math.max(0, b.currentBalance - action.payload.amount) };
+        if (b.type === targetBucketType) {
+          return { ...b, currentBalance: Math.max(0, b.currentBalance - action.payload.amount) };
         }
         return b;
       });
@@ -151,11 +185,37 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         exp.id === action.payload ? { ...exp, isDeleted: true, updatedAt: new Date().toISOString() } : exp
       );
 
+      // Reverter: mesma lógica de mapeamento ao excluir
+      const getBucketTypeForExpense = (expense: Expense): string => {
+        const cat = expense.category;
+        switch (cat) {
+          case 'ELECTRIC_CHARGING':
+          case 'FUEL':
+            return 'FUEL';
+          case 'MAINTENANCE':
+          case 'OIL_CHANGE':
+          case 'BRAKES':
+          case 'WORKSHOP_MAINTENANCE':
+          case 'SPARK_PLUGS_BELT':
+            return 'MAINTENANCE';
+          case 'WASH':
+          case 'DOCUMENTS':
+          case 'IPVA_LICENSING':
+          case 'TAX_MEI':
+          case 'PARKING':
+          case 'TOLL':
+            return 'TAX_MEI';
+          case 'INSURANCE':
+            return 'FINANCING';
+          default:
+            return 'FREE_CASH';
+        }
+      };
+
+      const targetBucketType = getBucketTypeForExpense(deleted);
       const updatedBuckets = state.buckets.map((b) => {
-        if (deleted.category === 'MAINTENANCE' || deleted.category === 'OIL_CHANGE' || deleted.category === 'BRAKES') {
-          if (b.type === 'MAINTENANCE') return { ...b, currentBalance: b.currentBalance + deleted.amount };
-        } else {
-          if (b.type === 'FREE_CASH') return { ...b, currentBalance: b.currentBalance + deleted.amount };
+        if (b.type === targetBucketType) {
+          return { ...b, currentBalance: b.currentBalance + deleted.amount };
         }
         return b;
       });
@@ -168,6 +228,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         lastActionDescription: `Despesa de R$ ${deleted.amount.toFixed(2)} removida`,
       };
     }
+
 
     case 'START_SHIFT':
       return { ...state, activeShift: action.payload };

@@ -1,4 +1,9 @@
-import { Vehicle, Earning, Expense, Shift, ReserveBucket } from '../types';
+import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
+
+export const INITIAL_DRIVERS: Driver[] = [
+  { id: 'drv-ari', name: 'Ari', isDefault: true },
+  { id: 'drv-hugo', name: 'Hugo' },
+];
 
 export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   id: 'veh-byd-dolphin-mini',
@@ -17,7 +22,7 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   financingDueDay: 16, // Vencimento 16/08/2026
   fipeValue: 119990, // Valor da Nota Fiscal DANFE nº 000.005.582 (16/07/2026)
   estimatedResidualValue: 85000,
-  currentOdometerKm: 4500,
+  currentOdometerKm: 970,
   isElectric: true,
   batteryCapacityKwh: 38.8, // Bateria 38.8 kWh (NF: DOLPHIN MINI 5Seats 380km SKD-2 GS)
   kmPerKwh: 7.2, // 7.2 km/kWh em uso urbano
@@ -27,7 +32,23 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   insuranceTotalInstallments: 12, // 12 parcelas (ou 10x no próximo ano)
   insurancePaidInstallments: 1,
   insuranceCompany: 'Aliro / HDI',
-  insuranceDueDay: 1
+  insuranceDueDay: 1,
+  maintenanceSchedule: [
+    {
+      intervalKm: 20000,
+      intervalMonths: 12,
+      estimatedCost: 365,
+      description: 'Inspeção completa EV, suspensão, freios, filtro pólen',
+      isMajorService: false,
+    },
+    {
+      intervalKm: 40000,
+      intervalMonths: 24,
+      estimatedCost: 1000,
+      description: 'Inspeções complexas de segurança e trocas adicionais de fluidos',
+      isMajorService: true,
+    },
+  ]
 };
 
 export const DEFAULT_GENERIC_VEHICLE: Vehicle = {
@@ -96,7 +117,23 @@ export const VEHICLE_FORD_KA: Vehicle = {
   insuranceCompany: 'Porto Seguro Frota',
   fuelKmlCity: 9.5,
   fuelType: 'FLEX',
-  precoCombustivelPorLitro: 4.65
+  precoCombustivelPorLitro: 4.65,
+  maintenanceSchedule: [
+    {
+      intervalKm: 10000,
+      intervalMonths: 12,
+      estimatedCost: 300,
+      description: 'Troca de óleo, filtros e revisão preventiva',
+      isMajorService: false,
+    },
+    {
+      intervalKm: 20000,
+      intervalMonths: 24,
+      estimatedCost: 800,
+      description: 'Revisão completa: óleo, filtros, velas, correia dentada',
+      isMajorService: true,
+    },
+  ]
 };
 
 export const VEHICLES_LIST: Vehicle[] = [VEHICLE_BYD_DOLPHIN, VEHICLE_FORD_KA];
@@ -120,6 +157,7 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
     tipsAmount: 15.00,
     totalTrips: 11,
     rideDistanceKm: 128.0,
+    driverName: 'Ari',
     recordedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
   },
   {
@@ -130,6 +168,7 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
     tipsAmount: 5.00,
     totalTrips: 6,
     rideDistanceKm: 64.0,
+    driverName: 'Ari',
     recordedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
   }
 ];
@@ -145,6 +184,7 @@ export const INITIAL_EARNINGS_FORD_KA: Earning[] = [
     tipsAmount: 0,
     totalTrips: 88, // 88 corridas em 7 dias (média 12,5 corridas/dia)
     rideDistanceKm: 382.2, // 382.2 km em 7 dias (média 54.6 km/dia)
+    driverName: 'Ari',
     recordedAt: new Date('2026-07-19T23:59:59Z').toISOString()
   }
 ];
@@ -154,47 +194,38 @@ export const INITIAL_EXPENSES_FORD_KA: Expense[] = [];
 export const INITIAL_BUCKETS: ReserveBucket[] = [
   {
     id: 'bkt-financing',
-    name: 'Financiamento Santander / Aluguel',
+    name: 'Financiamento, Seguro & Aluguel',
     type: 'FINANCING',
     currentBalance: 0,
     targetBalance: 3086.58,
-    percentageAllocated: 35,
+    percentageAllocated: 40,
     color: '#A855F7'
   },
   {
     id: 'bkt-free-cash',
-    name: 'Lucro Livre (Disponível)',
+    name: 'Lucro Líquido Disponível',
     type: 'FREE_CASH',
     currentBalance: 0,
-    targetBalance: 5000.00,
+    targetBalance: 0,
     percentageAllocated: 40,
     color: '#10B981'
   },
   {
+    id: 'bkt-fuel',
+    name: 'Combustível & Recargas (EV)',
+    type: 'FUEL',
+    currentBalance: 0,
+    targetBalance: 600.00,
+    percentageAllocated: 10,
+    color: '#3B82F6'
+  },
+  {
     id: 'bkt-maint',
-    name: 'Manutenção EV / Revisão',
+    name: 'Manutenção, Revisão & Pneus',
     type: 'MAINTENANCE',
     currentBalance: 0,
     targetBalance: 1500.00,
     percentageAllocated: 10,
     color: '#F59E0B'
-  },
-  {
-    id: 'bkt-depr',
-    name: 'Depreciação Veicular / Pneus',
-    type: 'DEPRECIATION',
-    currentBalance: 0,
-    targetBalance: 500.00,
-    percentageAllocated: 10,
-    color: '#3B82F6'
-  },
-  {
-    id: 'bkt-tax-mei',
-    name: 'Custo Fixo (MEI + App + Lavagem R$120)',
-    type: 'TAX_MEI',
-    currentBalance: 0,
-    targetBalance: 200.00,
-    percentageAllocated: 5,
-    color: '#EF4444'
   }
 ];

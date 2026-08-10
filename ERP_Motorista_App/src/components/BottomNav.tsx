@@ -20,7 +20,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, o
     { id: 'vehicles', label: 'Frota', icon: Car },
     { id: 'reports', label: 'Relatórios', icon: BarChart3 },
     { id: 'buckets', label: 'Caixas', icon: Wallet },
-    { id: 'tax', label: 'Imposto', icon: ShieldCheck },
+    { id: 'tax', label: 'Patrimônio/FIPE', icon: Car },
   ];
 
   return (

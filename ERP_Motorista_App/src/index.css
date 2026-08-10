@@ -138,3 +138,74 @@
 .neon-text {
   animation: neon-flicker 3.5s ease-in-out infinite;
 }
+
+/* =====================================================
+   PRINT STYLES — RELATÓRIO ERP CORPORATIVO PARA PDF E IMPRESSÃO
+   ===================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm;
+  }
+
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace, Arial, sans-serif !important;
+  }
+
+  /* Ocultar elementos da aplicação principal e botões */
+  .no-print, nav, button, footer {
+    display: none !important;
+  }
+
+  .print-report-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .print-report-container * {
+    color: #000000 !important;
+    background-color: transparent !important;
+    border-color: #333333 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-card {
+    border: 1px solid #000000 !important;
+    border-radius: 4px !important;
+    padding: 10px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: avoid;
+  }
+
+  .print-report-container table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 5px !important;
+  }
+
+  .print-report-container table th {
+    border-bottom: 2px solid #000000 !important;
+    background-color: #F1F5F9 !important;
+    color: #000000 !important;
+    font-weight: bold !important;
+  }
+
+  .print-report-container table td {
+    border-bottom: 1px solid #E2E8F0 !important;
+  }
+}

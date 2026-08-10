@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Settings, X, Save, CheckCircle2, DollarSign, Zap, Shield, Car, Percent, Calculator, Sparkles } from 'lucide-react';
-import { Vehicle } from '../types';
+import { Settings, X, Save, CheckCircle2, DollarSign, Zap, Shield, Car, Percent, Calculator, Sparkles, Wrench, Plus, Trash2 } from 'lucide-react';
+import { Vehicle, MaintenanceScheduleEntry } from '../types';
 
 interface VehicleSettingsModalProps {
   isOpen: boolean;
@@ -35,6 +35,42 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
   // Estado para simulador de amortizacao da ultima parcela (1a + 48a)
   const [amortizationDiscountPercent, setAmortizationDiscountPercent] = useState('50'); // Desconto medio de juros no adiantamento da ultima parcela
 
+  // Cronograma de Revisões
+  const defaultScheduleEV: MaintenanceScheduleEntry[] = [
+    { intervalKm: 20000, intervalMonths: 12, estimatedCost: 365, description: 'Inspeção completa EV, suspensão, freios, filtro pólen', isMajorService: false },
+    { intervalKm: 40000, intervalMonths: 24, estimatedCost: 1000, description: 'Inspeções complexas + troca de fluidos (freio, arrefecimento, caixa de redução)', isMajorService: true },
+    { intervalKm: 60000, intervalMonths: 36, estimatedCost: 365, description: 'Inspeção completa EV, suspensão, freios, filtro pólen', isMajorService: false },
+    { intervalKm: 80000, intervalMonths: 48, estimatedCost: 1000, description: 'Inspeções complexas + troca de fluidos (freio, arrefecimento, caixa de redução)', isMajorService: true },
+  ];
+  const defaultScheduleCombustion: MaintenanceScheduleEntry[] = [
+    { intervalKm: 10000, intervalMonths: 6, estimatedCost: 280, description: 'Troca de óleo 5W20, filtros de ar e óleo, inspeção geral', isMajorService: false },
+    { intervalKm: 20000, intervalMonths: 12, estimatedCost: 500, description: 'Troca de velas, filtros + inspeção de freios e suspensão', isMajorService: false },
+    { intervalKm: 40000, intervalMonths: 24, estimatedCost: 1200, description: 'Correia dentada, pastilhas de freio, fluido de freio + revisão completa', isMajorService: true },
+    { intervalKm: 60000, intervalMonths: 36, estimatedCost: 500, description: 'Troca de velas, filtros + inspeção de freios e suspensão', isMajorService: false },
+  ];
+
+  const [schedule, setSchedule] = useState<MaintenanceScheduleEntry[]>(
+    vehicle.maintenanceSchedule && vehicle.maintenanceSchedule.length > 0
+      ? vehicle.maintenanceSchedule
+      : vehicle.isElectric ? defaultScheduleEV : defaultScheduleCombustion
+  );
+
+  const updateScheduleEntry = (index: number, field: keyof MaintenanceScheduleEntry, value: string | boolean | number) => {
+    setSchedule((prev) => prev.map((entry, i) => i === index ? { ...entry, [field]: value } : entry));
+  };
+
+  const addScheduleEntry = () => {
+    const lastKm = schedule.length > 0 ? schedule[schedule.length - 1].intervalKm : 0;
+    setSchedule((prev) => [
+      ...prev,
+      { intervalKm: lastKm + 20000, intervalMonths: 12, estimatedCost: 365, description: 'Descrição da revisão', isMajorService: false },
+    ]);
+  };
+
+  const removeScheduleEntry = (index: number) => {
+    setSchedule((prev) => prev.filter((_, i) => i !== index));
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -57,6 +93,7 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
       usageMode,
       weeklyRentalIncome: parseFloat(weeklyRentalIncome) || 550.00,
       tenantName: tenantName || 'Motorista Locatário',
+      maintenanceSchedule: schedule.filter(s => s.intervalKm > 0),
     };
 
     onUpdateVehicle(updatedVehicle);
@@ -64,7 +101,8 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
   };
 
   // Calculos da Amortizacao
-  const rawFinancingVal = parseFloat(financingCost) || 3086.58;
+  const parsedFin = parseFloat(financingCost);
+  const rawFinancingVal = isNaN(parsedFin) ? 0 : parsedFin;
   const discountFactor = parseFloat(amortizationDiscountPercent) / 100;
   const lastInstallmentEstimatedCost = rawFinancingVal * (1 - discountFactor);
   const totalCostFirstAndLast = rawFinancingVal + lastInstallmentEstimatedCost;
@@ -357,6 +395,94 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* SEÇÃO 4: CRONOGRAMA DE REVISÕES */}
+          <div className="p-3.5 bg-slate-900 border border-amber-800/60 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-amber-400 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
+                <Wrench className="w-4 h-4 text-amber-400" /> Cronograma de Revisões
+              </span>
+              <button
+                type="button"
+                onClick={() => setSchedule(vehicle.isElectric ? defaultScheduleEV : defaultScheduleCombustion)}
+                className="text-[10px] text-slate-400 hover:text-amber-400 underline"
+              >
+                Restaurar padrão
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Configure as revisões do seu veículo. O sistema detectará automaticamente qual é a próxima com base no odômetro.
+            </p>
+
+            <div className="space-y-2">
+              {schedule.map((entry, idx) => (
+                <div key={idx} className="bg-black/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-amber-300">{idx + 1}ª Revisão</span>
+                    <button
+                      type="button"
+                      onClick={() => removeScheduleEntry(idx)}
+                      className="text-slate-500 hover:text-rose-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Intervalo (km)</label>
+                      <input
+                        type="number"
+                        step="1000"
+                        value={entry.intervalKm}
+                        onChange={(e) => updateScheduleEntry(idx, 'intervalKm', parseInt(e.target.value, 10) || 0)}
+                        className="w-full bg-black border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Custo Estimado (R$)</label>
+                      <input
+                        type="number"
+                        step="10"
+                        value={entry.estimatedCost}
+                        onChange={(e) => updateScheduleEntry(idx, 'estimatedCost', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-black border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Descrição</label>
+                    <input
+                      type="text"
+                      value={entry.description}
+                      onChange={(e) => updateScheduleEntry(idx, 'description', e.target.value)}
+                      className="w-full bg-black border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={entry.isMajorService}
+                      onChange={(e) => updateScheduleEntry(idx, 'isMajorService', e.target.checked)}
+                      className="accent-amber-400"
+                    />
+                    <span className="text-[11px] text-slate-300">Revisão Maior (alta complexidade)</span>
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addScheduleEntry}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-400 border border-amber-800/60 border-dashed rounded-xl py-2 hover:border-amber-500 hover:text-amber-300 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Adicionar Revisão
+            </button>
+          </div>
 
           <div className="flex gap-2 pt-2">
             <button

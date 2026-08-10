@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle, BarChart3 } from 'lucide-react';
 import { Vehicle, Shift } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
 import { GiroCertoLogo } from './GiroCertoLogo';
@@ -12,6 +12,8 @@ interface NavbarProps {
   activeShift: Shift | null;
   onEndShift?: () => void;
   onOpenVoice: () => void;
+  onOpenAnalyticsCharts?: () => void;
+  onOpenDriverRegistration?: () => void;
   onResetData: () => void;
   onRestoreMockData: () => void;
   isDataCleared: boolean;
@@ -34,6 +36,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeShift,
   onEndShift,
   onOpenVoice,
+  onOpenAnalyticsCharts,
+  onOpenDriverRegistration,
   onResetData,
   onRestoreMockData,
   isDataCleared,
@@ -99,6 +103,30 @@ export const Navbar: React.FC<NavbarProps> = ({
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
           </div>
+
+          {/* Botão de Análise Visual & Gráficos */}
+          {onOpenAnalyticsCharts && (
+            <button
+              onClick={onOpenAnalyticsCharts}
+              className="bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-md shrink-0"
+              title="Abrir painel de gráficos e análise visual sob demanda"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Gráficos</span>
+            </button>
+          )}
+
+          {/* Botão de Cadastro de Motorista */}
+          {onOpenDriverRegistration && (
+            <button
+              onClick={onOpenDriverRegistration}
+              className="bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800 text-[10px] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1 transition-colors shrink-0"
+              title="Cadastrar ou editar motoristas (nome, telefone, foto)"
+            >
+              <User className="w-3.5 h-3.5 text-emerald-400" />
+              <span>+ Motorista</span>
+            </button>
+          )}
 
           {/* Botão de Configurar Financiamento */}
           <button

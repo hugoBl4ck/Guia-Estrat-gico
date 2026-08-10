@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roundCurrency, calculateCPK, calculateShiftSummary } from './financialCalculators';
+import { roundCurrency, calculateCPK, calculateShiftSummary, calculateHoursBetween } from './financialCalculators';
 import { VEHICLE_BYD_DOLPHIN } from './mockData';
 
 describe('financialCalculators', () => {
@@ -44,5 +44,58 @@ describe('financialCalculators', () => {
     expect(summary.totalTrips).toBe(12);
     expect(summary.kmDriven).toBe(100);
     expect(summary.netRealProfit).toBeLessThanOrEqual(summary.grossRevenue);
+  });
+
+  it('calculateHoursBetween deve calcular a duração correta em horas decimais', () => {
+    // 08:00 até 17:30 = 9h30m = 9.5h
+    expect(calculateHoursBetween('08:00', '17:30')).toBe(9.5);
+    // 07:00 até 19:00 = 12h
+    expect(calculateHoursBetween('07:00', '19:00')).toBe(12);
+    // 14:15 até 15:45 = 1h30m = 1.5h
+    expect(calculateHoursBetween('14:15', '15:45')).toBe(1.5);
+    // Virada noturna: 22:00 até 04:00 = 6h
+    expect(calculateHoursBetween('22:00', '04:00')).toBe(6);
+    // Dados inválidos ou vazios
+    expect(calculateHoursBetween(undefined, '10:00')).toBeUndefined();
+    expect(calculateHoursBetween('', '')).toBeUndefined();
+  });
+
+  it('calculateShiftSummary deve priorizar workedHours dos lançamentos para calcular R$/hora', () => {
+    const cpk = calculateCPK(VEHICLE_BYD_DOLPHIN);
+    const earnings = [
+      {
+        id: '1',
+        platform: 'UBER' as const,
+        grossAmount: 200.0,
+        tipsAmount: 10.0,
+        totalTrips: 15,
+        rideDistanceKm: 80,
+        recordedAt: new Date().toISOString(),
+        startTime: '08:00',
+        endTime: '16:00',
+        workedHours: 8.0,
+      },
+      {
+        id: '2',
+        platform: 'NINETY_NINE' as const,
+        grossAmount: 90.0,
+        tipsAmount: 0,
+        totalTrips: 5,
+        rideDistanceKm: 30,
+        recordedAt: new Date().toISOString(),
+        workedHours: 2.0,
+      },
+    ];
+
+    const summary = calculateShiftSummary(null, earnings, [], VEHICLE_BYD_DOLPHIN, cpk);
+
+    // Total de faturamento = 200 + 10 + 90 = 300
+    expect(summary.grossRevenue).toBe(300.0);
+    // Total de horas = 8.0 + 2.0 = 10.0 horas
+    expect(summary.activeHours).toBe(10.0);
+    // R$/hora bruto = 300 / 10 = 30.00
+    expect(summary.grossEarnedPerHour).toBe(30.0);
+    // R$/hora líquido = 300 / 10 = 30.00 (sem despesas)
+    expect(summary.netEarnedPerHour).toBe(30.0);
   });
 });

@@ -161,6 +161,10 @@ export class DataRepository implements IDataRepository {
 
     if (userEmail && userEmail.trim() !== '' && isSupabaseConfigured()) {
       await this.queueSyncState(state, userEmail);
+      // Disparar sincronização imediata em segundo plano sem bloquear a aplicação
+      this.flushSyncQueue(userEmail).catch((err) => {
+        console.warn('Auto-sync em background falhou:', err);
+      });
     }
   }
 
@@ -182,13 +186,26 @@ export class DataRepository implements IDataRepository {
             total_trips: e.totalTrips,
             ride_distance_km: e.rideDistanceKm,
             recorded_at: e.recordedAt,
+            driver_name: e.driverName || 'Ari',
+            start_time: e.startTime || null,
+            end_time: e.endTime || null,
+            worked_hours: e.workedHours || null,
             is_deleted: false,
             user_email: userEmail,
           }));
           
-          const { error: upsertError } = await supabase
+          let { error: upsertError } = await supabase
             .from('ganhos')
             .upsert(payloadEarnings, { onConflict: 'id' });
+
+          // Se a tabela Supabase ainda não possuir colunas novas (driver_name, start_time, end_time, worked_hours), fallback sem essas colunas
+          if (upsertError && (upsertError.message?.includes('driver_name') || upsertError.message?.includes('start_time') || upsertError.message?.includes('end_time') || upsertError.message?.includes('worked_hours') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadEarnings.map(({ driver_name, start_time, end_time, worked_hours, ...rest }) => rest);
+            const retry = await supabase
+              .from('ganhos')
+              .upsert(fallbackPayload, { onConflict: 'id' });
+            upsertError = retry.error;
+          }
 
           if (upsertError) {
             console.error('Erro no Supabase (ganhos):', upsertError);
@@ -340,6 +357,10 @@ export class DataRepository implements IDataRepository {
           totalTrips: parseInt(e.total_trips, 10) || 1,
           rideDistanceKm: parseFloat(e.ride_distance_km) || 0,
           recordedAt: e.recorded_at,
+          driverName: e.driver_name || 'Ari',
+          startTime: e.start_time || undefined,
+          endTime: e.end_time || undefined,
+          workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
           isDeleted: Boolean(e.is_deleted),
         }));
       } else if (Array.isArray(cloudFaturamentos) && cloudFaturamentos.length > 0) {
@@ -350,6 +371,10 @@ export class DataRepository implements IDataRepository {
           tipsAmount: parseFloat(f.valor_gorjeta) || 0,
           totalTrips: parseInt(f.total_corridas, 10) || 1,
           rideDistanceKm: parseFloat(f.distancia_km) || 0,
+          driverName: f.driver_name || 'Ari',
+          startTime: f.start_time || f.inicio || undefined,
+          endTime: f.end_time || f.fim || undefined,
+          workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
           recordedAt: f.recorded_at,
         }));
       }

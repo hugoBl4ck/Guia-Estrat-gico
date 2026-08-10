@@ -62,7 +62,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const todayTrips = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
 
   // Recálculo Dinâmico dos Custos Totais (Fixos + Novas Despesas Lançadas no Mês)
-  const monthlyFinancing = vehicle.monthlyFinancingCost || (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
+  const monthlyFinancing = (vehicle.monthlyFinancingCost !== undefined && vehicle.monthlyFinancingCost !== null) ? vehicle.monthlyFinancingCost : (vehicle.isRented ? (vehicle.monthlyRentalCost || 0) : 0);
   const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
   const monthlyAppFee = 80.00;
   const monthlyCarWash = 120.00; // Lavagem / Higienização mensal R$ 120,00
@@ -71,26 +71,60 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const totalMonthlyCommitments = monthlyFinancing + monthlyInsurance + monthlyAppFee + monthlyCarWash + monthlyLoggedExpenses;
   const dailyBaseCostTarget = Math.round((totalMonthlyCommitments / 30) * 100) / 100; // Recalcula com CADA nova despesa!
 
+  // Cálculo de vencimento e saldo de financiamento para metas dinâmicas
+  const todayDate = new Date();
+  const currentDayOfMonth = todayDate.getDate();
+  const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+  
+  const finDueDay = vehicle.financingDueDay || 16;
+  
+  // Contagem regressiva exata de dias até o vencimento
+  let daysRemainingToDue = finDueDay - currentDayOfMonth;
+  if (daysRemainingToDue <= 0) {
+    daysRemainingToDue += daysInMonth;
+  }
+
+  // Buscar valor já acumulado no caixa de financiamento
+  const financingBucket = buckets.find((b) => b.type === 'FINANCING');
+  const currentFinancingBalance = financingBucket ? financingBucket.currentBalance : 0;
+  
+  // Dias efetivamente trabalhados no ciclo atual
+  const uniqueDaysWorked = new Set(
+    (earnings || []).filter((e) => !e.isDeleted && e.recordedAt).map((e) => getLocalDateString(e.recordedAt))
+  ).size || 1;
+
+  const targetFinancingTotal = monthlyFinancing;
+  const remainingFinancingAmount = Math.max(0, targetFinancingTotal - currentFinancingBalance);
+
   // Definição dos 3 Perfis de Metas Diárias (Leve, Moderada, Agressiva)
-  let targetDailyRevenue = dailyBaseCostTarget;
+  const fixedCostsMonthly = monthlyFinancing + monthlyInsurance + monthlyAppFee + monthlyCarWash;
+  const dailyFixedCost = fixedCostsMonthly / 30;
+
+  const effectiveDays = Math.max(1, daysRemainingToDue);
+  const financingRemaining = Math.max(0, targetFinancingTotal - currentFinancingBalance);
+  const financingDailyTarget = daysRemainingToDue > 0 ? (financingRemaining / effectiveDays) : 0;
+
+  const targetDailyRevenue_LEVE = dailyFixedCost;
+  const targetDailyRevenue_MODERADA = dailyFixedCost + 150;
+  const targetDailyRevenue_AGRESSIVA = dailyFixedCost + financingDailyTarget + 275;
+
+  let targetDailyRevenue = dailyFixedCost;
   let targetTrips = dailyGoalTrips;
   let goalDescription = '';
-
   const bankName = vehicle.financingBank || (vehicle.isRented ? 'Aluguel' : 'Financiamento');
-  const insName = vehicle.insuranceCompany || 'Seguro Auto';
 
   if (goalProfile === 'LEVE') {
-    targetDailyRevenue = dailyBaseCostTarget;
+    targetDailyRevenue = targetDailyRevenue_LEVE;
     targetTrips = Math.max(15, Math.ceil(targetDailyRevenue / 11));
-    goalDescription = `🛡️ Meta Leve: Cobre 100% da parcela ${bankName} (R$ ${monthlyFinancing.toFixed(2)}) e despesas (R$ ${dailyBaseCostTarget.toFixed(2)}/dia) sem margem extra.`;
+    goalDescription = '🛡️ Meta Leve: Cobre custos fixos operacionais do dia.';
   } else if (goalProfile === 'MODERADA') {
-    targetDailyRevenue = dailyBaseCostTarget + 150.00;
+    targetDailyRevenue = targetDailyRevenue_MODERADA;
     targetTrips = dailyGoalTrips;
-    goalDescription = `⚡ Meta Moderada: Garante a parcela ${bankName} + R$ 150,00 de Lucro Limpo no bolso todo dia.`;
+    goalDescription = '⚡ Meta Moderada: Cobre custos fixos + R$ 150,00 de Lucro Líquido diário.';
   } else {
-    targetDailyRevenue = dailyBaseCostTarget + 275.00;
+    targetDailyRevenue = Math.min(targetDailyRevenue_AGRESSIVA, dailyFixedCost * 5);
     targetTrips = Math.max(40, Math.ceil(targetDailyRevenue / 11));
-    goalDescription = `🚀 Meta Agressiva: Quita custos, gera lucro e antecipa parcelas futuras ${bankName ? `do ${bankName}` : ''} com ~50% de desconto no juro!`;
+    goalDescription = `🚀 Meta Agressiva: Cobre custos fixos + antecipação de amortização (R$ ${financingRemaining.toFixed(2)} em ${daysRemainingToDue} dias) + R$ 275,00 de Lucro Líquido.`;
   }
 
   const effectiveRevenue = todayRevenue;
@@ -115,38 +149,13 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const monthlyProgressPercent = Math.min(100, Math.round((monthlyTripsCompleted / monthlyGoalTrips) * 100));
 
   // Dados do Financiamento Santander e Seguro Aliro
-  const finCost = vehicle.monthlyFinancingCost || 3086.58;
+  const finCost = monthlyFinancing;
   const finTotal = vehicle.financingTotalInstallments || 48;
   const finPaid = vehicle.financingPaidInstallments || 1;
   const insCost = vehicle.insuranceMonthlyCost || 299.71;
   const insTotal = vehicle.insuranceTotalInstallments || 12;
   const insPaid = vehicle.insurancePaidInstallments || 1;
 
-  // CÁLCULO INTELIGENTE DA PARCELA DO FINANCIAMENTO & DIAS RESTANTES DE VENCIMENTO
-  const todayDate = new Date();
-  const currentDayOfMonth = todayDate.getDate();
-  const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
-  
-  const finDueDay = vehicle.financingDueDay || 16;
-  
-  // Contagem regressiva exata de dias até o vencimento
-  let daysRemainingToDue = finDueDay - currentDayOfMonth;
-  if (daysRemainingToDue <= 0) {
-    daysRemainingToDue += daysInMonth;
-  }
-
-  // Buscar valor já acumulado no caixa de financiamento
-  const financingBucket = buckets.find((b) => b.type === 'FINANCING');
-  const currentFinancingBalance = financingBucket ? financingBucket.currentBalance : 0;
-  
-  // Dias efetivamente trabalhados no ciclo atual
-  const uniqueDaysWorked = new Set(
-    (earnings || []).filter((e) => !e.isDeleted && e.recordedAt).map((e) => getLocalDateString(e.recordedAt))
-  ).size || 1;
-
-  const targetFinancingTotal = vehicle.monthlyFinancingCost !== undefined ? vehicle.monthlyFinancingCost : (vehicle.isRented ? vehicle.monthlyRentalCost : 0);
-  const remainingFinancingAmount = Math.max(0, targetFinancingTotal - currentFinancingBalance);
-  
   // Meta Diária de Lucro Líquido requerida a partir de hoje até a data do boleto
   const requiredDailyNetProfitForFinancing = daysRemainingToDue > 0 ? (remainingFinancingAmount / daysRemainingToDue) : 0;
   
@@ -157,7 +166,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const estimatedNetPerTrip = Math.max(8.00, Math.min(25.00, realAverageTripTicket));
 
   const requiredTripsPerDayForFinancing = Math.ceil(requiredDailyNetProfitForFinancing / estimatedNetPerTrip);
-  const financingProgressPercent = Math.min(100, Math.round((currentFinancingBalance / targetFinancingTotal) * 100));
+  const financingProgressPercent = targetFinancingTotal > 0 ? Math.min(100, Math.round((currentFinancingBalance / targetFinancingTotal) * 100)) : 100;
 
   return (
     <div className="space-y-6 pb-24">
@@ -328,7 +337,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
                 🟢 VEÍCULO QUITADO ({vehicle.model.toUpperCase()})
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Isento de parcela de financiamento. 100% da receita de lucro vai para o seu bolso e reservas.
+                Isento de parcela de financiamento. 100% da receita líquida destinada ao lucro disponível e reservas.
               </p>
             </div>
           </div>
@@ -380,7 +389,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Descontados parcela {bankName} (R$ {monthlyFinancing.toFixed(2)}), seguro {insName} (R$ {monthlyInsurance.toFixed(2)}), lavagem (R$ {monthlyCarWash.toFixed(2)}), recarga/combustível e manutenção.
+            Receita Bruta (R$ {todayRevenue.toFixed(2)}) menos despesas lançadas no período. O cálculo é 100% baseado nos lançamentos do motorista.
           </p>
         </div>
 
@@ -438,7 +447,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
           {/* Seguro */}
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5">
-            <span className="text-slate-400 font-semibold block text-[10px] uppercase">Seguro Aliro Auto</span>
+            <span className="text-slate-400 font-semibold block text-[10px] uppercase">{vehicle.insuranceCompany || 'Seguro Auto'}</span>
             <p className="font-mono font-black text-blue-400 text-sm">R$ {insCost.toFixed(2)}/mês</p>
             <div className="flex justify-between text-[11px] text-slate-300 pt-1 border-t border-slate-800">
               <span>Plano:</span>
@@ -477,20 +486,27 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
          <div className="bg-pma-card border border-white/10 rounded-3xl p-4 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" /> R$ / HORA RODADA
+               <Clock className="w-3.5 h-3.5 text-amber-400" /> R$ / HORA DE TRABALHO
             </span>
             <span className="text-[10px] font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded-full border border-amber-800">
-              {summary.activeHours.toFixed(1)}h rodadas
+              {summary.activeHours > 0 ? `${summary.activeHours.toFixed(1)}h registradas` : (activeShift ? `${summary.activeHours.toFixed(1)}h de turno` : 'Sem horas')}
             </span>
           </div>
 
-          <p className="text-2xl font-black text-white">
-            R$ {summary.grossEarnedPerHour.toFixed(2)}
-          </p>
-
-          <p className="text-[11px] text-amber-400 mt-1">
-            Líquido: <span className="font-bold text-white">R$ {summary.netEarnedPerHour.toFixed(2)}/h</span> no bolso
-          </p>
+          {summary.activeHours > 0 ? (
+            <>
+              <p className="text-2xl font-black text-white">
+                R$ {summary.grossEarnedPerHour.toFixed(2)}
+              </p>
+              <p className="text-[11px] text-amber-400 mt-1">
+                Líquido: <span className="font-bold text-white">R$ {summary.netEarnedPerHour.toFixed(2)}/h</span> ({summary.activeHours.toFixed(1)}h trabalhadas)
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Informe os horários de início/fim ao lançar corridas ou abra um turno para medir seu ganho real por hora.
+            </p>
+          )}
         </div>
       </div>
 
@@ -498,7 +514,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       <div className="bg-pma-card border border-white/10 rounded-none p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-pma-acid bg-pma-acid/10 border border-pma-acid/30 px-3 py-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-pma-acid" /> METAS DE OPERAÇÃO (Ticket R$ 11)
+            <MapPin className="w-3 h-3 text-pma-acid" /> METAS DE OPERAÇÃO (Ticket Médio: R$ {realAverageTripTicket.toFixed(2)})
           </span>
 
           <button
@@ -528,7 +544,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
               }`}
             >
               <span>🛡️ LEVE</span>
-              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {dailyBaseCostTarget.toFixed(0)}/dia</span>
+              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {targetDailyRevenue_LEVE.toFixed(0)}/dia</span>
             </button>
 
             <button
@@ -540,7 +556,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
               }`}
             >
               <span>⚡ MODERADA</span>
-              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {(dailyBaseCostTarget + 150).toFixed(0)}/dia</span>
+              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {targetDailyRevenue_MODERADA.toFixed(0)}/dia</span>
             </button>
 
             <button
@@ -552,7 +568,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
               }`}
             >
               <span>🚀 AGRESSIVA</span>
-              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {(dailyBaseCostTarget + 275).toFixed(0)}/dia</span>
+              <span className="text-[10px] opacity-90 font-mono font-bold">R$ {targetDailyRevenue_AGRESSIVA.toFixed(0)}/dia</span>
             </button>
           </div>
 
@@ -585,6 +601,30 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
                 Faltam <span className="font-extrabold text-driver-profit">{tripsRemainingToday} corridas</span> para bater a meta de hoje ({targetTrips}/dia).
               </span>
             )}
+          </div>
+        </div>
+
+        {/* ALOCAÇÃO DIÁRIA DE PRODUÇÃO (FINANCIAMENTO VS LUCRO LÍQUIDO) */}
+        <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 text-xs text-left">
+          <div className="flex items-center justify-between font-bold">
+            <span className="text-amber-400 flex items-center gap-1.5 text-xs uppercase font-mono">
+              🏦 ALOCAÇÃO DIÁRIA DE PRODUÇÃO (FINANCIAMENTO VS LUCRO)
+            </span>
+            <span className="text-amber-300 font-mono text-[11px]">
+              Meta Parcela: R$ {requiredDailyNetProfitForFinancing.toFixed(2)}/dia
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            • <b>Primeiras {requiredTripsPerDayForFinancing} corridas do dia</b> (~R$ {requiredDailyNetProfitForFinancing.toFixed(2)}): destinadas ao fundo da parcela de R$ {finCost.toFixed(2)} ({bankName}).<br />
+            • <b>A partir da {requiredTripsPerDayForFinancing + 1}ª corrida</b>: faturamento convertido <b>100% em Lucro Líquido Disponível</b>.
+          </p>
+
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[10px]">
+            <span className="text-slate-400">Corridas para Financiamento Realizadas Hoje:</span>
+            <span className="font-bold text-amber-300 font-mono">
+              {Math.min(tripsCompletedToday, requiredTripsPerDayForFinancing)} / {requiredTripsPerDayForFinancing} corridas
+            </span>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket } from '../types';
-import { calculateCPK, calculateShiftSummary } from './financialCalculators';
+import { calculateCPK, calculateShiftSummary, calculateHoursBetween } from './financialCalculators';
 
 /**
  * Função utilitária para gerar e baixar um arquivo CSV/Excel formatado em UTF-8 BOM
@@ -51,6 +51,9 @@ export function exportFullExcelReport(
   csv.push(`Métrica;Valor (R$)`);
   csv.push(`Faturamento Bruto Total;R$ ${summary.grossRevenue.toFixed(2)}`);
   csv.push(`KM Rodado Registrado;${summary.kmDriven.toFixed(1)} km`);
+  csv.push(`Horas Trabalhadas Totais;${summary.activeHours.toFixed(1)} h`);
+  csv.push(`Faturamento por Hora (Bruto);R$ ${summary.grossEarnedPerHour.toFixed(2)}/h`);
+  csv.push(`Lucro Real Líquido por Hora;R$ ${summary.netEarnedPerHour.toFixed(2)}/h`);
   csv.push(`Custo por KM (CPK Total);R$ ${cpk.cpkTotal.toFixed(2)}/km`);
   csv.push(`  - CPK Fixo (Financiamento/Aluguel/MEI);R$ ${cpk.cpkFixed.toFixed(2)}/km`);
   csv.push(`  - CPK Energia / Combustível;R$ ${cpk.cpkEnergyOrFuel.toFixed(2)}/km`);
@@ -59,18 +62,45 @@ export function exportFullExcelReport(
   csv.push(`  - CPK Seguro Auto;R$ ${cpk.cpkInsurance.toFixed(2)}/km`);
   csv.push(`Custo Operacional Total;-R$ ${summary.totalOperatingCost.toFixed(2)}`);
   csv.push(`Lucro Real Líquido;R$ ${summary.netRealProfit.toFixed(2)}`);
-  csv.push(`Margem de Lucro Real;${summary.profitMarginPercent.toFixed(1)}%`);
+  csv.push(`Margem de Lucro Real;${summary.profitMarginPercent.toFixed(1)}%\n`);
+
+  // =========================================================================
+  // SEÇÃO 2.5: RESUMO DE CORRIDAS POR MOTORISTA
+  // =========================================================================
+  csv.push(`--- DESEMPENHO E CORRIDAS POR MOTORISTA ---`);
+  csv.push(`Motorista;Nº Corridas;Faturamento Total (R$);KM Rodados;Horas Trabalhadas;R$/Hora (Bruto)`);
+
+  const driverStatsMap: { [name: string]: { trips: number; revenue: number; km: number; hours: number } } = {};
+  earnings.forEach((e) => {
+    const dName = e.driverName || 'Ari';
+    if (!driverStatsMap[dName]) {
+      driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
+    }
+    const itemHours = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || 0) : 0);
+    driverStatsMap[dName].trips += e.totalTrips || 1;
+    driverStatsMap[dName].revenue += e.grossAmount + e.tipsAmount;
+    driverStatsMap[dName].km += e.rideDistanceKm || 0;
+    driverStatsMap[dName].hours += itemHours;
+  });
+
+  Object.keys(driverStatsMap).forEach((dName) => {
+    const stat = driverStatsMap[dName];
+    const rate = stat.hours > 0 ? (stat.revenue / stat.hours) : 0;
+    csv.push(`${dName};${stat.trips};R$ ${stat.revenue.toFixed(2)};${stat.km.toFixed(1)} km;${stat.hours.toFixed(1)} h;R$ ${rate.toFixed(2)}/h`);
+  });
   csv.push(``);
 
   // =========================================================================
   // SEÇÃO 3: GANHOS POR PLATAFORMA (UBER / 99 / INDRIVE)
   // =========================================================================
   csv.push(`--- DETALHAMENTO DE GANHOS POR PLATAFORMA ---`);
-  csv.push(`Data/Hora;Plataforma;Nº Corridas;KM Viagens;Valor Bruto (R$);Gorjetas (R$);Total (R$)`);
+  csv.push(`Data/Hora;Motorista;Plataforma;Nº Corridas;KM Viagens;Horário Início;Horário Fim;Horas Trabalhadas;Valor Bruto (R$);Gorjetas (R$);Total (R$)`);
   earnings.forEach((e) => {
     const total = e.grossAmount + e.tipsAmount;
+    const driver = e.driverName || 'Ari';
+    const hCalc = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || "") : "");
     csv.push(
-      `${new Date(e.recordedAt).toLocaleString('pt-BR')};${e.platform};${e.totalTrips};${e.rideDistanceKm};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${total.toFixed(2)}`
+      `${new Date(e.recordedAt).toLocaleString('pt-BR')};${driver};${e.platform};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${total.toFixed(2)}`
     );
   });
   csv.push(``);

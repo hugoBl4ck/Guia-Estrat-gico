@@ -82,6 +82,9 @@ CREATE TABLE earnings (
     total_trips INT NOT NULL DEFAULT 1 CHECK (total_trips > 0),
     ride_distance_km DECIMAL(8,2) DEFAULT 0.00,
     ride_duration_minutes INT DEFAULT 0,
+    start_time VARCHAR(10),              -- Horário inicial opcional (ex: "07:30")
+    end_time VARCHAR(10),                -- Horário final opcional (ex: "17:30")
+    worked_hours DECIMAL(4,2),           -- Horas trabalhadas opcionais (ex: 10.00)
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

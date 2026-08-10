@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, X, CheckCircle2, Car, Compass, Calendar, Pencil } from 'lucide-react';
-import { Earning, PlatformType } from '../types';
+import { DollarSign, Plus, X, CheckCircle2, Car, Compass, Calendar, Pencil, User, Clock } from 'lucide-react';
+import { Earning, PlatformType, Driver } from '../types';
+import { calculateHoursBetween } from '../utils/financialCalculators';
 
 interface AddEarningModalProps {
   isOpen: boolean;
@@ -8,6 +9,9 @@ interface AddEarningModalProps {
   onAddEarning: (earning: Omit<Earning, 'id'>) => void;
   onEditEarning?: (earning: Earning) => void;
   earningToEdit?: Earning | null;
+  drivers?: Driver[];
+  currentDriverName?: string;
+  onAddDriver?: (name: string) => void;
 }
 
 export const AddEarningModal: React.FC<AddEarningModalProps> = ({
@@ -16,33 +20,67 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
   onAddEarning,
   onEditEarning,
   earningToEdit,
+  drivers = [{ id: 'drv-ari', name: 'Ari' }, { id: 'drv-hugo', name: 'Hugo' }],
+  currentDriverName = 'Hugo',
+  onAddDriver,
 }) => {
   const [platform, setPlatform] = useState<PlatformType>('UBER');
+  const [driverName, setDriverName] = useState<string>(currentDriverName);
+  const [newDriverInput, setNewDriverInput] = useState('');
+  const [showNewDriverForm, setShowNewDriverForm] = useState(false);
   const [grossAmount, setGrossAmount] = useState('');
   const [tipsAmount, setTipsAmount] = useState('');
   const [totalTrips, setTotalTrips] = useState('18');
   const [rideDistanceKm, setRideDistanceKm] = useState('70');
   const [recordedDate, setRecordedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [startTime, setStartTime] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
+  const [workedHours, setWorkedHours] = useState<string>('');
 
   useEffect(() => {
     if (earningToEdit) {
       setPlatform(earningToEdit.platform);
+      setDriverName(earningToEdit.driverName || 'Ari');
       setGrossAmount(earningToEdit.grossAmount.toString());
       setTipsAmount(earningToEdit.tipsAmount ? earningToEdit.tipsAmount.toString() : '');
       setTotalTrips(earningToEdit.totalTrips ? earningToEdit.totalTrips.toString() : '1');
       setRideDistanceKm(earningToEdit.rideDistanceKm ? earningToEdit.rideDistanceKm.toString() : '0');
+      setStartTime(earningToEdit.startTime || '');
+      setEndTime(earningToEdit.endTime || '');
+      setWorkedHours(earningToEdit.workedHours ? earningToEdit.workedHours.toString() : '');
       if (earningToEdit.recordedAt) {
         setRecordedDate(new Date(earningToEdit.recordedAt).toISOString().slice(0, 10));
       }
     } else {
       setPlatform('UBER');
+      setDriverName(currentDriverName || 'Hugo');
       setGrossAmount('');
       setTipsAmount('');
       setTotalTrips('18');
       setRideDistanceKm('70');
+      setStartTime('');
+      setEndTime('');
+      setWorkedHours('');
       setRecordedDate(new Date().toISOString().slice(0, 10));
     }
-  }, [earningToEdit, isOpen]);
+  }, [earningToEdit, isOpen, currentDriverName]);
+
+  // Recalcular automaticamente as horas trabalhadas quando Início e Fim forem alterados
+  const handleStartTimeChange = (newStart: string) => {
+    setStartTime(newStart);
+    if (newStart && endTime) {
+      const calc = calculateHoursBetween(newStart, endTime);
+      if (calc !== undefined) setWorkedHours(calc.toString());
+    }
+  };
+
+  const handleEndTimeChange = (newEnd: string) => {
+    setEndTime(newEnd);
+    if (startTime && newEnd) {
+      const calc = calculateHoursBetween(startTime, newEnd);
+      if (calc !== undefined) setWorkedHours(calc.toString());
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -57,12 +95,25 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleAddNewDriver = () => {
+    if (!newDriverInput.trim()) return;
+    const cleanName = newDriverInput.trim();
+    if (onAddDriver) {
+      onAddDriver(cleanName);
+    }
+    setDriverName(cleanName);
+    setNewDriverInput('');
+    setShowNewDriverForm(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const gross = parseFloat(grossAmount);
     if (isNaN(gross) || gross <= 0) return;
 
     const recordedAtIso = new Date(`${recordedDate}T12:00:00`).toISOString();
+    const selectedDriver = driverName || 'Hugo';
+    const parsedWorkedHours = workedHours ? parseFloat(workedHours) : (startTime && endTime ? calculateHoursBetween(startTime, endTime) : undefined);
 
     if (earningToEdit && onEditEarning) {
       onEditEarning({
@@ -73,6 +124,10 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
         totalTrips: totalTrips ? parseInt(totalTrips, 10) : 1,
         rideDistanceKm: rideDistanceKm ? parseFloat(rideDistanceKm) : 0,
         recordedAt: recordedAtIso,
+        driverName: selectedDriver,
+        startTime: startTime.trim() || undefined,
+        endTime: endTime.trim() || undefined,
+        workedHours: parsedWorkedHours !== undefined && !isNaN(parsedWorkedHours) && parsedWorkedHours > 0 ? parsedWorkedHours : undefined,
       });
     } else {
       onAddEarning({
@@ -82,6 +137,10 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
         totalTrips: totalTrips ? parseInt(totalTrips, 10) : 1,
         rideDistanceKm: rideDistanceKm ? parseFloat(rideDistanceKm) : 0,
         recordedAt: recordedAtIso,
+        driverName: selectedDriver,
+        startTime: startTime.trim() || undefined,
+        endTime: endTime.trim() || undefined,
+        workedHours: parsedWorkedHours !== undefined && !isNaN(parsedWorkedHours) && parsedWorkedHours > 0 ? parsedWorkedHours : undefined,
       });
     }
 
@@ -89,6 +148,9 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     setTipsAmount('');
     setTotalTrips('18');
     setRideDistanceKm('70');
+    setStartTime('');
+    setEndTime('');
+    setWorkedHours('');
     setRecordedDate(new Date().toISOString().slice(0, 10));
     onClose();
   };
@@ -102,7 +164,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
+        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden cursor-default text-left max-h-[90vh] overflow-y-auto"
       >
         
         <button
@@ -127,7 +189,54 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Seleção da Data do Lançamento (Hoje, Ontem ou Qualquer Data) */}
+          {/* Seleção do Motorista */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-slate-400 font-semibold flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-emerald-400" /> Motorista
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowNewDriverForm(!showNewDriverForm)}
+                className="text-[10px] text-emerald-400 font-bold hover:underline"
+              >
+                {showNewDriverForm ? 'Cancelar' : '+ Novo Motorista'}
+              </button>
+            </div>
+
+            {showNewDriverForm ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newDriverInput}
+                  onChange={(e) => setNewDriverInput(e.target.value)}
+                  placeholder="Nome do Novo Motorista"
+                  className="flex-1 bg-slate-900 border border-emerald-500/80 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddNewDriver}
+                  className="bg-emerald-500 text-black font-extrabold text-xs px-3 py-2 rounded-xl"
+                >
+                  Salvar
+                </button>
+              </div>
+            ) : (
+              <select
+                value={driverName}
+                onChange={(e) => setDriverName(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-emerald-400 font-bold outline-none focus:border-emerald-500"
+              >
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.name}>
+                    👤 {d.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Seleção da Data do Lançamento */}
           <div>
             <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Data das Corridas (Hoje ou Ontem)
@@ -202,6 +311,60 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
               placeholder="ex: 70"
               className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-mono focus:border-emerald-500 outline-none"
             />
+          </div>
+
+          {/* Horários e Horas Trabalhadas (Opcionais para lançamento) */}
+          <div className="bg-slate-900/80 border border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5 shadow-inner">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-emerald-400" />
+                Horas Trabalhadas do Motorista ({driverName || 'Hugo'})
+              </span>
+              <span className="text-[10px] bg-emerald-950 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-800">
+                Opcional
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-slate-300 font-semibold block mb-1">Horário Inicial</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-300 font-semibold block mb-1">Horário Final</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => handleEndTimeChange(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] text-slate-300 font-semibold">Total de Horas Trabalhadas (h)</label>
+                {startTime && endTime && (
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                    ⏱️ Duração: {calculateHoursBetween(startTime, endTime) || 0}h
+                  </span>
+                )}
+              </div>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={workedHours}
+                onChange={(e) => setWorkedHours(e.target.value)}
+                placeholder="ex: 8.5 (ou auto via início e fim)"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-500 outline-none"
+              />
+            </div>
           </div>
 
           <div className="flex gap-2 pt-2">
