@@ -1,5 +1,5 @@
 // GiroCerto ERP - Service Worker Daemon (Network First para Navegação & Assets para evitar F5)
-const CACHE_NAME = 'girocerto-erp-v3';
+const CACHE_NAME = 'girocerto-erp-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
