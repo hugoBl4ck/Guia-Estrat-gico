@@ -190,6 +190,7 @@ export class DataRepository implements IDataRepository {
             start_time: e.startTime || null,
             end_time: e.endTime || null,
             worked_hours: e.workedHours || null,
+            vehicle_id: e.vehicleId || null,
             is_deleted: false,
             user_email: userEmail,
           }));
@@ -198,9 +199,9 @@ export class DataRepository implements IDataRepository {
             .from('ganhos')
             .upsert(payloadEarnings, { onConflict: 'id' });
 
-          // Se a tabela Supabase ainda não possuir colunas novas (driver_name, start_time, end_time, worked_hours), fallback sem essas colunas
-          if (upsertError && (upsertError.message?.includes('driver_name') || upsertError.message?.includes('start_time') || upsertError.message?.includes('end_time') || upsertError.message?.includes('worked_hours') || upsertError.details?.includes('column'))) {
-            const fallbackPayload = payloadEarnings.map(({ driver_name, start_time, end_time, worked_hours, ...rest }) => rest);
+          // Se a tabela Supabase ainda não possuir colunas novas (driver_name, start_time, end_time, worked_hours, vehicle_id), fallback sem essas colunas
+          if (upsertError && (upsertError.message?.includes('driver_name') || upsertError.message?.includes('start_time') || upsertError.message?.includes('end_time') || upsertError.message?.includes('worked_hours') || upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadEarnings.map(({ driver_name, start_time, end_time, worked_hours, vehicle_id, ...rest }) => rest);
             const retry = await supabase
               .from('ganhos')
               .upsert(fallbackPayload, { onConflict: 'id' });
@@ -242,12 +243,22 @@ export class DataRepository implements IDataRepository {
             odometro_km: exp.odometerKm || null,
             observacao: exp.notes || null,
             expense_date: exp.expenseDate,
+            vehicle_id: exp.vehicleId || null,
             user_email: userEmail,
           }));
 
-          const { error: upsertError } = await supabase
+          let { error: upsertError } = await supabase
             .from('despesas')
             .upsert(payloadExpenses, { onConflict: 'id' });
+
+          // Fallback caso a tabela despesas não tenha a coluna vehicle_id
+          if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadExpenses.map(({ vehicle_id, ...rest }) => rest);
+            const retry = await supabase
+              .from('despesas')
+              .upsert(fallbackPayload, { onConflict: 'id' });
+            upsertError = retry.error;
+          }
 
           if (upsertError) {
             console.error('Erro no Supabase (despesas):', upsertError);
@@ -361,6 +372,7 @@ export class DataRepository implements IDataRepository {
           startTime: e.start_time || undefined,
           endTime: e.end_time || undefined,
           workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
+          vehicleId: e.vehicle_id || (e.id?.includes('ford') ? 'veh-ford-ka-10' : e.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
           isDeleted: Boolean(e.is_deleted),
         }));
       } else if (Array.isArray(cloudFaturamentos) && cloudFaturamentos.length > 0) {
@@ -375,6 +387,7 @@ export class DataRepository implements IDataRepository {
           startTime: f.start_time || f.inicio || undefined,
           endTime: f.end_time || f.fim || undefined,
           workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
+          vehicleId: f.vehicle_id || (f.id?.includes('ford') ? 'veh-ford-ka-10' : f.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
           recordedAt: f.recorded_at,
         }));
       }
@@ -386,15 +399,22 @@ export class DataRepository implements IDataRepository {
 
       let expensesList: any[] = [];
       if (Array.isArray(cloudDespesas) && cloudDespesas.length > 0) {
-        expensesList = cloudDespesas.map((d) => ({
-          id: d.id,
-          category: d.categoria || d.category || 'OTHER',
-          amount: parseFloat(d.valor || d.amount) || 0,
-          kwhAmount: d.kwh_carregados ? parseFloat(d.kwh_carregados) : undefined,
-          tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
-          notes: d.observacao || d.notes || '',
-          expenseDate: d.expense_date,
-        }));
+        expensesList = cloudDespesas.map((d) => {
+          const obsLower = (d.observacao || d.notes || '').toLowerCase();
+          const isFord = d.id?.includes('ford') || obsLower.includes('ford') || obsLower.includes('ka') || d.categoria === 'FUEL';
+          const isByd = d.id?.includes('byd') || obsLower.includes('aliro') || obsLower.includes('byd') || obsLower.includes('dolphin') || obsLower.includes('coelba') || d.categoria === 'ELECTRIC_CHARGING';
+          
+          return {
+            id: d.id,
+            category: d.categoria || d.category || 'OTHER',
+            amount: parseFloat(d.valor || d.amount) || 0,
+            kwhAmount: d.kwh_carregados ? parseFloat(d.kwh_carregados) : undefined,
+            tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
+            notes: d.observacao || d.notes || '',
+            expenseDate: d.expense_date,
+            vehicleId: d.vehicle_id || (isFord ? 'veh-ford-ka-10' : isByd ? 'veh-byd-dolphin-mini' : undefined),
+          };
+        });
       }
 
       const { data: cloudBuckets } = await supabase

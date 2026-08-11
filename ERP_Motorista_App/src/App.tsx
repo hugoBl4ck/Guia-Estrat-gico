@@ -270,21 +270,56 @@ export function App() {
     setDrivers((prev) => prev.filter((d) => d.id !== driverId));
   };
 
+  // Função robusta de vinculação do item ao veículo selecionado
+  const isItemForCurrentVehicle = (item: { vehicleId?: string; notes?: string; category?: string; id?: string }) => {
+    // 1. Se o item possui vehicleId explícito, deve bater com o veículo selecionado
+    if (item.vehicleId) {
+      if (item.vehicleId === currentVehicle.id) return true;
+      if (
+        (item.vehicleId === 'veh-ford-ka-10' || item.vehicleId === 'veh-default-generic') &&
+        (currentVehicle.id === 'veh-ford-ka-10' || currentVehicle.id === 'veh-default-generic')
+      ) {
+        return true;
+      }
+      return false;
+    }
+
+    // 2. Se for despesa/ganho legado sem vehicleId, inferir com precisão pelas características do item
+    const notesLower = (item.notes || '').toLowerCase();
+    const isElectricOrByd = item.category === 'ELECTRIC_CHARGING' || 
+      item.id?.includes('byd') || 
+      notesLower.includes('aliro') || 
+      notesLower.includes('byd') || 
+      notesLower.includes('dolphin') ||
+      notesLower.includes('coelba') ||
+      notesLower.includes('eletroposto');
+
+    if (isElectricOrByd) {
+      return currentVehicle.isElectric || currentVehicle.id === 'veh-byd-dolphin-mini';
+    }
+
+    const isFordOrCombustion = item.category === 'FUEL' || 
+      item.id?.includes('ford') || 
+      notesLower.includes('ford') || 
+      notesLower.includes('ka') || 
+      notesLower.includes('gasolina') || 
+      notesLower.includes('etanol');
+
+    if (isFordOrCombustion) {
+      return !currentVehicle.isElectric || currentVehicle.id === 'veh-ford-ka-10' || currentVehicle.id === 'veh-default-generic';
+    }
+
+    // 3. Fallback para itens sem identificação: vincular ao veículo padrão inicial
+    return currentVehicle.id === (vehicles[0]?.id || 'default');
+  };
+
   // Filtrar dados ativos por Veículo Selecionado (currentVehicle.id) e excluindo Soft Delete
   const activeEarnings = userEmail
-    ? (state.earnings || []).filter((e) => {
-        if (e.isDeleted) return false;
-        if (e.vehicleId) return e.vehicleId === currentVehicle.id;
-        return currentVehicle.id === (vehicles[0]?.id || 'default');
-      })
+    ? (state.earnings || []).filter((e) => !e.isDeleted && isItemForCurrentVehicle(e))
     : [];
 
   const activeExpenses = userEmail
-    ? (state.expenses || []).filter((exp) => {
-        if (exp.isDeleted) return false;
-        if (exp.vehicleId) return exp.vehicleId === currentVehicle.id;
-        return currentVehicle.id === (vehicles[0]?.id || 'default');
-      })
+    ? (state.expenses || []).filter((exp) => !exp.isDeleted && isItemForCurrentVehicle(exp))
     : [];
 
   // Recalcular em tempo real o saldo de cada caixa virtual com base no Lucro Líquido Real (Receita Bruta - Despesas Reais)
@@ -340,7 +375,8 @@ export function App() {
             amount: 299.71,
             notes: 'Aliro Seguro Auto - Parcela Mensal 1/12 (Apólice 31.00.2026.1149490)',
             expenseDate: new Date().toISOString(),
-            source: 'manual'
+            source: 'manual',
+            vehicleId: 'veh-byd-dolphin-mini'
           }
         ],
         initialBuckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 }))

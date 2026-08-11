@@ -145,6 +145,8 @@ export const INITIAL_SHIFT_BYD: Shift = {
   startTime: new Date(Date.now() - 6.5 * 3600 * 1000).toISOString(),
   startOdometerKm: 4500,
   status: 'OPEN',
+  vehicleId: 'veh-byd-dolphin-mini',
+  driverName: 'Ari',
   notes: 'BYD Dolphin Mini (Coelba R$ 1,21/kWh | Eletroposto R$ 1,69/kWh)'
 };
 
@@ -158,6 +160,7 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
     totalTrips: 11,
     rideDistanceKm: 128.0,
     driverName: 'Ari',
+    vehicleId: 'veh-byd-dolphin-mini',
     recordedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
   },
   {
@@ -169,6 +172,7 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
     totalTrips: 6,
     rideDistanceKm: 64.0,
     driverName: 'Ari',
+    vehicleId: 'veh-byd-dolphin-mini',
     recordedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
   }
 ];
@@ -185,6 +189,7 @@ export const INITIAL_EARNINGS_FORD_KA: Earning[] = [
     totalTrips: 88, // 88 corridas em 7 dias (média 12,5 corridas/dia)
     rideDistanceKm: 382.2, // 382.2 km em 7 dias (média 54.6 km/dia)
     driverName: 'Ari',
+    vehicleId: 'veh-ford-ka-10',
     recordedAt: new Date('2026-07-19T23:59:59Z').toISOString()
   }
 ];
