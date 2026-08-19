@@ -72,7 +72,7 @@ export function exportFullExcelReport(
 
   const driverStatsMap: { [name: string]: { trips: number; revenue: number; km: number; hours: number } } = {};
   earnings.forEach((e) => {
-    const dName = e.driverName || 'Ari';
+    const dName = e.driverName || 'Não especificado';
     if (!driverStatsMap[dName]) {
       driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
     }
@@ -97,7 +97,7 @@ export function exportFullExcelReport(
   csv.push(`Data/Hora;Motorista;Plataforma;Nº Corridas;KM Viagens;Horário Início;Horário Fim;Horas Trabalhadas;Valor Bruto (R$);Gorjetas (R$);Total (R$)`);
   earnings.forEach((e) => {
     const total = e.grossAmount + e.tipsAmount;
-    const driver = e.driverName || 'Ari';
+    const driver = e.driverName || '';
     const hCalc = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || "") : "");
     csv.push(
       `${new Date(e.recordedAt).toLocaleString('pt-BR')};${driver};${e.platform};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${total.toFixed(2)}`

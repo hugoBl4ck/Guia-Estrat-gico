@@ -788,13 +788,21 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
       {/* Modal explicativo do Auto-Sync Uber/99 */}
       {showAutoSyncModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl text-left">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAutoSyncModal(false);
+          }}
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-sm space-y-4 shadow-2xl text-left cursor-default max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain"
+          >
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2">
               <Radio className="w-6 h-6 animate-pulse" />
             </div>
 
-            <h3 className="font-extrabold text-lg text-white">Captura Automática de Corridas (Uber & 99)</h3>
+            <h3 className="font-extrabold text-base sm:text-lg text-white">Captura Automática de Corridas (Uber & 99)</h3>
             
             <div className="space-y-3 text-xs text-slate-300 bg-slate-900 p-4 rounded-2xl border border-slate-800">
               <p className="font-bold text-emerald-400">Como funciona a captura automática?</p>
@@ -808,7 +816,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 
             <button
               onClick={() => setShowAutoSyncModal(false)}
-              className="w-full bg-emerald-500 text-black font-extrabold py-3 rounded-2xl text-xs"
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs active:scale-95 transition-all shadow-lg shadow-emerald-500/20"
             >
               Entendido!
             </button>

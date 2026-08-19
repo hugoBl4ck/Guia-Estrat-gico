@@ -251,11 +251,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Modal de Conexão Mobile no Celular */}
       {showMobileConnectModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4">
+          <div className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-sm space-y-4 text-center relative max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain shadow-2xl">
             <button
               onClick={() => setShowMobileConnectModal(false)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+              title="Fechar"
             >
               <X className="w-4 h-4" />
             </button>
@@ -264,7 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Smartphone className="w-6 h-6" />
             </div>
 
-            <h3 className="font-extrabold text-lg text-white">GiroCerto ERP no Seu Celular</h3>
+            <h3 className="font-extrabold text-base sm:text-lg text-white">GiroCerto ERP no Seu Celular</h3>
             <p className="text-xs text-slate-300">
               Para usar o sistema no suporte veicular, abra a URL abaixo no navegador do celular:
             </p>
@@ -272,6 +273,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs font-mono text-emerald-400 break-all select-all font-bold">
               {currentAppUrl}
             </div>
+
+            <button
+              onClick={async () => {
+                if ('caches' in window) {
+                  const keys = await caches.keys();
+                  await Promise.all(keys.map((k) => caches.delete(k)));
+                }
+                if ('serviceWorker' in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(regs.map((r) => r.unregister()));
+                }
+                window.location.reload();
+              }}
+              className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500 text-slate-200 hover:text-emerald-400 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Forçar Atualização & Limpar Cache
+            </button>
 
             <p className="text-[11px] text-slate-400">
               Dica: No celular, toque em "Adicionar à Tela Iniciar" no menu do Chrome/Safari para instalar como App PWA!
@@ -282,21 +301,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Modal de Confirmação para Resetar Lançamentos */}
       {showResetConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-pma-card border border-rose-800/80 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4">
+          <div className="bg-pma-card border border-rose-800/80 rounded-3xl p-4 sm:p-6 w-full max-w-sm space-y-4 text-center relative max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain shadow-2xl">
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
 
-            <h3 className="font-extrabold text-lg text-white">Limpar Lançamentos?</h3>
+            <h3 className="font-extrabold text-base sm:text-lg text-white">Limpar Lançamentos?</h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Isso apagara o histórico de corridas e despesas temporárias deste navegador. Os veículos e configurações serão mantidos.
+              Isso apagará o histórico de corridas e despesas temporárias deste navegador. Os veículos e configurações serão mantidos.
             </p>
 
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setShowResetConfirmModal(false)}
-                className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-2.5 text-xs rounded-xl border border-slate-800 transition-colors"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-2.5 text-xs rounded-xl border border-slate-800 transition-colors active:scale-95"
               >
                 Cancelar
               </button>
@@ -305,7 +324,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onResetData();
                   setShowResetConfirmModal(false);
                 }}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-2.5 text-xs rounded-xl transition-colors shadow-lg shadow-rose-600/20"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-2.5 text-xs rounded-xl transition-colors shadow-lg shadow-rose-600/20 active:scale-95"
               >
                 Sim, Limpar
               </button>

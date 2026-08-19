@@ -91,6 +91,8 @@ export interface Vehicle {
   maintenanceSchedule?: MaintenanceScheduleEntry[];
 }
 
+export type EarningType = 'RIDE' | 'REFERRAL' | 'BONUS' | 'OTHER';
+
 export interface Driver {
   id: string;
   name: string;
@@ -103,11 +105,13 @@ export interface Earning {
   id: string;
   shiftId?: string;
   platform: PlatformType;
+  earningType?: EarningType;
   grossAmount: number;
   tipsAmount: number;
   totalTrips: number;
   rideDistanceKm: number;
   recordedAt: string;
+  notes?: string;
   isDeleted?: boolean;
   updatedAt?: string;
   vehicleId?: string;
@@ -147,6 +151,8 @@ export interface Expense {
   isDeleted?: boolean;
   updatedAt?: string;
   vehicleId?: string;
+  driverId?: string;
+  driverName?: string;
   
   // Origem, Parcelamento e NF-e
   source?: 'manual' | 'ocr' | 'xml' | 'voice';

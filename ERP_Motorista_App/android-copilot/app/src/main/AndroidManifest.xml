@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.girocerto.copilot">
+
+    <!-- Permissões de Sistema e Sobreposição -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:name=".CopilotApplication"
+        android:allowBackup="true"
+        android:icon="@drawable/ic_copilot_logo"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_copilot_logo"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GiroCertoCopilot"
+        tools:targetApi="34">
+
+        <!-- Tela Principal de Controle e Permissões -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GiroCertoCopilot">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.HistoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GiroCertoCopilot" />
+
+        <!-- Serviço de Acessibilidade (Leitura Não-Bloqueante de Ofertas) -->
+        <service
+            android:name=".service.RideAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Serviço de Overlay da Janela Flutuante (Android 14+ FGS Compliant) -->
+        <service
+            android:name=".service.FloatingOverlayService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="HUD veicular flutuante com cálculo financeiro em tempo real para tomada de decisão do motorista" />
+        </service>
+
+    </application>
+</manifest>

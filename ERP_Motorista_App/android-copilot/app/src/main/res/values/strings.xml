@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">GiroCerto Copilot</string>
+    <string name="accessibility_service_label">GiroCerto Copilot - Leitor de Ofertas</string>
+    <string name="accessibility_service_description">Permite ao GiroCerto Copilot ler instantaneamente as ofertas de corridas da Uber, 99 e InDrive na tela para calcular o lucro líquido real e o CPK do veículo em tempo real.</string>
+    <string name="notification_channel_name">Serviço de Monitoramento</string>
+    <string name="notification_channel_desc">Mantém o cálculo de corridas ativo sobreposto aos apps de transporte.</string>
+    <string name="service_running_notification">GiroCerto Copilot ativo e monitorando chamadas.</string>
+</resources>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket } from '../types';
+import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2 } from 'lucide-react';
+import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver } from '../types';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
 import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
 
@@ -8,6 +8,8 @@ interface ExpensesTrackerProps {
   vehicle: Vehicle;
   expenses: Expense[];
   buckets?: ReserveBucket[];
+  drivers?: Driver[];
+  currentDriverName?: string;
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   onDeleteExpense: (id: string) => void;
   onUpdateVehicle?: (updated: Vehicle) => void;
@@ -17,6 +19,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   vehicle,
   expenses,
   buckets,
+  drivers = [],
+  currentDriverName = 'Hugo',
   onAddExpense,
   onDeleteExpense,
   onUpdateVehicle,
@@ -24,8 +28,14 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
 
+  // Lista de motoristas disponíveis com fallback seguro
+  const availableDrivers: Driver[] = drivers.length > 0 ? drivers : [
+    { id: 'drv-hugo', name: 'Hugo', isDefault: true },
+    { id: 'drv-ari', name: 'Ari' },
+  ];
+
   // Ordenação da tabela de despesas
-  type SortKey = 'date' | 'category' | 'description' | 'amount';
+  type SortKey = 'date' | 'category' | 'description' | 'amount' | 'driver';
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -50,6 +60,9 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     } else if (sortKey === 'category') {
       valA = a.category;
       valB = b.category;
+    } else if (sortKey === 'driver') {
+      valA = a.driverName || '';
+      valB = b.driverName || '';
     } else {
       valA = a.notes || a.category;
       valB = b.notes || b.category;
@@ -78,6 +91,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   }, [showModal]);
 
   // Form State
+  const [driverName, setDriverName] = useState<string>(currentDriverName || 'Hugo');
   const [category, setCategory] = useState<ExpenseCategory>(
     vehicle.isElectric ? 'ELECTRIC_CHARGING' : 'FUEL'
   );
@@ -86,6 +100,9 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [notes, setNotes] = useState('');
   const [expenseDateInput, setExpenseDateInput] = useState<string>(new Date().toISOString().slice(0, 10));
   const [installmentsCount, setInstallmentsCount] = useState<number>(1);
+  const [paymentMode, setPaymentMode] = useState<'SINGLE_CASH' | 'SPECIFIC_INSTALLMENT' | 'AUTO_SPLIT_CARD'>('SINGLE_CASH');
+  const [specificInstallmentNumber, setSpecificInstallmentNumber] = useState<string>('48');
+  const [specificInstallmentsTotal, setSpecificInstallmentsTotal] = useState<string>('48');
 
   // Electric specific
   const [kwhAmount, setKwhAmount] = useState('');
@@ -96,6 +113,118 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [fuelLiters, setFuelLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('4.65');
 
+  // Sincronizar driverName quando currentDriverName mudar
+  useEffect(() => {
+    if (currentDriverName) {
+      setDriverName(currentDriverName);
+    }
+  }, [currentDriverName]);
+
+  const handleCategoryChange = (newCat: ExpenseCategory) => {
+    setCategory(newCat);
+    if (newCat === 'FINANCING') {
+      setPaymentMode('SPECIFIC_INSTALLMENT');
+      setSpecificInstallmentsTotal('48');
+      setSpecificInstallmentNumber('48');
+      if (vehicle.monthlyRentalCost > 0) {
+        setAmount(vehicle.monthlyRentalCost.toString());
+      }
+    }
+  };
+
+  // ⚡ LÓGICA DINÂMICA BIDIRECIONAL: KWH, TARIFA (R$/kWh) E VALOR TOTAL (R$)
+  const handleKwhChange = (newKwhStr: string) => {
+    setKwhAmount(newKwhStr);
+    const kwh = parseFloat(newKwhStr);
+    const currentAmt = parseFloat(amount);
+    const currentTariff = parseFloat(tariffPerKwh);
+
+    if (kwh > 0) {
+      if (currentAmt > 0) {
+        // Se já tiver valor final inserido, calcula o valor real do kWh
+        const calculatedTariff = (currentAmt / kwh).toFixed(4);
+        setTariffPerKwh(calculatedTariff);
+      } else if (currentTariff > 0) {
+        // Se tiver tarifa preenchida, calcula o valor final
+        const calculatedAmount = (kwh * currentTariff).toFixed(2);
+        setAmount(calculatedAmount);
+      }
+    }
+  };
+
+  const handleAmountChange = (newAmtStr: string) => {
+    setAmount(newAmtStr);
+    const amt = parseFloat(newAmtStr);
+    const kwh = parseFloat(kwhAmount);
+    const liters = parseFloat(fuelLiters);
+
+    if (category === 'ELECTRIC_CHARGING') {
+      if (amt > 0 && kwh > 0) {
+        // Ajusta o valor unitário do kWh de acordo com o valor final e a quantidade de kWh
+        const calculatedTariff = (amt / kwh).toFixed(4);
+        setTariffPerKwh(calculatedTariff);
+      }
+    } else if (category === 'FUEL') {
+      if (amt > 0 && liters > 0) {
+        const calculatedPrice = (amt / liters).toFixed(2);
+        setPricePerLiter(calculatedPrice);
+      }
+    }
+  };
+
+  const handleTariffChange = (newTariffStr: string) => {
+    setTariffPerKwh(newTariffStr);
+    const tariff = parseFloat(newTariffStr);
+    const kwh = parseFloat(kwhAmount);
+
+    if (tariff >= 0 && kwh > 0) {
+      // Ajusta o valor final da recarga
+      setAmount((kwh * tariff).toFixed(2));
+    }
+  };
+
+  const handleChargingTypeChange = (newType: ChargingLocationType) => {
+    setChargingType(newType);
+    let defaultTariff = vehicle.residentialTariffPerKwh || 0.84;
+    if (newType === 'FAST_CHARGER_PAID') {
+      defaultTariff = vehicle.fastChargerTariffPerKwh || 1.69;
+    } else if (newType === 'FREE_CHARGER') {
+      defaultTariff = 0;
+    }
+    setTariffPerKwh(defaultTariff.toString());
+
+    const kwh = parseFloat(kwhAmount);
+    if (kwh > 0) {
+      setAmount((kwh * defaultTariff).toFixed(2));
+    }
+  };
+
+  // ⛽ LÓGICA DINÂMICA PARA COMBUSTÃO (LITROS, PREÇO/L E VALOR TOTAL)
+  const handleFuelLitersChange = (newLitersStr: string) => {
+    setFuelLiters(newLitersStr);
+    const liters = parseFloat(newLitersStr);
+    const currentAmt = parseFloat(amount);
+    const currentPrice = parseFloat(pricePerLiter);
+
+    if (liters > 0) {
+      if (currentAmt > 0) {
+        setPricePerLiter((currentAmt / liters).toFixed(2));
+      } else if (currentPrice > 0) {
+        setAmount((liters * currentPrice).toFixed(2));
+      }
+    }
+  };
+
+  const handlePricePerLiterChange = (newPriceStr: string) => {
+    setPricePerLiter(newPriceStr);
+    const price = parseFloat(newPriceStr);
+    const liters = parseFloat(fuelLiters);
+
+    if (price > 0 && liters > 0) {
+      setAmount((liters * price).toFixed(2));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(amount);
@@ -103,7 +232,35 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
 
     const baseDate = new Date(`${expenseDateInput}T12:00:00`);
 
-    if (installmentsCount > 1) {
+    if (paymentMode === 'SPECIFIC_INSTALLMENT') {
+      const instNum = parseInt(specificInstallmentNumber, 10) || 1;
+      const instTotal = parseInt(specificInstallmentsTotal, 10) || instNum;
+      const noteSuffix = `(Parcela ${instNum}/${instTotal})`;
+      const installmentNote = notes
+        ? (notes.includes('Parcela') ? notes : `${notes} ${noteSuffix}`)
+        : category === 'FINANCING'
+        ? `Prestação do Veículo ${noteSuffix}`
+        : `Despesa Parcelada ${noteSuffix}`;
+
+      onAddExpense({
+        category,
+        amount: val,
+        expenseDate: baseDate.toISOString(),
+        odometerKm: odometerKm ? parseFloat(odometerKm) : undefined,
+        notes: installmentNote,
+        kwhAmount: category === 'ELECTRIC_CHARGING' && kwhAmount ? parseFloat(kwhAmount) : undefined,
+        tariffPerKwh: category === 'ELECTRIC_CHARGING' && tariffPerKwh ? parseFloat(tariffPerKwh) : undefined,
+        chargingType: category === 'ELECTRIC_CHARGING' && vehicle.isElectric ? chargingType : undefined,
+        fuelLiters: category === 'FUEL' && fuelLiters ? parseFloat(fuelLiters) : undefined,
+        pricePerLiter: category === 'FUEL' && pricePerLiter ? parseFloat(pricePerLiter) : undefined,
+        paymentMethod: 'PIX',
+        installmentsCount: instTotal,
+        installmentNumber: instNum,
+        source: 'manual',
+        vehicleId: vehicle.id,
+        driverName: driverName || currentDriverName || 'Hugo',
+      });
+    } else if (paymentMode === 'AUTO_SPLIT_CARD' && installmentsCount > 1) {
       const installmentVal = Math.round((val / installmentsCount) * 100) / 100;
       for (let i = 0; i < installmentsCount; i++) {
         const dueDate = new Date(baseDate);
@@ -129,6 +286,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           installmentNumber: i + 1,
           source: 'manual',
           vehicleId: vehicle.id,
+          driverName: driverName || currentDriverName || 'Hugo',
         });
       }
     } else {
@@ -148,6 +306,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentNumber: 1,
         source: 'manual',
         vehicleId: vehicle.id,
+        driverName: driverName || currentDriverName || 'Hugo',
       });
     }
 
@@ -157,6 +316,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     setKwhAmount('');
     setFuelLiters('');
     setInstallmentsCount(1);
+    setPaymentMode('SINGLE_CASH');
     setExpenseDateInput(new Date().toISOString().slice(0, 10));
     setShowModal(false);
   };
@@ -356,6 +516,14 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     </span>
                   </th>
                   <th
+                    onClick={() => handleSort('driver')}
+                    className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors hidden md:table-cell"
+                  >
+                    <span className="flex items-center gap-1">
+                      Motorista <SortIcon col="driver" />
+                    </span>
+                  </th>
+                  <th
                     onClick={() => handleSort('category')}
                     className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors hidden sm:table-cell"
                   >
@@ -395,6 +563,14 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                       {new Date(exp.expenseDate).toLocaleDateString('pt-BR')}
                     </td>
 
+                    {/* Motorista */}
+                    <td className="px-3 py-3 hidden md:table-cell whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                        <User className="w-3 h-3 text-emerald-400" />
+                        {exp.driverName || 'Hugo'}
+                      </span>
+                    </td>
+
                     {/* Categoria */}
                     <td className="px-4 py-3 hidden sm:table-cell">
                       {getCategoryBadge(exp.category)}
@@ -422,7 +598,13 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                               : exp.notes || exp.category
                           ) : exp.notes}
                         </span>
-                        <div className="flex items-center flex-wrap gap-1 sm:hidden">{getCategoryBadge(exp.category)}</div>
+                        <div className="flex items-center flex-wrap gap-1 sm:hidden">
+                          {getCategoryBadge(exp.category)}
+                          <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                            <User className="w-2.5 h-2.5 text-emerald-400" />
+                            {exp.driverName || 'Hugo'}
+                          </span>
+                        </div>
                         {exp.source === 'xml' && (
                           <span className="bg-blue-950 text-blue-400 border border-blue-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded w-fit">NF-e XML</span>
                         )}
@@ -435,7 +617,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                           </span>
                         )}
                         {exp.category === 'ELECTRIC_CHARGING' && exp.kwhAmount && (
-                          <span className="text-[10px] text-slate-500">{exp.kwhAmount} kWh @ R$ {exp.tariffPerKwh}/kWh</span>
+                          <span className="text-[10px] text-emerald-400 font-mono">⚡ {exp.kwhAmount} kWh @ R$ {exp.tariffPerKwh || (exp.amount / exp.kwhAmount).toFixed(4)}/kWh</span>
                         )}
                       </div>
                     </td>
@@ -481,6 +663,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         isOpen={showReceiptCaptureModal}
         onClose={() => setShowReceiptCaptureModal(false)}
         vehicle={vehicle}
+        drivers={availableDrivers}
+        currentDriverName={driverName}
         onAddExpense={onAddExpense}
       />
 
@@ -490,175 +674,441 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden cursor-default"
+            className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl relative cursor-default text-left max-h-[92dvh] sm:max-h-[88dvh] flex flex-col"
           >
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
-              title="Fechar"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <h3 className="font-extrabold text-lg text-white">Nova Despesa do Veículo</h3>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-rose-400" /> Data da Despesa
-                </label>
-                <input
-                  type="date"
-                  value={expenseDateInput}
-                  onChange={(e) => setExpenseDateInput(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-rose-400 font-bold outline-none focus:border-rose-500"
-                />
+            {/* Cabeçalho Fixo */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold shrink-0">
+                  <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-white">Nova Despesa do Veículo</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400">Registre custos, recargas e manutenções</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1">Categoria de Custo</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-bold outline-none"
-                >
-                  {vehicle.isElectric ? (
-                    <>
-                      <option value="ELECTRIC_CHARGING">Recarga Elétrica (kWh)</option>
-                      <option value="MAINTENANCE">Manutenção / Pneu / Borracharia</option>
-                      <option value="INSURANCE">Seguro Auto (R$ 299,71)</option>
-                      <option value="WASH">Lava-Jato</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="FUEL">Abastecimento (Etanol/Gasolina)</option>
-                      <option value="MAINTENANCE">Manutenção Preventiva / Borracharia</option>
-                      <option value="WORKSHOP_MAINTENANCE">🔧 Oficina / Manutenção Pesada (Revisão, Suspensão, Embreagem)</option>
-                      <option value="DOCUMENTS">📄 Documentação (IPVA, Licenciamento, DPVAT, Vistoria)</option>
-                      <option value="TRAFFIC_FINE">🚨 Multas de Trânsito / Infrações</option>
-                      <option value="OIL_CHANGE">Troca de Óleo 5W20 + Filtros</option>
-                      <option value="SPARK_PLUGS_BELT">Velas & Correia Dentada</option>
-                      <option value="BRAKES">Pastilhas de Freio</option>
-                      <option value="INSURANCE">Seguro Auto</option>
-                      <option value="WASH">Lava-Jato</option>
-                    </>
-                  )}
-                  <option value="OTHER">Outros</option>
-                </select>
-              </div>
+            {/* Formulário com Corpo Rolável e Rodapé Fixo */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-3">
+                
+                {/* 1. SELEÇÃO DO MOTORISTA */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-emerald-400" /> Motorista Responsável
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">Quem realizou o gasto</span>
+                  </label>
 
-              {/* Opções Específicas para Recarga Elétrica (EV) */}
-              {category === 'ELECTRIC_CHARGING' && (
-                <div className="space-y-3 p-3.5 bg-slate-900 border border-emerald-900/60 rounded-2xl">
-                  <div>
-                    <label className="text-xs text-emerald-400 font-bold block mb-1">Local da Recarga</label>
-                    <select
-                      value={chargingType}
-                      onChange={(e) => {
-                        const val = e.target.value as ChargingLocationType;
-                        setChargingType(val);
-                        if (val === 'RESIDENTIAL') {
-                          setTariffPerKwh(vehicle.residentialTariffPerKwh.toString());
-                        } else if (val === 'FAST_CHARGER_PAID') {
-                          setTariffPerKwh((vehicle.fastChargerTariffPerKwh || 1.69).toString());
-                        } else {
-                          setTariffPerKwh('0');
-                        }
-                      }}
-                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-emerald-500"
-                    >
-                      <option value="RESIDENTIAL">⚡ Residencial em Casa (Coelba R$ {vehicle.residentialTariffPerKwh}/kWh)</option>
-                      <option value="FAST_CHARGER_PAID">🔌 Eletroposto / Carga Rápida (R$ {vehicle.fastChargerTariffPerKwh || 1.69}/kWh)</option>
-                      <option value="FREE_CHARGER">🎁 Cortesia / Gratuito (R$ 0,00/kWh)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 font-semibold block mb-1">Energia Carregada (kWh)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={kwhAmount}
-                      onChange={(e) => {
-                        const kwh = e.target.value;
-                        setKwhAmount(kwh);
-                        if (kwh && tariffPerKwh) {
-                          const calculatedAmount = (parseFloat(kwh) * parseFloat(tariffPerKwh)).toFixed(2);
-                          setAmount(calculatedAmount);
-                        }
-                      }}
-                      placeholder="ex: 38.8 kWh"
-                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-emerald-500"
-                    />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {availableDrivers.map((drv) => {
+                      const isSelected = driverName === drv.name;
+                      return (
+                        <button
+                          key={drv.id}
+                          type="button"
+                          onClick={() => setDriverName(drv.name)}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                            isSelected
+                              ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/20 scale-[1.02]'
+                              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[9px] font-mono overflow-hidden">
+                            {drv.photoUrl ? (
+                              <img src={drv.photoUrl} alt={drv.name} className="w-full h-full object-cover" />
+                            ) : (
+                              drv.name.slice(0, 1)
+                            )}
+                          </div>
+                          <span className="truncate">{drv.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
 
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1">Valor Pago (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="ex: 300.00"
-                  required
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-mono focus:border-rose-500 outline-none"
-                />
-              </div>
+                {/* 2. DATA DA DESPESA */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-rose-400" /> Data da Despesa
+                  </label>
+                  <input
+                    type="date"
+                    value={expenseDateInput}
+                    onChange={(e) => setExpenseDateInput(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-rose-400 font-bold outline-none focus:border-rose-500"
+                  />
+                </div>
 
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1">Forma de Pagamento / Parcelas</label>
-                <select
-                  value={installmentsCount}
-                  onChange={(e) => setInstallmentsCount(parseInt(e.target.value, 10))}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-purple-500"
-                >
-                  <option value={1}>💵 À Vista (1x - Dinheiro / Pix / Débito)</option>
-                  <option value={2}>💳 2x no Cartão de Crédito</option>
-                  <option value={3}>💳 3x no Cartão de Crédito</option>
-                  <option value={4}>💳 4x no Cartão de Crédito</option>
-                  <option value={5}>💳 5x no Cartão de Crédito</option>
-                  <option value={6}>💳 6x no Cartão de Crédito</option>
-                  <option value={10}>💳 10x no Cartão de Crédito</option>
-                  <option value={12}>💳 12x no Cartão de Crédito</option>
-                </select>
+                {/* 3. CATEGORIA DE CUSTO */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1">Categoria de Custo</label>
+                  <select
+                    value={category}
+                    onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategory)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-rose-500"
+                  >
+                    {vehicle.isElectric ? (
+                      <>
+                        <option value="ELECTRIC_CHARGING">⚡ Recarga Elétrica (kWh / Eletroposto / Casa)</option>
+                        <option value="FINANCING">🏦 Parcela de Financiamento / Prestação</option>
+                        <option value="MAINTENANCE">🔧 Manutenção / Pneu / Borracharia</option>
+                        <option value="INSURANCE">🛡️ Seguro Auto</option>
+                        <option value="DOCUMENTS">📄 Documentação (IPVA, Licenciamento)</option>
+                        <option value="WASH">🧼 Lava-Jato</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="FUEL">⛽ Abastecimento (Etanol/Gasolina)</option>
+                        <option value="FINANCING">🏦 Parcela de Financiamento / Prestação</option>
+                        <option value="MAINTENANCE">🔧 Manutenção Preventiva / Borracharia</option>
+                        <option value="WORKSHOP_MAINTENANCE">🔧 Oficina / Manutenção Pesada</option>
+                        <option value="DOCUMENTS">📄 Documentação (IPVA, Licenciamento)</option>
+                        <option value="TRAFFIC_FINE">🚨 Multas de Trânsito / Infrações</option>
+                        <option value="OIL_CHANGE">🛢️ Troca de Óleo + Filtros</option>
+                        <option value="SPARK_PLUGS_BELT">⚡ Velas & Correia Dentada</option>
+                        <option value="BRAKES">🛑 Pastilhas de Freio</option>
+                        <option value="INSURANCE">🛡️ Seguro Auto</option>
+                        <option value="WASH">🧼 Lava-Jato</option>
+                      </>
+                    )}
+                    <option value="OTHER">📦 Outros</option>
+                  </select>
+                </div>
 
-                {installmentsCount > 1 && amount && parseFloat(amount) > 0 && (
-                  <p className="text-[11px] text-purple-300 font-mono mt-1.5 bg-purple-950/60 p-2.5 rounded-xl border border-purple-800/60">
-                    💳 Lança automaticamente <strong>{installmentsCount} parcelas de R$ {(parseFloat(amount) / installmentsCount).toFixed(2)}/mês</strong> nos próximos {installmentsCount} meses.
-                  </p>
+                {/* 4. OPÇÕES ESPECÍFICAS PARA RECARGA ELÉTRICA (EV) COM CÁLCULO INTELIGENTE */}
+                {category === 'ELECTRIC_CHARGING' && (
+                  <div className="space-y-3 p-3.5 bg-slate-900 border border-emerald-900/60 rounded-2xl">
+                    <div className="flex items-center justify-between text-[11px] bg-emerald-950/80 p-2 rounded-xl border border-emerald-800/80 text-emerald-300 font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-emerald-400" />
+                        Motorista que Recarregou:
+                      </span>
+                      <span className="bg-emerald-500 text-black px-2 py-0.5 rounded-md font-black">
+                        👤 {driverName || currentDriverName || 'Hugo'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-emerald-400 font-bold block mb-1">Local da Recarga</label>
+                      <select
+                        value={chargingType}
+                        onChange={(e) => handleChargingTypeChange(e.target.value as ChargingLocationType)}
+                        className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-emerald-500"
+                      >
+                        <option value="RESIDENTIAL">⚡ Residencial em Casa (Coelba R$ {vehicle.residentialTariffPerKwh}/kWh)</option>
+                        <option value="FAST_CHARGER_PAID">🔌 Eletroposto / Carga Rápida (R$ {vehicle.fastChargerTariffPerKwh || 1.69}/kWh)</option>
+                        <option value="FREE_CHARGER">🎁 Cortesia / Gratuito (R$ 0,00/kWh)</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-slate-400 font-semibold block mb-1">
+                          Energia (kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={kwhAmount}
+                          onChange={(e) => handleKwhChange(e.target.value)}
+                          placeholder="ex: 38.8"
+                          className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-emerald-500 font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-slate-400 font-semibold block mb-1">
+                          Tarifa (R$/kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={tariffPerKwh}
+                          onChange={(e) => handleTariffChange(e.target.value)}
+                          placeholder="ex: 0.84"
+                          className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono outline-none focus:border-emerald-500 font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Banner de cálculo em tempo real */}
+                    {parseFloat(kwhAmount) > 0 && parseFloat(amount) > 0 && (
+                      <div className="bg-emerald-950/70 border border-emerald-700/80 p-2.5 rounded-xl flex items-center justify-between text-xs font-mono">
+                        <span className="text-emerald-300 font-bold flex items-center gap-1.5 text-[11px]">
+                          <Zap className="w-4 h-4 text-emerald-400" />
+                          Preço real do kWh:
+                        </span>
+                        <span className="text-white font-black bg-emerald-900 px-2.5 py-0.5 rounded-lg border border-emerald-600 text-xs">
+                          R$ {(parseFloat(amount) / parseFloat(kwhAmount)).toFixed(4)} / kWh
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
+
+                {/* 5. OPÇÕES ESPECÍFICAS PARA COMBUSTÃO */}
+                {category === 'FUEL' && (
+                  <div className="space-y-3 p-3.5 bg-slate-900 border border-amber-900/60 rounded-2xl">
+                    <div className="flex items-center justify-between text-[11px] bg-amber-950/80 p-2 rounded-xl border border-amber-800/80 text-amber-300 font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-amber-400" />
+                        Motorista que Abasteceu:
+                      </span>
+                      <span className="bg-amber-500 text-black px-2 py-0.5 rounded-md font-black">
+                        👤 {driverName || currentDriverName || 'Hugo'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-slate-400 font-semibold block mb-1">Litros Abastecidos</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={fuelLiters}
+                          onChange={(e) => handleFuelLitersChange(e.target.value)}
+                          placeholder="ex: 35.0"
+                          className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-amber-500 font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 font-semibold block mb-1">Preço / Litro (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={pricePerLiter}
+                          onChange={(e) => handlePricePerLiterChange(e.target.value)}
+                          placeholder="ex: 4.65"
+                          className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-400 font-mono outline-none focus:border-amber-500 font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. VALOR TOTAL PAGO (R$) */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center justify-between">
+                    <span>Valor Pago (R$) <span className="text-rose-400">*</span></span>
+                    {category === 'ELECTRIC_CHARGING' && parseFloat(kwhAmount) > 0 && parseFloat(tariffPerKwh) > 0 && (
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                        Calculado: {kwhAmount} kWh × R$ {parseFloat(tariffPerKwh).toFixed(2)}
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    placeholder="ex: 300.00"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-base text-white font-mono font-bold focus:border-rose-500 outline-none"
+                  />
+                </div>
+
+                {/* 7. PARCELAMENTO / FORMA DE PAGAMENTO / SELEÇÃO DE PARCELA ESPECÍFICA */}
+                <div className="space-y-2 p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl">
+                  <label className="text-xs text-slate-300 font-bold block">
+                    Forma de Pagamento / Parcelamento
+                  </label>
+
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-black rounded-xl border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode('SINGLE_CASH')}
+                      className={`py-2 px-1 text-[11px] font-bold rounded-lg transition-all ${
+                        paymentMode === 'SINGLE_CASH'
+                          ? 'bg-emerald-500 text-black shadow-md font-extrabold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      💵 À Vista
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentMode('SPECIFIC_INSTALLMENT');
+                        if (!specificInstallmentsTotal) setSpecificInstallmentsTotal('48');
+                      }}
+                      className={`py-2 px-1 text-[11px] font-bold rounded-lg transition-all ${
+                        paymentMode === 'SPECIFIC_INSTALLMENT'
+                          ? 'bg-amber-500 text-black shadow-md font-extrabold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      🔢 Parcela Específica
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode('AUTO_SPLIT_CARD')}
+                      className={`py-2 px-1 text-[11px] font-bold rounded-lg transition-all ${
+                        paymentMode === 'AUTO_SPLIT_CARD'
+                          ? 'bg-purple-600 text-white shadow-md font-extrabold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      💳 Dividir no Cartão
+                    </button>
+                  </div>
+
+                  {/* MODO 1: PARCELA ESPECÍFICA (EX: PARCELA 48 DE 48) */}
+                  {paymentMode === 'SPECIFIC_INSTALLMENT' && (
+                    <div className="space-y-3 pt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] text-amber-300 font-bold block mb-1">
+                            Nº Desta Parcela
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={specificInstallmentNumber}
+                            onChange={(e) => setSpecificInstallmentNumber(e.target.value)}
+                            placeholder="ex: 48"
+                            className="w-full bg-black border border-amber-500/50 rounded-xl px-3 py-2 text-xs text-amber-400 font-mono font-bold outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-slate-400 font-bold block mb-1">
+                            Total de Parcelas
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={specificInstallmentsTotal}
+                            onChange={(e) => setSpecificInstallmentsTotal(e.target.value)}
+                            placeholder="ex: 48"
+                            className="w-full bg-black border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono font-bold outline-none focus:border-slate-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Botões Rápidos de Parcela */}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpecificInstallmentNumber(specificInstallmentsTotal || '48');
+                          }}
+                          className="flex-1 py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 text-amber-300 font-extrabold text-[10px] rounded-lg transition-all"
+                        >
+                          🏁 Selecionar Última Parcela ({specificInstallmentsTotal || '48'}/{specificInstallmentsTotal || '48'})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpecificInstallmentNumber('1');
+                          }}
+                          className="py-1.5 px-3 bg-slate-950 border border-slate-800 text-slate-400 font-bold text-[10px] rounded-lg hover:text-white"
+                        >
+                          1ª Parcela
+                        </button>
+                      </div>
+
+                      {/* Alerta Comemorativo se for a última parcela */}
+                      {parseInt(specificInstallmentNumber, 10) > 0 &&
+                        parseInt(specificInstallmentNumber, 10) === parseInt(specificInstallmentsTotal, 10) && (
+                          <div className="p-3 bg-gradient-to-r from-emerald-950 to-teal-950 border border-emerald-500/80 rounded-xl text-xs font-mono text-emerald-300 space-y-1">
+                            <p className="font-extrabold flex items-center gap-1.5 text-emerald-200">
+                              🎉 PARCELA {specificInstallmentNumber}/{specificInstallmentsTotal}: ÚLTIMA PRESTAÇÃO!
+                            </p>
+                            <p className="text-[11px] text-slate-300">
+                              Ao quitar esta parcela, seu veículo estará 100% livre de financiamento!
+                            </p>
+                          </div>
+                        )}
+                    </div>
+                  )}
+
+                  {/* MODO 2: PARCELAR NO CARTÃO (GERAÇÃO AUTOMÁTICA DE PARCELAS) */}
+                  {paymentMode === 'AUTO_SPLIT_CARD' && (
+                    <div className="space-y-2 pt-2">
+                      <label className="text-[11px] text-purple-300 font-bold block">
+                        Quantidade de Parcelas no Cartão
+                      </label>
+                      <select
+                        value={installmentsCount}
+                        onChange={(e) => setInstallmentsCount(parseInt(e.target.value, 10))}
+                        className="w-full bg-black border border-purple-800 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-purple-500"
+                      >
+                        <option value={2}>💳 2x no Cartão de Crédito</option>
+                        <option value={3}>💳 3x no Cartão de Crédito</option>
+                        <option value={4}>💳 4x no Cartão de Crédito</option>
+                        <option value={5}>💳 5x no Cartão de Crédito</option>
+                        <option value={6}>💳 6x no Cartão de Crédito</option>
+                        <option value={10}>💳 10x no Cartão de Crédito</option>
+                        <option value={12}>💳 12x no Cartão de Crédito</option>
+                      </select>
+
+                      {installmentsCount > 1 && amount && parseFloat(amount) > 0 && (
+                        <p className="text-[11px] text-purple-300 font-mono bg-purple-950/60 p-2.5 rounded-xl border border-purple-800/60">
+                          💳 Lança automaticamente <strong>{installmentsCount} parcelas de R$ {(parseFloat(amount) / installmentsCount).toFixed(2)}/mês</strong> nos próximos {installmentsCount} meses.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 8. ODÔMETRO (OPCIONAL) */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1">Odômetro do Painel (km)</label>
+                  <input
+                    type="number"
+                    value={odometerKm}
+                    onChange={(e) => setOdometerKm(e.target.value)}
+                    placeholder="ex: 15420"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-rose-500"
+                  />
+                </div>
+
+                {/* 9. DESCRIÇÃO / LOCAL */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1">Descrição / Estabelecimento</label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={
+                      category === 'FINANCING'
+                        ? 'ex: Parcela Santander BYD Dolphin Mini'
+                        : 'ex: Recarga Noturna Coelba / Borracharia do Silva'
+                    }
+                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-rose-500"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1">Descrição / Local</label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="ex: Conserto de furo no pneu"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
+              {/* Rodapé Fixo */}
+              <div className="flex gap-2 pt-3 border-t border-slate-800/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-slate-900 text-slate-300 font-bold py-3 rounded-2xl text-xs"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-2xl text-xs shadow-lg"
+                  className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm shadow-lg shadow-rose-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
+                  <CheckCircle2 className="w-4 h-4" />
                   Salvar Despesa
                 </button>
               </div>

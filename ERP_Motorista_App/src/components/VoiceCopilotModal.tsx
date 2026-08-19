@@ -247,11 +247,11 @@ export const VoiceCopilotModal: React.FC<VoiceCopilotModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center relative shadow-2xl cursor-default"
+        className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-sm space-y-4 text-center relative shadow-2xl cursor-default max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain"
       >
         <button
           onClick={onClose}

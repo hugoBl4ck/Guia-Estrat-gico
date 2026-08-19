@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Car, Plus, ShieldCheck, Heart, User, ArrowDownRight, DollarSign } from 'lucide-react';
+import { Home, Car, Plus, ShieldCheck, Heart, User, ArrowDownRight, DollarSign, X } from 'lucide-react';
 import { Vehicle, PersonalUsageLog } from '../types';
 import { calculateCPK } from '../utils/financialCalculators';
 
@@ -128,9 +128,27 @@ export const PersonalUsageTab: React.FC<PersonalUsageTabProps> = ({
 
       {/* Modal Novo Deslocamento Particular */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-           <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
-            <h3 className="font-extrabold text-lg text-white">Novo Deslocamento Particular</h3>
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-sm space-y-4 shadow-2xl relative text-left cursor-default max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="font-extrabold text-base text-white">Novo Deslocamento Particular</h3>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
@@ -164,17 +182,17 @@ export const PersonalUsageTab: React.FC<PersonalUsageTabProps> = ({
                 </div>
               )}
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 border-t border-slate-800/80">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-slate-900 text-slate-300 font-bold py-3 rounded-2xl text-xs"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-3 rounded-2xl text-xs active:scale-95 transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 rounded-2xl text-xs shadow-lg"
+                  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 rounded-2xl text-xs shadow-lg active:scale-95 transition-all"
                 >
                   Salvar Lançamento
                 </button>

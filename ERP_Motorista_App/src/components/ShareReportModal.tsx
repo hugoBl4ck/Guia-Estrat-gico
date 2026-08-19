@@ -51,7 +51,7 @@ export const ShareReportModal: React.FC<ShareReportModalProps> = ({
   // Agrupar por motorista
   const driverStatsMap: { [name: string]: { trips: number; revenue: number; hours: number } } = {};
   activeEarnings.forEach((e) => {
-    const dName = e.driverName || 'Ari';
+    const dName = e.driverName || 'Não especificado';
     if (!driverStatsMap[dName]) {
       driverStatsMap[dName] = { trips: 0, revenue: 0, hours: 0 };
     }
@@ -132,12 +132,20 @@ _Gerado automaticamente pelo GiroCerto ERP_`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-       <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative overflow-hidden text-left">
-        
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-sm space-y-4 shadow-2xl relative text-left cursor-default max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain"
+      >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+          title="Fechar"
         >
           <X className="w-4 h-4" />
         </button>

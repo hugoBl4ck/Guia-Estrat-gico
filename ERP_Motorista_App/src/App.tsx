@@ -119,11 +119,12 @@ export function App() {
           setUserEmail(storedEmail);
         }
 
-        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers] = await Promise.all([
+        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers, dbCurrentDriver] = await Promise.all([
           repository.loadDataAsync(),
           repository.loadVehiclesAsync(),
           repository.loadCurrentVehicleAsync(),
-          dbService.loadDriversFromIndexedDB()
+          dbService.loadDriversFromIndexedDB(),
+          dbService.loadCurrentDriverName()
         ]);
 
         let currentStateData = dbData || {
@@ -151,24 +152,30 @@ export function App() {
           setDrivers(dbDrivers);
         }
 
+        if (dbCurrentDriver) {
+          setCurrentDriverName(dbCurrentDriver);
+        }
+
         // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
         if (storedEmail) {
           try {
             const cloudData = await repository.fetchFromCloud(storedEmail);
             if (cloudData) {
+              // Os dados da Nuvem (PC) devem ter precedência sobre o cache local antigo do celular
               const expensesMap = new Map();
-              (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
               (currentStateData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+              (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
 
               const earningsMap = new Map();
-              (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
               (currentStateData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+              (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
 
               const mergedState = {
                 ...currentStateData,
                 earnings: Array.from(earningsMap.values()),
                 expenses: Array.from(expensesMap.values()),
                 buckets: cloudData.buckets || currentStateData.buckets,
+                activeShift: cloudData.activeShift !== undefined ? cloudData.activeShift : currentStateData.activeShift,
               };
 
               dispatch({ type: 'SET_ALL', payload: mergedState });
@@ -446,6 +453,13 @@ export function App() {
     dispatch({ type: 'END_SHIFT' });
   };
 
+  const handleSelectDriver = (name: string) => {
+    const clean = name.trim();
+    if (!clean) return;
+    setCurrentDriverName(clean);
+    dbService.saveCurrentDriverName(clean);
+  };
+
   const handleAddDriver = (name: string) => {
     const clean = name.trim();
     if (!clean) return;
@@ -454,7 +468,7 @@ export function App() {
       const newDrv: Driver = { id: `drv-${Date.now()}`, name: clean };
       setDrivers((prev) => [...prev, newDrv]);
     }
-    setCurrentDriverName(clean);
+    handleSelectDriver(clean);
   };
 
   const handleAddEarning = (earningData: Omit<Earning, 'id'>) => {
@@ -513,7 +527,8 @@ export function App() {
       ...expenseData,
       id: `exp-${Date.now()}`,
       expenseDate: expenseData.expenseDate || new Date().toISOString(),
-      vehicleId: currentVehicle.id
+      vehicleId: expenseData.vehicleId || currentVehicle.id,
+      driverName: expenseData.driverName || currentDriverName || 'Hugo',
     };
     dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
   };
@@ -660,6 +675,10 @@ export function App() {
             onAddEarning={handleAddEarning}
             onDeleteEarning={handleDeleteEarning}
             onEditEarningClick={handleOpenEditEarning}
+            onOpenAddEarning={() => {
+              setEarningToEdit(null);
+              setIsAddEarningOpen(true);
+            }}
           />
         )}
 
@@ -668,6 +687,8 @@ export function App() {
             vehicle={currentVehicle}
             expenses={activeExpenses}
             buckets={calculatedBuckets}
+            drivers={drivers}
+            currentDriverName={currentDriverName}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
             onUpdateVehicle={handleUpdateVehicle}

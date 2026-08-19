@@ -54,7 +54,7 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
   // Agrupar por Motorista
   const driverStatsMap: { [name: string]: { trips: number; revenue: number; km: number; hours: number } } = {};
   activeEarnings.forEach((e) => {
-    const dName = e.driverName || 'Ari';
+    const dName = e.driverName || 'Não especificado';
     if (!driverStatsMap[dName]) {
       driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
     }
@@ -469,11 +469,11 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in print:p-0 print:static print:bg-white"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in print:p-0 print:static print:bg-white"
       onClick={onClose}
     >
       <div
-        className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-left print-report-container"
+        className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92dvh] sm:max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-left print-report-container"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header no-print para navegação na tela */}

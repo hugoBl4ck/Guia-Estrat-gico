@@ -64,7 +64,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   // Agrupar estatísticas e corridas por motorista
   const driverStatsMap: { [name: string]: { trips: number; revenue: number; km: number; hours: number } } = {};
   activeEarnings.forEach((e) => {
-    const dName = e.driverName || 'Ari';
+    const dName = e.driverName || 'Não especificado';
     if (!driverStatsMap[dName]) {
       driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
     }
@@ -121,7 +121,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     activeEarnings.forEach((e) => {
       const tot = e.grossAmount + e.tipsAmount;
       const hCalc = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || "") : "");
-      csvContent += `${new Date(e.recordedAt).toLocaleDateString('pt-BR')};${e.platform};${e.driverName || 'Ari'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
+      csvContent += `${new Date(e.recordedAt).toLocaleDateString('pt-BR')};${e.platform};${e.driverName || 'Sem motorista'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -271,7 +271,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
             <div key={d.name} className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
               <div>
                 <p className="font-extrabold text-white flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${d.name === 'Ari' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${d.name.toLowerCase().includes('ari') ? 'bg-amber-400' : d.name.toLowerCase().includes('hugo') ? 'bg-emerald-400' : 'bg-indigo-400'}`}></span>
                   Motorista {d.name}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
@@ -337,15 +337,29 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                             : 'bg-emerald-600 text-white'
                         }`}
                       >
-                        {e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : e.platform === 'PRIVATE' ? 'PART' : 'IND'}
+                        {e.earningType === 'REFERRAL' ? '🎁' : e.earningType === 'BONUS' ? '🏆' : e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : e.platform === 'PRIVATE' ? 'PART' : 'IND'}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>{e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}</span>
-                          <span className="text-[10px] text-slate-400 font-normal">({e.driverName || 'Ari'})</span>
+                          <span>{e.earningType === 'REFERRAL' ? 'Indicação (Bônus)' : e.earningType === 'BONUS' ? 'Missão / Bônus' : e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}</span>
+                          {e.earningType === 'REFERRAL' && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
+                              🎁 Indicação
+                            </span>
+                          )}
+                          {e.earningType === 'BONUS' && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                              🏆 Bônus
+                            </span>
+                          )}
+                          {e.driverName && <span className="text-[10px] text-slate-400 font-normal">({e.driverName})</span>}
                         </p>
                         <p className="text-[10px] text-slate-400 flex flex-wrap items-center gap-1 mt-0.5">
-                          <span>{e.totalTrips} corridas • {e.rideDistanceKm} km</span>
+                          {e.earningType === 'REFERRAL' || e.earningType === 'BONUS' ? (
+                            <span className="text-slate-300 italic">{e.notes || `Bônus ${e.platform}`}</span>
+                          ) : (
+                            <span>{e.totalTrips} corridas • {e.rideDistanceKm} km</span>
+                          )}
                           {e.startTime && e.endTime && (
                             <span className="text-emerald-400 font-mono bg-slate-950 px-1 rounded border border-slate-800">
                               ⏰ {e.startTime} - {e.endTime} {hCalc ? `(${hCalc}h)` : ''}

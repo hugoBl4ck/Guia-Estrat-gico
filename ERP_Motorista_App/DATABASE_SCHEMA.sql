@@ -160,3 +160,25 @@ CREATE TRIGGER trg_update_vehicle_odometer
 AFTER UPDATE OF end_odometer_km ON shifts
 FOR EACH ROW
 EXECUTE FUNCTION update_vehicle_odometer();
+
+-- -----------------------------------------------------------------------------
+-- TABLE: copilot_offers (Histórico de Ofertas Capturadas pelo GiroCerto Copilot)
+-- -----------------------------------------------------------------------------
+CREATE TABLE copilot_offers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_id VARCHAR(64) NOT NULL UNIQUE,
+    driver_id UUID REFERENCES drivers(id) ON DELETE CASCADE,
+    platform platform_type NOT NULL,
+    gross_amount DECIMAL(12,2) NOT NULL,
+    total_km DECIMAL(8,2) NOT NULL,
+    total_minutes INT NOT NULL,
+    rate_per_km DECIMAL(8,2) NOT NULL,
+    gross_per_hour DECIMAL(8,2) NOT NULL,
+    net_profit DECIMAL(12,2) NOT NULL,
+    status VARCHAR(20) NOT NULL, -- EXCELLENT, MODERATE, REJECT
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_copilot_offers_platform ON copilot_offers(platform, created_at DESC);
+CREATE INDEX idx_copilot_offers_status ON copilot_offers(status, created_at DESC);
+

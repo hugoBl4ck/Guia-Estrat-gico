@@ -98,4 +98,56 @@ describe('financialCalculators', () => {
     // R$/hora líquido = 300 / 10 = 30.00 (sem despesas)
     expect(summary.netEarnedPerHour).toBe(30.0);
   });
+
+  it('deve calcular corretamente a tarifa real de recarga elétrica (R$/kWh = valor / kWh)', () => {
+    const amount = 45.0;
+    const kwh = 30.0;
+    const calculatedTariff = parseFloat((amount / kwh).toFixed(4));
+    expect(calculatedTariff).toBe(1.5);
+
+    const amount2 = 32.5;
+    const kwh2 = 38.8;
+    const calculatedTariff2 = parseFloat((amount2 / kwh2).toFixed(4));
+    expect(calculatedTariff2).toBe(0.8376);
+  });
+
+  it('calculateShiftSummary deve deduzir despesas vinculadas a motoristas', () => {
+    const cpk = calculateCPK(VEHICLE_BYD_DOLPHIN);
+    const earnings = [
+      {
+        id: '1',
+        platform: 'UBER' as const,
+        grossAmount: 300.0,
+        tipsAmount: 0,
+        totalTrips: 15,
+        rideDistanceKm: 100,
+        recordedAt: new Date().toISOString(),
+        driverName: 'Hugo',
+      },
+    ];
+
+    const expenses = [
+      {
+        id: 'exp1',
+        category: 'ELECTRIC_CHARGING' as const,
+        amount: 35.0,
+        kwhAmount: 40,
+        tariffPerKwh: 0.875,
+        expenseDate: new Date().toISOString(),
+        driverName: 'Hugo',
+      },
+      {
+        id: 'exp2',
+        category: 'WASH' as const,
+        amount: 25.0,
+        expenseDate: new Date().toISOString(),
+        driverName: 'Ari',
+      },
+    ];
+
+    const summary = calculateShiftSummary(null, earnings, expenses, VEHICLE_BYD_DOLPHIN, cpk);
+    expect(summary.grossRevenue).toBe(300.0);
+    expect(summary.totalOperatingCost).toBe(60.0);
+    expect(summary.netRealProfit).toBe(240.0);
+  });
 });

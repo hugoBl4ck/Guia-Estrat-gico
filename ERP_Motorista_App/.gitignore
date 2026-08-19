@@ -13,6 +13,12 @@ anexos/
 *.pdf
 *.eml
 
+# Android build artifacts
+.gradle/
+**/build/
+local.properties
+.idea/
+
 # Sistema
 .DS_Store
 Thumbs.db

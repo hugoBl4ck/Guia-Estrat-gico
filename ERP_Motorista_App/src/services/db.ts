@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
   VEHICLES: 'girocerto_vehicles_v1',
   CURRENT_VEHICLE: 'girocerto_current_vehicle_v1',
   DRIVERS: 'girocerto_drivers_v1',
+  CURRENT_DRIVER: 'girocerto_current_driver_v1',
   DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1',
   USER_EMAIL: 'erp_driver_user_email'
 };
@@ -238,6 +239,23 @@ export const dbService = {
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS, drivers);
     } catch (error) {
       console.error('Erro ao salvar motoristas no IndexedDB:', error);
+    }
+  },
+
+  async loadCurrentDriverName(): Promise<string> {
+    try {
+      const stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
+      return stored || 'Hugo';
+    } catch (error) {
+      return 'Hugo';
+    }
+  },
+
+  async saveCurrentDriverName(name: string) {
+    try {
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER, name);
+    } catch (error) {
+      console.error('Erro ao salvar motorista ativo no IndexedDB:', error);
     }
   }
 };

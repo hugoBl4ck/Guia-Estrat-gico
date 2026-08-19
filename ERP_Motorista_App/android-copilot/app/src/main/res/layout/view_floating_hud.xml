@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/hudRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:id="@+id/cardContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_hud_card"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:elevation="12dp">
+
+        <!-- Barra Superior: Plataforma, Status e Botão Fechar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/badgePlatform"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="UBER"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:textSize="11sp"
+                android:background="@color/badge_uber"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp" />
+
+            <TextView
+                android:id="@+id/tvRecommendation"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="🟢 ACEITAR"
+                android:textColor="@color/status_green"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/tvHudPrice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="R$ 28,50"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btnCloseHud"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="Fechar Card"
+                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+        </LinearLayout>
+
+        <!-- Grade de Métricas Financeiras -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp"
+            android:weightSum="3">
+
+            <!-- Coluna 1: R$/KM -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="R$/KM TOTAL"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tvHudRateKm"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="R$ 2,85/km"
+                    android:textColor="@color/status_green"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Coluna 2: R$/Hora -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="R$/HORA BRUTO"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tvHudRateHour"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="R$ 58/h"
+                    android:textColor="@color/accent_blue"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Coluna 3: Lucro Líquido Real -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LUCRO LÍQUIDO"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tvHudNetProfit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="R$ 21,40"
+                    android:textColor="@color/status_yellow"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Detalhes de Deslocamento e CPK -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+            <TextView
+                android:id="@+id/tvTripDetails"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Busca: 2,1 km • Viagem: 8,4 km (24 min)"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp" />
+            <TextView
+                android:id="@+id/tvVehicleCpkUsed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CPK: R$ 0,38/km"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</FrameLayout>

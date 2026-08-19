@@ -1,8 +1,8 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 
 export const INITIAL_DRIVERS: Driver[] = [
-  { id: 'drv-ari', name: 'Ari', isDefault: true },
-  { id: 'drv-hugo', name: 'Hugo' },
+  { id: 'drv-hugo', name: 'Hugo', isDefault: true },
+  { id: 'drv-ari', name: 'Ari' },
 ];
 
 export const VEHICLE_BYD_DOLPHIN: Vehicle = {
@@ -146,7 +146,7 @@ export const INITIAL_SHIFT_BYD: Shift = {
   startOdometerKm: 4500,
   status: 'OPEN',
   vehicleId: 'veh-byd-dolphin-mini',
-  driverName: 'Ari',
+  driverName: 'Hugo',
   notes: 'BYD Dolphin Mini (Coelba R$ 1,21/kWh | Eletroposto R$ 1,69/kWh)'
 };
 
@@ -159,7 +159,7 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
     tipsAmount: 15.00,
     totalTrips: 11,
     rideDistanceKm: 128.0,
-    driverName: 'Ari',
+    driverName: 'Hugo',
     vehicleId: 'veh-byd-dolphin-mini',
     recordedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
   },
@@ -171,7 +171,7 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
     tipsAmount: 5.00,
     totalTrips: 6,
     rideDistanceKm: 64.0,
-    driverName: 'Ari',
+    driverName: 'Hugo',
     vehicleId: 'veh-byd-dolphin-mini',
     recordedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
   }
@@ -188,7 +188,7 @@ export const INITIAL_EARNINGS_FORD_KA: Earning[] = [
     tipsAmount: 0,
     totalTrips: 88, // 88 corridas em 7 dias (média 12,5 corridas/dia)
     rideDistanceKm: 382.2, // 382.2 km em 7 dias (média 54.6 km/dia)
-    driverName: 'Ari',
+    driverName: 'Hugo',
     vehicleId: 'veh-ford-ka-10',
     recordedAt: new Date('2026-07-19T23:59:59Z').toISOString()
   }

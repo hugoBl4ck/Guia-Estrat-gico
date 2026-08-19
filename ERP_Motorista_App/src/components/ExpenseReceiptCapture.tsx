@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Camera, FileCode, Upload, CheckCircle2, AlertTriangle, X, Image as ImageIcon, Sparkles, RefreshCw } from 'lucide-react';
-import { Expense, ExpenseCategory, Vehicle } from '../types';
+import { Camera, FileCode, Upload, CheckCircle2, AlertTriangle, X, Image as ImageIcon, Sparkles, RefreshCw, User, Zap } from 'lucide-react';
+import { Expense, ExpenseCategory, Vehicle, Driver } from '../types';
 import { parseNfeXml } from '../services/nfeParser';
 
 interface ExpenseReceiptCaptureProps {
   isOpen: boolean;
   onClose: () => void;
   vehicle: Vehicle;
+  drivers?: Driver[];
+  currentDriverName?: string;
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
 }
 
@@ -14,12 +16,21 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
   isOpen,
   onClose,
   vehicle,
+  drivers = [],
+  currentDriverName = 'Hugo',
   onAddExpense,
 }) => {
   const [activeTab, setActiveTab] = useState<'PHOTO' | 'XML'>('PHOTO');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Lista de motoristas
+  const availableDrivers: Driver[] = drivers.length > 0 ? drivers : [
+    { id: 'drv-hugo', name: 'Hugo', isDefault: true },
+    { id: 'drv-ari', name: 'Ari' },
+  ];
+  const [driverName, setDriverName] = useState<string>(currentDriverName || 'Hugo');
 
   // Form State do Preview de Confirmação
   const [amount, setAmount] = useState('');
@@ -136,6 +147,8 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
           installmentNumber: i + 1,
           nfeKey,
           cnpjIssuer,
+          vehicleId: vehicle.id,
+          driverName: driverName || currentDriverName || 'Hugo',
         });
       }
     } else {
@@ -151,6 +164,8 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
         installmentNumber: 1,
         nfeKey,
         cnpjIssuer,
+        vehicleId: vehicle.id,
+        driverName: driverName || currentDriverName || 'Hugo',
       });
     }
 
@@ -159,12 +174,20 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-       <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left max-h-[90vh] overflow-y-auto">
-        
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-md space-y-4 shadow-2xl relative text-left cursor-default max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain"
+      >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+          title="Fechar"
         >
           <X className="w-4 h-4" />
         </button>
@@ -281,6 +304,30 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
                 <img src={selectedImage} alt="Comprovante" className="w-full h-full object-cover" />
               </div>
             )}
+
+            {/* Seleção do Motorista */}
+            <div>
+              <label className="text-slate-400 font-semibold block mb-1 flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-emerald-400" /> Motorista Responsável
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {availableDrivers.map((drv) => (
+                  <button
+                    key={drv.id}
+                    type="button"
+                    onClick={() => setDriverName(drv.name)}
+                    className={`py-1.5 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 border transition-all ${
+                      driverName === drv.name
+                        ? 'bg-emerald-500 text-black border-emerald-400 shadow-sm'
+                        : 'bg-black border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <User className="w-3 h-3" />
+                    <span className="truncate">{drv.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div>
               <label className="text-slate-400 font-semibold block mb-1">Valor da Despesa (R$)</label>

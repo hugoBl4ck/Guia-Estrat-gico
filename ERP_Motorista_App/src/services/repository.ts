@@ -1,7 +1,7 @@
 import { dbService } from './db';
 import { FinanceState } from './financeReducer';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Vehicle } from '../types';
+import { Vehicle, Shift } from '../types';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { syncErrorService } from './syncErrorState';
 
@@ -181,12 +181,14 @@ export class DataRepository implements IDataRepository {
           const payloadEarnings = activeGanhos.map((e) => ({
             id: e.id,
             platform: e.platform,
+            earning_type: e.earningType || 'RIDE',
             gross_amount: e.grossAmount,
             tips_amount: e.tipsAmount,
             total_trips: e.totalTrips,
             ride_distance_km: e.rideDistanceKm,
             recorded_at: e.recordedAt,
-            driver_name: e.driverName || 'Ari',
+            notes: e.notes || null,
+            driver_name: e.driverName || null,
             start_time: e.startTime || null,
             end_time: e.endTime || null,
             worked_hours: e.workedHours || null,
@@ -199,9 +201,9 @@ export class DataRepository implements IDataRepository {
             .from('ganhos')
             .upsert(payloadEarnings, { onConflict: 'id' });
 
-          // Se a tabela Supabase ainda não possuir colunas novas (driver_name, start_time, end_time, worked_hours, vehicle_id), fallback sem essas colunas
-          if (upsertError && (upsertError.message?.includes('driver_name') || upsertError.message?.includes('start_time') || upsertError.message?.includes('end_time') || upsertError.message?.includes('worked_hours') || upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
-            const fallbackPayload = payloadEarnings.map(({ driver_name, start_time, end_time, worked_hours, vehicle_id, ...rest }) => rest);
+          // Se a tabela Supabase ainda não possuir colunas novas, fallback sem essas colunas
+          if (upsertError && (upsertError.message?.includes('driver_name') || upsertError.message?.includes('earning_type') || upsertError.message?.includes('notes') || upsertError.message?.includes('start_time') || upsertError.message?.includes('end_time') || upsertError.message?.includes('worked_hours') || upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadEarnings.map(({ driver_name, earning_type, notes, start_time, end_time, worked_hours, vehicle_id, ...rest }) => rest);
             const retry = await supabase
               .from('ganhos')
               .upsert(fallbackPayload, { onConflict: 'id' });
@@ -244,6 +246,7 @@ export class DataRepository implements IDataRepository {
             observacao: exp.notes || null,
             expense_date: exp.expenseDate,
             vehicle_id: exp.vehicleId || null,
+            driver_name: exp.driverName || null,
             user_email: userEmail,
           }));
 
@@ -251,9 +254,9 @@ export class DataRepository implements IDataRepository {
             .from('despesas')
             .upsert(payloadExpenses, { onConflict: 'id' });
 
-          // Fallback caso a tabela despesas não tenha a coluna vehicle_id
-          if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
-            const fallbackPayload = payloadExpenses.map(({ vehicle_id, ...rest }) => rest);
+          // Fallback caso a tabela despesas não tenha a coluna vehicle_id ou driver_name
+          if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.message?.includes('driver_name') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadExpenses.map(({ vehicle_id, driver_name, ...rest }) => rest);
             const retry = await supabase
               .from('despesas')
               .upsert(fallbackPayload, { onConflict: 'id' });
@@ -308,6 +311,7 @@ export class DataRepository implements IDataRepository {
         const payloadShift: Record<string, any> = {
           id: state.activeShift.id,
           vehicle_id: state.activeShift.vehicleId || 'veh-byd-dolphin-mini',
+          driver_name: state.activeShift.driverName || 'Hugo',
           start_time: state.activeShift.startTime,
           end_time: state.activeShift.endTime || null,
           start_odometer_km: state.activeShift.startOdometerKm,
@@ -321,9 +325,10 @@ export class DataRepository implements IDataRepository {
           .from('turnos')
           .upsert(payloadShift, { onConflict: 'id' });
 
-        // Se o banco Supabase não possui a coluna 'vehicle_id', remover e tentar novamente
-        if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('vehicle_id'))) {
+        // Se o banco Supabase não possui as colunas 'vehicle_id' ou 'driver_name', remover e tentar novamente
+        if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.message?.includes('driver_name') || upsertError.details?.includes('column'))) {
           delete payloadShift.vehicle_id;
+          delete payloadShift.driver_name;
           const retry = await supabase
             .from('turnos')
             .upsert(payloadShift, { onConflict: 'id' });
@@ -363,12 +368,14 @@ export class DataRepository implements IDataRepository {
         earningsList = cloudGanhos.map((e) => ({
           id: e.id,
           platform: e.platform,
+          earningType: e.earning_type || (e.notes?.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
           grossAmount: parseFloat(e.gross_amount) || 0,
           tipsAmount: parseFloat(e.tips_amount) || 0,
-          totalTrips: parseInt(e.total_trips, 10) || 1,
+          totalTrips: parseInt(e.total_trips, 10) || 0,
           rideDistanceKm: parseFloat(e.ride_distance_km) || 0,
           recordedAt: e.recorded_at,
-          driverName: e.driver_name || 'Ari',
+          notes: e.notes || undefined,
+          driverName: e.driver_name || e.driverName || 'Hugo',
           startTime: e.start_time || undefined,
           endTime: e.end_time || undefined,
           workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
@@ -379,11 +386,13 @@ export class DataRepository implements IDataRepository {
         earningsList = cloudFaturamentos.map((f) => ({
           id: f.id,
           platform: f.plataforma,
+          earningType: f.earning_type || (f.notes?.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
           grossAmount: parseFloat(f.valor_bruto) || 0,
           tipsAmount: parseFloat(f.valor_gorjeta) || 0,
-          totalTrips: parseInt(f.total_corridas, 10) || 1,
+          totalTrips: parseInt(f.total_corridas, 10) || 0,
           rideDistanceKm: parseFloat(f.distancia_km) || 0,
-          driverName: f.driver_name || 'Ari',
+          notes: f.notes || f.observacao || undefined,
+          driverName: f.driver_name || f.driverName || 'Hugo',
           startTime: f.start_time || f.inicio || undefined,
           endTime: f.end_time || f.fim || undefined,
           workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
@@ -413,6 +422,7 @@ export class DataRepository implements IDataRepository {
             notes: d.observacao || d.notes || '',
             expenseDate: d.expense_date,
             vehicleId: d.vehicle_id || (isFord ? 'veh-ford-ka-10' : isByd ? 'veh-byd-dolphin-mini' : undefined),
+            driverName: d.driver_name || d.driverName || 'Hugo',
           };
         });
       }
@@ -435,11 +445,41 @@ export class DataRepository implements IDataRepository {
         }));
       }
 
-      if (earningsList.length > 0 || expensesList.length > 0 || bucketsList.length > 0) {
+      // 5. Buscar Turno Ativo na Nuvem
+      let cloudActiveShift: Shift | null = null;
+      try {
+        const { data: cloudTurnos } = await supabase
+          .from('turnos')
+          .select('*')
+          .eq('user_email', userEmail)
+          .eq('status', 'OPEN')
+          .order('start_time', { ascending: false })
+          .limit(1);
+
+        if (Array.isArray(cloudTurnos) && cloudTurnos.length > 0) {
+          const t = cloudTurnos[0];
+          cloudActiveShift = {
+            id: t.id,
+            startTime: t.start_time,
+            endTime: t.end_time || undefined,
+            startOdometerKm: parseFloat(t.start_odometer_km) || 0,
+            endOdometerKm: t.end_odometer_km ? parseFloat(t.end_odometer_km) : undefined,
+            status: 'OPEN',
+            vehicleId: t.vehicle_id || undefined,
+            driverName: t.driver_name || 'Hugo',
+            notes: t.notes || undefined,
+          };
+        }
+      } catch (shiftErr) {
+        console.warn('Erro ao buscar turnos abertos do Supabase:', shiftErr);
+      }
+
+      if (earningsList.length > 0 || expensesList.length > 0 || bucketsList.length > 0 || cloudActiveShift) {
         return {
           earnings: earningsList,
           expenses: expensesList,
           buckets: bucketsList.length > 0 ? bucketsList : undefined,
+          activeShift: cloudActiveShift,
         };
       }
       return null;

@@ -72,30 +72,33 @@ export const GoalSelectorModal: React.FC<GoalSelectorModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden cursor-default text-left max-h-[90vh] overflow-y-auto"
+        className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl relative cursor-default text-left max-h-[92dvh] sm:max-h-[88dvh] flex flex-col"
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        <div className="flex items-center space-x-3 pt-1">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-            <Target className="w-6 h-6 text-driver-profit" />
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+              <Target className="w-5 h-5 sm:w-6 sm:h-6 text-driver-profit" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm sm:text-base text-white">Escolha sua Meta de Corridas</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Ajuste o plano diário e mensal conforme seus objetivos</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-extrabold text-base text-white">Escolha sua Meta de Corridas</h3>
-            <p className="text-xs text-slate-400">Ajuste o plano diário e mensal conforme seus objetivos</p>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+            title="Fechar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <div className="space-y-2.5 pt-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-2.5">
           {plans.map((p) => {
             const isSelected = currentDailyGoal === p.dailyTrips;
 

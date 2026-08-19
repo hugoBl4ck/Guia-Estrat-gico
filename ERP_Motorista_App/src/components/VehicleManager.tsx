@@ -284,20 +284,31 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
 
       {/* Modal Cadastro / Edição de Veículo */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-pma-card border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4">
+          <div className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl relative text-left max-h-[92dvh] sm:max-h-[88dvh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+                  <Car className="w-5 h-5 sm:w-6 sm:h-6 text-driver-profit" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-white">
+                    {editingVehicle ? 'Editar Parâmetros do Veículo' : 'Cadastrar Novo Veículo'}
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400">Configure dados do automóvel</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-            <h3 className="font-extrabold text-lg text-white">
-              {editingVehicle ? 'Editar Parâmetros do Veículo' : 'Cadastrar Novo Veículo'}
-            </h3>
-
-            <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-3 text-xs">
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Modelo do Veículo</label>
                 <input
@@ -414,18 +425,20 @@ export const VehicleManager: React.FC<VehicleManagerProps> = ({
                   </div>
                 </div>
               )}
+              </div>
 
-              <div className="flex gap-2 pt-2">
+              {/* Rodapé Fixo */}
+              <div className="flex gap-2 pt-3 border-t border-slate-800/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-slate-900 text-slate-300 font-bold py-3 rounded-2xl text-xs"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3 rounded-2xl text-xs shadow-lg"
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm shadow-lg active:scale-95 transition-all"
                 >
                   Salvar Veículo
                 </button>

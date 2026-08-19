@@ -76,131 +76,145 @@ export const VehicleOnboardingModal: React.FC<VehicleOnboardingModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-pma-card border border-emerald-800/80 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative overflow-hidden text-left cursor-default max-h-[90vh] overflow-y-auto"
+        className="bg-pma-card border border-emerald-800/80 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl relative text-left cursor-default max-h-[92dvh] sm:max-h-[88dvh] flex flex-col"
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        <div className="flex items-center space-x-3 pt-1">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-black flex items-center justify-center font-bold">
-            <Car className="w-7 h-7 stroke-[2.5]" />
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-black flex items-center justify-center font-bold shrink-0">
+              <Car className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base sm:text-lg text-white">Cadastre Seu Veículo Real</h3>
+              <p className="text-[11px] sm:text-xs text-emerald-400 font-semibold">
+                Bem-vindo ao GiroCerto ERP! Insira os dados reais
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-extrabold text-lg text-white">Cadastre Seu Veículo Real</h3>
-            <p className="text-xs text-emerald-400 font-semibold">
-              Bem-vindo ao GiroCerto ERP! Insira os dados reais do seu carro
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800 transition-colors"
+            title="Fechar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="text-xs text-slate-400 font-semibold block mb-1">Modelo do Veículo</label>
-            <input
-              type="text"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="ex: BYD Dolphin Mini / Chevrolet Onix 1.0"
-              required
-              className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-3">
             <div>
-              <label className="text-xs text-slate-400 font-semibold block mb-1">Marca / Fabricante</label>
+              <label className="text-xs text-slate-400 font-semibold block mb-1">Modelo do Veículo</label>
               <input
                 type="text"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder="ex: BYD / Chevrolet"
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 font-semibold block mb-1">Placa do Carro</label>
-              <input
-                type="text"
-                value={licensePlate}
-                onChange={(e) => setLicensePlate(e.target.value)}
-                placeholder="ex: ABC1D23"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="ex: BYD Dolphin Mini / Chevrolet Onix 1.0"
                 required
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-emerald-400 font-mono font-bold uppercase outline-none focus:border-emerald-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-emerald-500"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="text-xs text-slate-400 font-semibold block mb-1">Tipo de Propulsão</label>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setIsElectric(true)}
-                className={`py-3 px-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
-                  isElectric
-                    ? 'bg-emerald-950 border-emerald-500 text-emerald-400 shadow-md'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}
-              >
-                <Zap className="w-4 h-4 text-emerald-400" />
-                100% Elétrico (EV)
-              </button>
+              <div>
+                <label className="text-xs text-slate-400 font-semibold block mb-1">Marca / Fabricante</label>
+                <input
+                  type="text"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="ex: BYD / Chevrolet"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 font-semibold block mb-1">Placa do Carro</label>
+                <input
+                  type="text"
+                  value={licensePlate}
+                  onChange={(e) => setLicensePlate(e.target.value)}
+                  placeholder="ex: ABC1D23"
+                  required
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-emerald-400 font-mono font-bold uppercase outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => setIsElectric(false)}
-                className={`py-3 px-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
-                  !isElectric
-                    ? 'bg-amber-950 border-amber-500 text-amber-400 shadow-md'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}
-              >
-                <Fuel className="w-4 h-4 text-amber-400" />
-                Combustível / Flex
-              </button>
+            <div>
+              <label className="text-xs text-slate-400 font-semibold block mb-1">Tipo de Propulsão</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsElectric(true)}
+                  className={`py-3 px-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                    isElectric
+                      ? 'bg-emerald-950 border-emerald-500 text-emerald-400 shadow-md'
+                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <Zap className="w-4 h-4 text-emerald-400" />
+                  100% Elétrico (EV)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsElectric(false)}
+                  className={`py-3 px-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                    !isElectric
+                      ? 'bg-amber-950 border-amber-500 text-amber-400 shadow-md'
+                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <Fuel className="w-4 h-4 text-amber-400" />
+                  Combustível / Flex
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-400 font-semibold block mb-1">Financiamento / Aluguel (R$/mês)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={monthlyFinancingCost}
+                  onChange={(e) => setMonthlyFinancingCost(e.target.value)}
+                  placeholder="ex: 1850.00"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 font-semibold block mb-1">Seguro Mensal (R$/mês)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={insuranceMonthlyCost}
+                  onChange={(e) => setInsuranceMonthlyCost(e.target.value)}
+                  placeholder="ex: 299.00"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-slate-400 font-semibold block mb-1">Financiamento / Aluguel (R$/mês)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={monthlyFinancingCost}
-                onChange={(e) => setMonthlyFinancingCost(e.target.value)}
-                placeholder="ex: 1850.00"
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 font-semibold block mb-1">Seguro Mensal (R$/mês)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={insuranceMonthlyCost}
-                onChange={(e) => setInsuranceMonthlyCost(e.target.value)}
-                placeholder="ex: 299.00"
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-emerald-500"
-              />
-            </div>
+          <div className="flex gap-2 pt-3 border-t border-slate-800/80 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Salvar Veículo
+            </button>
           </div>
-
-          <button
-            type="submit"
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3.5 rounded-2xl text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 pt-2"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Salvar Meu Carro Real e Iniciar ERP
-          </button>
         </form>
       </div>
     </div>
