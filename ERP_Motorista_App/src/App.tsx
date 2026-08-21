@@ -38,6 +38,7 @@ import {
   INITIAL_EXPENSES_FORD_KA,
   INITIAL_BUCKETS,
   INITIAL_DRIVERS,
+  getInitialDriversForUser,
   getInitialVehicleForUser
 } from './utils/mockData';
 import { Vehicle, Earning, Expense, Shift, PersonalUsageLog, Driver } from './types';
@@ -149,14 +150,9 @@ export function App() {
         }
 
         if (dbDrivers && dbDrivers.length > 0) {
-          // Garantir que o motorista Ari sempre está presente na lista
-          const hasAri = dbDrivers.some((d: Driver) => d.name.toLowerCase() === 'ari');
-          if (!hasAri) {
-            const withAri = [...dbDrivers, { id: 'drv-ari', name: 'Ari' }];
-            setDrivers(withAri);
-          } else {
-            setDrivers(dbDrivers);
-          }
+          setDrivers(dbDrivers);
+        } else if (storedEmail) {
+          setDrivers(getInitialDriversForUser(storedEmail));
         }
 
         if (dbCurrentDriver) {

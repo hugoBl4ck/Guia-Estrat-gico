@@ -571,7 +571,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                       {editingDriverExpenseId === exp.id ? (
                         <div ref={editingDriverRef} className="flex flex-col gap-1 min-w-[140px]">
                           <div className="flex gap-1 flex-wrap">
-                            {(availableDrivers.length > 0 ? availableDrivers : [{id:'drv-hugo',name:'Hugo'},{id:'drv-ari',name:'Ari'}]).map((d) => (
+                            {availableDrivers.map((d) => (
                               <button
                                 key={d.id}
                                 onClick={() => setEditingDriverValue(d.name)}
@@ -662,7 +662,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                           {editingDriverExpenseId === exp.id ? (
                             <div className="flex flex-col gap-1 w-full mt-1">
                               <div className="flex gap-1 flex-wrap">
-                                {(availableDrivers.length > 0 ? availableDrivers : [{id:'drv-hugo',name:'Hugo'},{id:'drv-ari',name:'Ari'}]).map((d) => (
+                                {availableDrivers.map((d) => (
                                   <button
                                     key={d.id}
                                     onClick={() => setEditingDriverValue(d.name)}
