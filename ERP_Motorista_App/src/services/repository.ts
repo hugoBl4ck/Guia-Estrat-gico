@@ -32,6 +32,40 @@ export interface IDataRepository {
   syncWithCloud(state: FinanceState, userEmail: string): Promise<{ success: boolean; errorMessage?: string }>;
 }
 
+/**
+ * Anexa a identificação do motorista nas notas caso a tabela da nuvem não possua coluna nativa driver_name.
+ */
+export function encodeDriverInNotes(notes?: string | null, driverName?: string | null): string | null {
+  if (!driverName || driverName.trim() === '') return notes || null;
+  const cleanDriver = driverName.trim();
+  const rawNotes = notes ? notes.trim() : '';
+  if (rawNotes.includes('[driver:')) {
+    return rawNotes.replace(/\[driver:[^\]]+\]/, `[driver:${cleanDriver}]`);
+  }
+  return rawNotes ? `${rawNotes} [driver:${cleanDriver}]` : `[driver:${cleanDriver}]`;
+}
+
+/**
+ * Extrai o nome do motorista e as notas limpas a partir dos dados do Supabase.
+ */
+export function decodeDriverAndNotes(rawNotes?: string | null, rawDriverName?: string | null): { driverName?: string; notes?: string } {
+  let driverName = rawDriverName && rawDriverName.trim() !== '' ? rawDriverName.trim() : undefined;
+  let notes = rawNotes ? rawNotes.trim() : undefined;
+
+  if (notes && notes.includes('[driver:')) {
+    const match = notes.match(/\[driver:([^\]]+)\]/);
+    if (match && match[1]) {
+      if (!driverName) {
+        driverName = match[1].trim();
+      }
+      notes = notes.replace(/\[driver:[^\]]+\]/, '').trim();
+      if (!notes) notes = undefined;
+    }
+  }
+
+  return { driverName, notes };
+}
+
 export class DataRepository implements IDataRepository {
   public async loadVehiclesAsync(): Promise<Vehicle[]> {
     return await dbService.loadVehiclesFromIndexedDB();
@@ -187,7 +221,7 @@ export class DataRepository implements IDataRepository {
             total_trips: e.totalTrips,
             ride_distance_km: e.rideDistanceKm,
             recorded_at: e.recordedAt,
-            notes: e.notes || null,
+            notes: encodeDriverInNotes(e.notes, e.driverName),
             driver_name: e.driverName || null,
             start_time: e.startTime || null,
             end_time: e.endTime || null,
@@ -243,7 +277,7 @@ export class DataRepository implements IDataRepository {
             tarifa_kwh: exp.tariffPerKwh || null,
             tipo_recarga: exp.chargingType || null,
             odometro_km: exp.odometerKm || null,
-            observacao: exp.notes || null,
+            observacao: encodeDriverInNotes(exp.notes, exp.driverName),
             expense_date: exp.expenseDate,
             vehicle_id: exp.vehicleId || null,
             driver_name: exp.driverName || null,
@@ -284,9 +318,18 @@ export class DataRepository implements IDataRepository {
         }
       }
 
-      // 3. Sincronizar Caixas de Reserva no Supabase
+      // 3. Sincronizar Caixas de Reserva no Supabase (incluindo metadados de motoristas para persistência garantida)
       if (state.buckets && state.buckets.length > 0) {
-        const payloadBuckets = state.buckets.map((b) => ({
+        const itemDriversMap: Record<string, string> = {};
+        (state.earnings || []).forEach((e) => {
+          if (e.driverName) itemDriversMap[e.id] = e.driverName;
+        });
+        (state.expenses || []).forEach((exp) => {
+          if (exp.driverName) itemDriversMap[exp.id] = exp.driverName;
+        });
+
+        const activeBuckets = state.buckets.filter((b) => b.id !== 'bkt-system-driver-map');
+        const payloadBuckets: any[] = activeBuckets.map((b) => ({
           id: b.id,
           nome: b.name,
           tipo: b.type,
@@ -295,6 +338,18 @@ export class DataRepository implements IDataRepository {
           percentual_alocacao: b.percentageAllocated,
           user_email: userEmail,
         }));
+
+        if (Object.keys(itemDriversMap).length > 0) {
+          payloadBuckets.push({
+            id: 'bkt-system-driver-map',
+            nome: JSON.stringify(itemDriversMap),
+            tipo: 'FREE_CASH',
+            saldo_atual: 0,
+            saldo_alvo: 0,
+            percentual_alocacao: 0,
+            user_email: userEmail,
+          });
+        }
 
         const { error: upsertError } = await supabase
           .from('caixas_buckets')
@@ -311,13 +366,13 @@ export class DataRepository implements IDataRepository {
         const payloadShift: Record<string, any> = {
           id: state.activeShift.id,
           vehicle_id: state.activeShift.vehicleId || 'veh-byd-dolphin-mini',
-          driver_name: state.activeShift.driverName || 'Hugo',
+          driver_name: state.activeShift.driverName || null,
           start_time: state.activeShift.startTime,
           end_time: state.activeShift.endTime || null,
           start_odometer_km: state.activeShift.startOdometerKm,
           end_odometer_km: state.activeShift.endOdometerKm || null,
-          status: state.activeShift.status,
-          notes: state.activeShift.notes || null,
+          status: state.activeShift.status || 'OPEN',
+          notes: encodeDriverInNotes(state.activeShift.notes, state.activeShift.driverName),
           user_email: userEmail,
         };
 
@@ -325,7 +380,6 @@ export class DataRepository implements IDataRepository {
           .from('turnos')
           .upsert(payloadShift, { onConflict: 'id' });
 
-        // Se o banco Supabase não possui as colunas 'vehicle_id' ou 'driver_name', remover e tentar novamente
         if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.message?.includes('driver_name') || upsertError.details?.includes('column'))) {
           delete payloadShift.vehicle_id;
           delete payloadShift.driver_name;
@@ -336,22 +390,54 @@ export class DataRepository implements IDataRepository {
         }
 
         if (upsertError) {
-          console.error('Erro no Supabase (turnos):', upsertError);
-          return { success: false, errorMessage: `Erro ao salvar turnos no Supabase: ${upsertError.message}` };
+          console.warn('Erro ao sincronizar turno com o Supabase:', upsertError);
         }
       }
 
       return { success: true };
-    } catch (error: any) {
-      console.warn('Erro ao sincronizar com Supabase:', error);
-      return { success: false, errorMessage: error?.message || 'Erro inesperado na sincronização Cloud' };
+    } catch (err: any) {
+      console.error('Erro geral ao sincronizar com a Nuvem:', err);
+      return { success: false, errorMessage: err.message || 'Erro inesperado na sincronização com o Supabase' };
     }
   }
 
   public async fetchFromCloud(userEmail: string): Promise<Partial<FinanceState> | null> {
-    if (!isSupabaseConfigured() || !supabase || !userEmail || userEmail.trim() === '') return null;
+    if (!userEmail || userEmail.trim() === '' || !isSupabaseConfigured() || !supabase) {
+      return null;
+    }
 
     try {
+      // 1. Carregar mapeamento de caixas e motoristas primeiro para enriquecer os ganhos
+      const { data: cloudBuckets } = await supabase
+        .from('caixas_buckets')
+        .select('*')
+        .eq('user_email', userEmail);
+
+      let cloudDriverMap: Record<string, string> = {};
+      let bucketsList: any[] = [];
+      if (Array.isArray(cloudBuckets) && cloudBuckets.length > 0) {
+        const mapBucket = cloudBuckets.find((b) => b.id === 'bkt-system-driver-map');
+        if (mapBucket && mapBucket.nome) {
+          try {
+            cloudDriverMap = JSON.parse(mapBucket.nome);
+          } catch (e) {
+            console.warn('Erro ao parsear mapeamento de motoristas da nuvem:', e);
+          }
+        }
+
+        bucketsList = cloudBuckets
+          .filter((b) => b.id !== 'bkt-system-driver-map')
+          .map((b) => ({
+            id: b.id,
+            name: b.nome,
+            type: b.tipo,
+            currentBalance: parseFloat(b.saldo_atual) || 0,
+            targetBalance: parseFloat(b.saldo_alvo) || 0,
+            percentageAllocated: parseFloat(b.percentual_alocacao) || 0,
+            color: b.tipo === 'FREE_CASH' ? '#10B981' : b.tipo === 'MAINTENANCE' ? '#F59E0B' : b.tipo === 'DEPRECIATION' ? '#3B82F6' : '#EF4444',
+          }));
+      }
+
       const { data: cloudGanhos } = await supabase
         .from('ganhos')
         .select('*')
@@ -365,40 +451,48 @@ export class DataRepository implements IDataRepository {
 
       let earningsList: any[] = [];
       if (Array.isArray(cloudGanhos) && cloudGanhos.length > 0) {
-        earningsList = cloudGanhos.map((e) => ({
-          id: e.id,
-          platform: e.platform,
-          earningType: e.earning_type || (e.notes?.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
-          grossAmount: parseFloat(e.gross_amount) || 0,
-          tipsAmount: parseFloat(e.tips_amount) || 0,
-          totalTrips: parseInt(e.total_trips, 10) || 0,
-          rideDistanceKm: parseFloat(e.ride_distance_km) || 0,
-          recordedAt: e.recorded_at,
-          notes: e.notes || undefined,
-          driverName: e.driver_name || e.driverName || 'Hugo',
-          startTime: e.start_time || undefined,
-          endTime: e.end_time || undefined,
-          workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
-          vehicleId: e.vehicle_id || (e.id?.includes('ford') ? 'veh-ford-ka-10' : e.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
-          isDeleted: Boolean(e.is_deleted),
-        }));
+        earningsList = cloudGanhos.map((e) => {
+          const { driverName: extractedDriver, notes } = decodeDriverAndNotes(e.notes, e.driver_name || e.driverName);
+          const mappedDriver = extractedDriver || cloudDriverMap[e.id];
+          return {
+            id: e.id,
+            platform: e.platform,
+            earningType: e.earning_type || (notes?.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
+            grossAmount: parseFloat(e.gross_amount) || 0,
+            tipsAmount: parseFloat(e.tips_amount) || 0,
+            totalTrips: parseInt(e.total_trips, 10) || 0,
+            rideDistanceKm: parseFloat(e.ride_distance_km) || 0,
+            recordedAt: e.recorded_at,
+            notes,
+            driverName: mappedDriver || undefined,
+            startTime: e.start_time || undefined,
+            endTime: e.end_time || undefined,
+            workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
+            vehicleId: e.vehicle_id || (e.id?.includes('ford') ? 'veh-ford-ka-10' : e.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
+            isDeleted: Boolean(e.is_deleted),
+          };
+        });
       } else if (Array.isArray(cloudFaturamentos) && cloudFaturamentos.length > 0) {
-        earningsList = cloudFaturamentos.map((f) => ({
-          id: f.id,
-          platform: f.plataforma,
-          earningType: f.earning_type || (f.notes?.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
-          grossAmount: parseFloat(f.valor_bruto) || 0,
-          tipsAmount: parseFloat(f.valor_gorjeta) || 0,
-          totalTrips: parseInt(f.total_corridas, 10) || 0,
-          rideDistanceKm: parseFloat(f.distancia_km) || 0,
-          notes: f.notes || f.observacao || undefined,
-          driverName: f.driver_name || f.driverName || 'Hugo',
-          startTime: f.start_time || f.inicio || undefined,
-          endTime: f.end_time || f.fim || undefined,
-          workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
-          vehicleId: f.vehicle_id || (f.id?.includes('ford') ? 'veh-ford-ka-10' : f.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
-          recordedAt: f.recorded_at,
-        }));
+        earningsList = cloudFaturamentos.map((f) => {
+          const { driverName: extractedDriver, notes } = decodeDriverAndNotes(f.notes || f.observacao, f.driver_name || f.driverName);
+          const mappedDriver = extractedDriver || cloudDriverMap[f.id];
+          return {
+            id: f.id,
+            platform: f.plataforma,
+            earningType: f.earning_type || (notes?.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
+            grossAmount: parseFloat(f.valor_bruto) || 0,
+            tipsAmount: parseFloat(f.valor_gorjeta) || 0,
+            totalTrips: parseInt(f.total_corridas, 10) || 0,
+            rideDistanceKm: parseFloat(f.distancia_km) || 0,
+            notes,
+            driverName: mappedDriver || undefined,
+            startTime: f.start_time || f.inicio || undefined,
+            endTime: f.end_time || f.fim || undefined,
+            workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
+            vehicleId: f.vehicle_id || (f.id?.includes('ford') ? 'veh-ford-ka-10' : f.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
+            recordedAt: f.recorded_at,
+          };
+        });
       }
 
       const { data: cloudDespesas } = await supabase
@@ -412,37 +506,21 @@ export class DataRepository implements IDataRepository {
           const obsLower = (d.observacao || d.notes || '').toLowerCase();
           const isFord = d.id?.includes('ford') || obsLower.includes('ford') || obsLower.includes('ka') || d.categoria === 'FUEL';
           const isByd = d.id?.includes('byd') || obsLower.includes('aliro') || obsLower.includes('byd') || obsLower.includes('dolphin') || obsLower.includes('coelba') || d.categoria === 'ELECTRIC_CHARGING';
-          
+          const { driverName: extractedDriver, notes } = decodeDriverAndNotes(d.observacao || d.notes, d.driver_name || d.driverName);
+          const mappedDriver = extractedDriver || cloudDriverMap[d.id];
+
           return {
             id: d.id,
             category: d.categoria || d.category || 'OTHER',
             amount: parseFloat(d.valor || d.amount) || 0,
             kwhAmount: d.kwh_carregados ? parseFloat(d.kwh_carregados) : undefined,
             tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
-            notes: d.observacao || d.notes || '',
+            notes: notes || '',
             expenseDate: d.expense_date,
             vehicleId: d.vehicle_id || (isFord ? 'veh-ford-ka-10' : isByd ? 'veh-byd-dolphin-mini' : undefined),
-            driverName: d.driver_name || d.driverName || 'Hugo',
+            driverName: mappedDriver || undefined,
           };
         });
-      }
-
-      const { data: cloudBuckets } = await supabase
-        .from('caixas_buckets')
-        .select('*')
-        .eq('user_email', userEmail);
-
-      let bucketsList: any[] = [];
-      if (Array.isArray(cloudBuckets) && cloudBuckets.length > 0) {
-        bucketsList = cloudBuckets.map((b) => ({
-          id: b.id,
-          name: b.nome,
-          type: b.tipo,
-          currentBalance: parseFloat(b.saldo_atual) || 0,
-          targetBalance: parseFloat(b.saldo_alvo) || 0,
-          percentageAllocated: parseFloat(b.percentual_alocacao) || 0,
-          color: b.tipo === 'FREE_CASH' ? '#10B981' : b.tipo === 'MAINTENANCE' ? '#F59E0B' : b.tipo === 'DEPRECIATION' ? '#3B82F6' : '#EF4444',
-        }));
       }
 
       // 5. Buscar Turno Ativo na Nuvem
@@ -458,6 +536,7 @@ export class DataRepository implements IDataRepository {
 
         if (Array.isArray(cloudTurnos) && cloudTurnos.length > 0) {
           const t = cloudTurnos[0];
+          const { driverName, notes } = decodeDriverAndNotes(t.notes, t.driver_name);
           cloudActiveShift = {
             id: t.id,
             startTime: t.start_time,
@@ -466,8 +545,8 @@ export class DataRepository implements IDataRepository {
             endOdometerKm: t.end_odometer_km ? parseFloat(t.end_odometer_km) : undefined,
             status: 'OPEN',
             vehicleId: t.vehicle_id || undefined,
-            driverName: t.driver_name || 'Hugo',
-            notes: t.notes || undefined,
+            driverName: driverName || undefined,
+            notes: notes || undefined,
           };
         }
       } catch (shiftErr) {

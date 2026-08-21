@@ -271,7 +271,9 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
             <div key={d.name} className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
               <div>
                 <p className="font-extrabold text-white flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${d.name.toLowerCase().includes('ari') ? 'bg-amber-400' : d.name.toLowerCase().includes('hugo') ? 'bg-emerald-400' : 'bg-indigo-400'}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${
+                    d.name.toLowerCase().includes('ari') ? 'bg-amber-400' : d.name.toLowerCase().includes('hugo') ? 'bg-emerald-400' : 'bg-indigo-400'
+                  }`}></span>
                   Motorista {d.name}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">

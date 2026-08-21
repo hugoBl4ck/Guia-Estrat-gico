@@ -22,3 +22,5 @@ local.properties
 # Sistema
 .DS_Store
 Thumbs.db
+backup_*.json
+supabase/.temp/

@@ -120,12 +120,13 @@ export function App() {
           setUserEmail(storedEmail);
         }
 
-        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers, dbCurrentDriver] = await Promise.all([
+        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers, dbCurrentDriver, localItemDrivers] = await Promise.all([
           repository.loadDataAsync(),
           repository.loadVehiclesAsync(),
           repository.loadCurrentVehicleAsync(),
           dbService.loadDriversFromIndexedDB(storedEmail),
-          dbService.loadCurrentDriverName(storedEmail)
+          dbService.loadCurrentDriverName(storedEmail),
+          dbService.loadItemDriversFromIndexedDB(storedEmail)
         ]);
 
         let currentStateData = dbData || {
@@ -151,6 +152,10 @@ export function App() {
 
         if (dbDrivers && dbDrivers.length > 0) {
           const normalized = dbDrivers.map((d: Driver) => d.name === 'Hugovieira' ? { ...d, name: 'Hugo' } : d);
+          const hasAri = normalized.some((d: Driver) => d.name.toLowerCase() === 'ari');
+          if (!hasAri) {
+            normalized.push({ id: 'drv-ari', name: 'Ari' });
+          }
           setDrivers(normalized);
         } else if (storedEmail) {
           setDrivers(getInitialDriversForUser(storedEmail));
@@ -165,21 +170,80 @@ export function App() {
           try {
             const cloudData = await repository.fetchFromCloud(storedEmail);
             if (cloudData) {
-              // Os dados da Nuvem (PC) devem ter precedência sobre o cache local antigo do celular
+              const mergedItemDrivers: Record<string, string> = { ...(localItemDrivers || {}) };
+
               const expensesMap = new Map();
-              (currentStateData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
-              (cloudData.expenses || []).forEach((exp) => expensesMap.set(exp.id, exp));
+              (currentStateData.expenses || []).forEach((exp) => {
+                if (exp.driverName) mergedItemDrivers[exp.id] = exp.driverName;
+                expensesMap.set(exp.id, exp);
+              });
+              (cloudData.expenses || []).forEach((cloudExp) => {
+                const localExp = expensesMap.get(cloudExp.id);
+                const resolvedDriver = localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id];
+                mergedItemDrivers[cloudExp.id] = resolvedDriver;
+
+                if (localExp) {
+                  expensesMap.set(cloudExp.id, {
+                    ...localExp,
+                    ...cloudExp,
+                    driverName: resolvedDriver,
+                    notes: cloudExp.notes !== undefined ? cloudExp.notes : localExp.notes,
+                    vehicleId: cloudExp.vehicleId || localExp.vehicleId,
+                  });
+                } else {
+                  expensesMap.set(cloudExp.id, {
+                    ...cloudExp,
+                    driverName: resolvedDriver,
+                  });
+                }
+              });
 
               const earningsMap = new Map();
-              (currentStateData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
-              (cloudData.earnings || []).forEach((e) => earningsMap.set(e.id, e));
+              (currentStateData.earnings || []).forEach((e) => {
+                if (e.driverName) mergedItemDrivers[e.id] = e.driverName;
+                earningsMap.set(e.id, e);
+              });
+              (cloudData.earnings || []).forEach((cloudE) => {
+                const localE = earningsMap.get(cloudE.id);
+                const resolvedDriver = localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id];
+                mergedItemDrivers[cloudE.id] = resolvedDriver;
+
+                if (localE) {
+                  earningsMap.set(cloudE.id, {
+                    ...localE,
+                    ...cloudE,
+                    driverName: resolvedDriver,
+                    notes: cloudE.notes !== undefined ? cloudE.notes : localE.notes,
+                    startTime: cloudE.startTime || localE.startTime,
+                    endTime: cloudE.endTime || localE.endTime,
+                    workedHours: cloudE.workedHours !== undefined ? cloudE.workedHours : localE.workedHours,
+                    vehicleId: cloudE.vehicleId || localE.vehicleId,
+                  });
+                } else {
+                  earningsMap.set(cloudE.id, {
+                    ...cloudE,
+                    driverName: resolvedDriver,
+                  });
+                }
+              });
+
+              await dbService.saveItemDrivers(mergedItemDrivers, storedEmail);
+
+              let mergedActiveShift = currentStateData.activeShift;
+              if (cloudData.activeShift) {
+                mergedActiveShift = {
+                  ...cloudData.activeShift,
+                  driverName: currentStateData.activeShift?.driverName || cloudData.activeShift.driverName || 'Hugo',
+                  notes: cloudData.activeShift.notes !== undefined ? cloudData.activeShift.notes : currentStateData.activeShift?.notes,
+                };
+              }
 
               const mergedState = {
                 ...currentStateData,
                 earnings: Array.from(earningsMap.values()),
                 expenses: Array.from(expensesMap.values()),
                 buckets: cloudData.buckets || currentStateData.buckets,
-                activeShift: cloudData.activeShift !== undefined ? cloudData.activeShift : currentStateData.activeShift,
+                activeShift: mergedActiveShift,
               };
 
               dispatch({ type: 'SET_ALL', payload: mergedState });
@@ -428,8 +492,17 @@ export function App() {
     dispatch({ type: 'SOFT_DELETE_EXPENSE', payload: id });
   };
 
-  const handleEditExpense = (expense: Expense) => {
+  const handleEditExpense = async (expense: Expense) => {
     dispatch({ type: 'EDIT_EXPENSE', payload: expense });
+    if (expense.driverName) {
+      try {
+        const stored = await dbService.loadItemDriversFromIndexedDB(userEmail);
+        stored[expense.id] = expense.driverName;
+        await dbService.saveItemDrivers(stored, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de motorista da despesa:', e);
+      }
+    }
   };
 
   const handleUndo = () => {
@@ -495,7 +568,7 @@ export function App() {
     handleSelectDriver(clean);
   };
 
-  const handleAddEarning = (earningData: Omit<Earning, 'id'>) => {
+  const handleAddEarning = async (earningData: Omit<Earning, 'id'>) => {
     const getLocalDateString = (d: Date | string) => {
       const dateObj = typeof d === 'string' ? new Date(d) : d;
       const year = dateObj.getFullYear();
@@ -509,14 +582,25 @@ export function App() {
       .filter((e) => !e.isDeleted && e.recordedAt && getLocalDateString(e.recordedAt) === todayStr)
       .reduce((sum, e) => sum + e.totalTrips, 0);
 
+    const selectedDriver = earningData.driverName || currentDriverName || 'Hugo';
     const newEarning: Earning = {
       ...earningData,
       id: `earning-${Date.now()}`,
       recordedAt: earningData.recordedAt || new Date().toISOString(),
       vehicleId: currentVehicle.id,
-      driverName: earningData.driverName || currentDriverName || 'Hugo',
+      driverName: selectedDriver,
     };
     dispatch({ type: 'ADD_EARNING', payload: newEarning });
+
+    if (selectedDriver) {
+      try {
+        const stored = await dbService.loadItemDriversFromIndexedDB(userEmail);
+        stored[newEarning.id] = selectedDriver;
+        await dbService.saveItemDrivers(stored, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de motorista do ganho:', e);
+      }
+    }
 
     const tripsAfterAdd = tripsBeforeAdd + (earningData.totalTrips || 0);
 
@@ -530,8 +614,17 @@ export function App() {
     }
   };
 
-  const handleEditEarning = (updatedEarning: Earning) => {
+  const handleEditEarning = async (updatedEarning: Earning) => {
     dispatch({ type: 'EDIT_EARNING', payload: updatedEarning });
+    if (updatedEarning.driverName) {
+      try {
+        const stored = await dbService.loadItemDriversFromIndexedDB(userEmail);
+        stored[updatedEarning.id] = updatedEarning.driverName;
+        await dbService.saveItemDrivers(stored, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de motorista editado:', e);
+      }
+    }
     setEarningToEdit(null);
     setIsAddEarningOpen(false);
   };
@@ -546,15 +639,26 @@ export function App() {
     setEarningToEdit(null);
   };
 
-  const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
+  const handleAddExpense = async (expenseData: Omit<Expense, 'id'>) => {
+    const selectedDriver = expenseData.driverName || currentDriverName || 'Hugo';
     const newExpense: Expense = {
       ...expenseData,
       id: `exp-${Date.now()}`,
       expenseDate: expenseData.expenseDate || new Date().toISOString(),
       vehicleId: expenseData.vehicleId || currentVehicle.id,
-      driverName: expenseData.driverName || currentDriverName || 'Hugo',
+      driverName: selectedDriver,
     };
     dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
+
+    if (selectedDriver) {
+      try {
+        const stored = await dbService.loadItemDriversFromIndexedDB(userEmail);
+        stored[newExpense.id] = selectedDriver;
+        await dbService.saveItemDrivers(stored, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de motorista da nova despesa:', e);
+      }
+    }
   };
 
   const handleAddPersonalLog = (logData: Omit<PersonalUsageLog, 'id' | 'date'>) => {

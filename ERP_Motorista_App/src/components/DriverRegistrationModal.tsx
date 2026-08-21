@@ -208,7 +208,7 @@ export const DriverRegistrationModal: React.FC<DriverRegistrationModalProps> = (
                       </div>
                     </div>
 
-                    {onDeleteDriver && drv.name !== 'Ari' && drv.name !== 'Hugo' && (
+                    {onDeleteDriver && drivers.length > 1 && (
                       <button
                         type="button"
                         onClick={() => onDeleteDriver(drv.id)}

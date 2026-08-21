@@ -19,8 +19,8 @@ interface ShiftManagerProps {
 export const ShiftManager: React.FC<ShiftManagerProps> = ({
   activeShift,
   earnings,
-  drivers = [{ id: 'drv-hugo', name: 'Hugo' }, { id: 'drv-ari', name: 'Ari' }],
-  currentDriverName = 'Hugo',
+  drivers = [],
+  currentDriverName = '',
   onStartShift,
   onEndShift,
   onAddEarning,
@@ -393,12 +393,12 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                               </span>
                             )}
                             {driver && (
-                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border ${
                                 driver.toLowerCase().includes('ari')
-                                  ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                                  ? 'bg-amber-950 text-amber-400 border-amber-800'
                                   : driver.toLowerCase().includes('hugo')
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : 'bg-indigo-950 text-indigo-400 border border-indigo-800'
+                                  ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                                  : 'bg-indigo-950 text-indigo-400 border-indigo-800'
                               }`}>
                                 👤 {driver}
                               </span>

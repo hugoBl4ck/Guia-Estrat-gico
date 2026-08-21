@@ -2,7 +2,8 @@ import { Earning, Expense, Shift, ReserveBucket, PersonalUsageLog, Vehicle, Driv
 import {
   VEHICLES_LIST,
   INITIAL_BUCKETS,
-  INITIAL_DRIVERS
+  INITIAL_DRIVERS,
+  getInitialDriversForUser
 } from '../utils/mockData';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 
@@ -16,6 +17,7 @@ const STORAGE_KEYS = {
   CURRENT_VEHICLE: 'girocerto_current_vehicle_v1',
   DRIVERS: 'girocerto_drivers_v1',
   CURRENT_DRIVER: 'girocerto_current_driver_v1',
+  ITEM_DRIVERS: 'girocerto_item_drivers_v1',
   DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1',
   USER_EMAIL: 'erp_driver_user_email'
 };
@@ -222,40 +224,80 @@ export const dbService = {
     }
   },
 
-  async loadDriversFromIndexedDB(): Promise<Driver[]> {
+  async loadDriversFromIndexedDB(userEmail?: string): Promise<Driver[]> {
     try {
-      const stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS);
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.DRIVERS;
+      let stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, key);
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
-        return INITIAL_DRIVERS;
+        stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS);
+      }
+      if (!stored || !Array.isArray(stored) || stored.length === 0) {
+        return getInitialDriversForUser(userEmail);
+      }
+      const hasAri = stored.some((d) => d.name.toLowerCase() === 'ari');
+      if (!hasAri) {
+        stored = [...stored, { id: 'drv-ari', name: 'Ari' }];
       }
       return stored;
     } catch (error) {
-      return INITIAL_DRIVERS;
+      return getInitialDriversForUser(userEmail);
     }
   },
 
-  async saveDrivers(drivers: Driver[]) {
+  async saveDrivers(drivers: Driver[], userEmail?: string) {
     try {
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.DRIVERS;
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, drivers);
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS, drivers);
     } catch (error) {
       console.error('Erro ao salvar motoristas no IndexedDB:', error);
     }
   },
 
-  async loadCurrentDriverName(): Promise<string> {
+  async loadCurrentDriverName(userEmail?: string): Promise<string> {
     try {
-      const stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
-      return stored || 'Hugo';
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.CURRENT_DRIVER}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.CURRENT_DRIVER;
+      let stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, key);
+      if (!stored) {
+        stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
+      }
+      const defaultName = getInitialDriversForUser(userEmail)[0]?.name || 'Hugo';
+      return stored || defaultName;
     } catch (error) {
-      return 'Hugo';
+      return getInitialDriversForUser(userEmail)[0]?.name || 'Hugo';
     }
   },
 
-  async saveCurrentDriverName(name: string) {
+  async saveCurrentDriverName(name: string, userEmail?: string) {
     try {
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.CURRENT_DRIVER}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.CURRENT_DRIVER;
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, name);
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER, name);
     } catch (error) {
       console.error('Erro ao salvar motorista ativo no IndexedDB:', error);
+    }
+  },
+
+  async loadItemDriversFromIndexedDB(userEmail?: string): Promise<Record<string, string>> {
+    try {
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_DRIVERS;
+      let stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, key);
+      if (!stored) {
+        stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_DRIVERS);
+      }
+      return stored || {};
+    } catch (error) {
+      return {};
+    }
+  },
+
+  async saveItemDrivers(mappings: Record<string, string>, userEmail?: string) {
+    try {
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_DRIVERS;
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, mappings);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_DRIVERS, mappings);
+    } catch (error) {
+      console.error('Erro ao salvar mapeamento de motoristas no IndexedDB:', error);
     }
   }
 };

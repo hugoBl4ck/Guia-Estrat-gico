@@ -20,13 +20,13 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
   onAddEarning,
   onEditEarning,
   earningToEdit,
-  drivers = [{ id: 'drv-hugo', name: 'Hugo' }, { id: 'drv-ari', name: 'Ari' }],
-  currentDriverName = 'Hugo',
+  drivers = [],
+  currentDriverName = '',
   onAddDriver,
 }) => {
   const [earningType, setEarningType] = useState<EarningType>('RIDE');
   const [platform, setPlatform] = useState<PlatformType>('UBER');
-  const [driverName, setDriverName] = useState<string>(currentDriverName || 'Hugo');
+  const [driverName, setDriverName] = useState<string>(currentDriverName || '');
   const [newDriverInput, setNewDriverInput] = useState('');
   const [showNewDriverForm, setShowNewDriverForm] = useState(false);
   const [grossAmount, setGrossAmount] = useState('');
