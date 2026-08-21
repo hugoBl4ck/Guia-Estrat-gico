@@ -264,6 +264,19 @@ export function App() {
     saveDrivers();
   }, [drivers, userEmail]);
 
+  // Salvar motorista ativo no IndexedDB sempre que for alterado
+  useEffect(() => {
+    if (!currentDriverName || !isHydratedRef.current) return;
+    const saveCurrentDriver = async () => {
+      try {
+        await dbService.saveCurrentDriverName(currentDriverName, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar motorista ativo no IndexedDB:', e);
+      }
+    };
+    saveCurrentDriver();
+  }, [currentDriverName, userEmail]);
+
   const handleSaveDriver = (newDriver: Driver) => {
     setDrivers((prev) => {
       const idx = prev.findIndex((d) => d.id === newDriver.id || d.name.toLowerCase() === newDriver.name.toLowerCase());
@@ -274,7 +287,7 @@ export function App() {
       }
       return [...prev, newDriver];
     });
-    setCurrentDriverName(newDriver.name);
+    handleSelectDriver(newDriver.name);
   };
 
   const handleDeleteDriver = (driverId: string) => {
@@ -429,6 +442,9 @@ export function App() {
 
   const handleStartShift = async (startKm: number, driverName?: string) => {
     const selectedDriver = driverName || currentDriverName || 'Hugo';
+    if (selectedDriver) {
+      handleSelectDriver(selectedDriver);
+    }
     const newShift: Shift = {
       id: `shift-${Date.now()}`,
       startTime: new Date().toISOString(),
@@ -619,6 +635,9 @@ export function App() {
         currentVehicle={currentVehicle}
         onSelectVehicle={handleSelectVehicle}
         onUpdateVehicle={handleUpdateVehicle}
+        drivers={drivers}
+        currentDriverName={currentDriverName}
+        onSelectDriver={handleSelectDriver}
         activeShift={state.activeShift}
         onEndShift={handleEndShift}
         onOpenVoice={() => setIsVoiceOpen(true)}

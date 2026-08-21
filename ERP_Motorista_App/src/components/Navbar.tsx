@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle, BarChart3 } from 'lucide-react';
-import { Vehicle, Shift } from '../types';
+import { Vehicle, Shift, Driver } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
 import { GiroCertoLogo } from './GiroCertoLogo';
 
@@ -9,6 +9,9 @@ interface NavbarProps {
   currentVehicle: Vehicle;
   onSelectVehicle: (vehicle: Vehicle) => void;
   onUpdateVehicle?: (updated: Vehicle) => void;
+  drivers?: Driver[];
+  currentDriverName?: string;
+  onSelectDriver?: (driverName: string) => void;
   activeShift: Shift | null;
   onEndShift?: () => void;
   onOpenVoice: () => void;
@@ -33,6 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentVehicle,
   onSelectVehicle,
   onUpdateVehicle,
+  drivers = [],
+  currentDriverName = '',
+  onSelectDriver,
   activeShift,
   onEndShift,
   onOpenVoice,
@@ -103,6 +109,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
           </div>
+
+          {/* Driver Selector Dropdown */}
+          {drivers && drivers.length > 0 && onSelectDriver && (
+            <div className="relative inline-flex items-center">
+              <select
+                value={currentDriverName}
+                onChange={(e) => onSelectDriver(e.target.value)}
+                className="bg-slate-900 border border-slate-800 hover:border-emerald-500 text-xs text-emerald-400 font-bold rounded-lg px-2.5 py-1.5 pr-7 outline-none appearance-none cursor-pointer max-w-[110px] sm:max-w-[160px] truncate shadow-inner"
+                title="Selecione o motorista ativo atual"
+              >
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.name}>
+                    👤 {d.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
+            </div>
+          )}
 
           {/* Botão de Análise Visual & Gráficos */}
           {onOpenAnalyticsCharts && (
