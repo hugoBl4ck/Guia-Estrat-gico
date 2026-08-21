@@ -318,38 +318,18 @@ export class DataRepository implements IDataRepository {
         }
       }
 
-      // 3. Sincronizar Caixas de Reserva no Supabase (incluindo metadados de motoristas para persistência garantida)
+      // 3. Sincronizar Caixas de Reserva no Supabase (sanitizando campos para respeitar o schema VARCHAR(50))
       if (state.buckets && state.buckets.length > 0) {
-        const itemDriversMap: Record<string, string> = {};
-        (state.earnings || []).forEach((e) => {
-          if (e.driverName) itemDriversMap[e.id] = e.driverName;
-        });
-        (state.expenses || []).forEach((exp) => {
-          if (exp.driverName) itemDriversMap[exp.id] = exp.driverName;
-        });
-
-        const activeBuckets = state.buckets.filter((b) => b.id !== 'bkt-system-driver-map');
-        const payloadBuckets: any[] = activeBuckets.map((b) => ({
-          id: b.id,
-          nome: b.name,
-          tipo: b.type,
-          saldo_atual: b.currentBalance,
-          saldo_alvo: b.targetBalance,
-          percentual_alocacao: b.percentageAllocated,
+        const activeBuckets = state.buckets.filter((b) => b.id && !b.id.includes('system'));
+        const payloadBuckets = activeBuckets.map((b) => ({
+          id: b.id.slice(0, 50),
+          nome: (b.name || 'Caixa').slice(0, 50),
+          tipo: (b.type || 'FREE_CASH').slice(0, 30),
+          saldo_atual: typeof b.currentBalance === 'number' ? b.currentBalance : (parseFloat(b.currentBalance as any) || 0),
+          saldo_alvo: typeof b.targetBalance === 'number' ? b.targetBalance : (parseFloat(b.targetBalance as any) || 0),
+          percentual_alocacao: typeof b.percentageAllocated === 'number' ? b.percentageAllocated : (parseFloat(b.percentageAllocated as any) || 0),
           user_email: userEmail,
         }));
-
-        if (Object.keys(itemDriversMap).length > 0) {
-          payloadBuckets.push({
-            id: 'bkt-system-driver-map',
-            nome: JSON.stringify(itemDriversMap),
-            tipo: 'FREE_CASH',
-            saldo_atual: 0,
-            saldo_alvo: 0,
-            percentual_alocacao: 0,
-            user_email: userEmail,
-          });
-        }
 
         const { error: upsertError } = await supabase
           .from('caixas_buckets')
@@ -361,7 +341,31 @@ export class DataRepository implements IDataRepository {
         }
       }
 
-      // 4. Sincronizar Turno Ativo / Encerrado no Supabase
+      // 4. Sincronizar Mapeamento de Motoristas no Supabase na tabela turnos (onde notes é TEXT ilimitado)
+      const itemDriversMap: Record<string, string> = {};
+      (state.earnings || []).forEach((e) => {
+        if (e.driverName) itemDriversMap[e.id] = e.driverName;
+      });
+      (state.expenses || []).forEach((exp) => {
+        if (exp.driverName) itemDriversMap[exp.id] = exp.driverName;
+      });
+
+      if (Object.keys(itemDriversMap).length > 0) {
+        try {
+          await supabase.from('turnos').upsert({
+            id: 'shift-system-driver-map',
+            start_time: '2020-01-01T00:00:00.000Z',
+            start_odometer_km: 0,
+            status: 'SYSTEM',
+            notes: JSON.stringify(itemDriversMap),
+            user_email: userEmail,
+          }, { onConflict: 'id' });
+        } catch (mapErr) {
+          console.warn('Erro ao salvar mapa de motoristas em turnos:', mapErr);
+        }
+      }
+
+      // 5. Sincronizar Turno Ativo / Encerrado no Supabase
       if (state.activeShift) {
         const payloadShift: Record<string, any> = {
           id: state.activeShift.id,
@@ -407,26 +411,33 @@ export class DataRepository implements IDataRepository {
     }
 
     try {
-      // 1. Carregar mapeamento de caixas e motoristas primeiro para enriquecer os ganhos
+      // 1. Carregar mapeamento de motoristas da tabela turnos (TEXT ilimitado)
+      let cloudDriverMap: Record<string, string> = {};
+      try {
+        const { data: systemTurno } = await supabase
+          .from('turnos')
+          .select('notes')
+          .eq('id', 'shift-system-driver-map')
+          .eq('user_email', userEmail)
+          .maybeSingle();
+
+        if (systemTurno && systemTurno.notes) {
+          cloudDriverMap = JSON.parse(systemTurno.notes);
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar mapa de motoristas do Supabase:', e);
+      }
+
+      // 2. Carregar Caixas de Reserva
       const { data: cloudBuckets } = await supabase
         .from('caixas_buckets')
         .select('*')
         .eq('user_email', userEmail);
 
-      let cloudDriverMap: Record<string, string> = {};
       let bucketsList: any[] = [];
       if (Array.isArray(cloudBuckets) && cloudBuckets.length > 0) {
-        const mapBucket = cloudBuckets.find((b) => b.id === 'bkt-system-driver-map');
-        if (mapBucket && mapBucket.nome) {
-          try {
-            cloudDriverMap = JSON.parse(mapBucket.nome);
-          } catch (e) {
-            console.warn('Erro ao parsear mapeamento de motoristas da nuvem:', e);
-          }
-        }
-
         bucketsList = cloudBuckets
-          .filter((b) => b.id !== 'bkt-system-driver-map')
+          .filter((b) => !b.id.includes('system'))
           .map((b) => ({
             id: b.id,
             name: b.nome,
