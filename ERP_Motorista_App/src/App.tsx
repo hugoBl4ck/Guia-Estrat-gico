@@ -120,13 +120,14 @@ export function App() {
           setUserEmail(storedEmail);
         }
 
-        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers, dbCurrentDriver, localItemDrivers] = await Promise.all([
+        const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers, dbCurrentDriver, localItemDrivers, localItemVehicles] = await Promise.all([
           repository.loadDataAsync(),
           repository.loadVehiclesAsync(),
           repository.loadCurrentVehicleAsync(),
           dbService.loadDriversFromIndexedDB(storedEmail),
           dbService.loadCurrentDriverName(storedEmail),
-          dbService.loadItemDriversFromIndexedDB(storedEmail)
+          dbService.loadItemDriversFromIndexedDB(storedEmail),
+          dbService.loadItemVehiclesFromIndexedDB(storedEmail)
         ]);
 
         let currentStateData = dbData || {
@@ -171,16 +172,20 @@ export function App() {
             const cloudData = await repository.fetchFromCloud(storedEmail);
             if (cloudData) {
               const mergedItemDrivers: Record<string, string> = { ...(localItemDrivers || {}) };
+              const mergedItemVehicles: Record<string, string> = { ...(localItemVehicles || {}) };
 
               const expensesMap = new Map();
               (currentStateData.expenses || []).forEach((exp) => {
                 if (exp.driverName) mergedItemDrivers[exp.id] = exp.driverName;
+                if (exp.vehicleId) mergedItemVehicles[exp.id] = exp.vehicleId;
                 expensesMap.set(exp.id, exp);
               });
               (cloudData.expenses || []).forEach((cloudExp) => {
                 const localExp = expensesMap.get(cloudExp.id);
                 const resolvedDriver = localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id];
-                mergedItemDrivers[cloudExp.id] = resolvedDriver;
+                const resolvedVehicle = cloudExp.vehicleId || localExp?.vehicleId || mergedItemVehicles[cloudExp.id];
+                if (resolvedDriver) mergedItemDrivers[cloudExp.id] = resolvedDriver;
+                if (resolvedVehicle) mergedItemVehicles[cloudExp.id] = resolvedVehicle;
 
                 if (localExp) {
                   expensesMap.set(cloudExp.id, {
@@ -188,12 +193,13 @@ export function App() {
                     ...cloudExp,
                     driverName: resolvedDriver,
                     notes: cloudExp.notes !== undefined ? cloudExp.notes : localExp.notes,
-                    vehicleId: cloudExp.vehicleId || localExp.vehicleId,
+                    vehicleId: resolvedVehicle,
                   });
                 } else {
                   expensesMap.set(cloudExp.id, {
                     ...cloudExp,
                     driverName: resolvedDriver,
+                    vehicleId: resolvedVehicle,
                   });
                 }
               });
@@ -201,12 +207,15 @@ export function App() {
               const earningsMap = new Map();
               (currentStateData.earnings || []).forEach((e) => {
                 if (e.driverName) mergedItemDrivers[e.id] = e.driverName;
+                if (e.vehicleId) mergedItemVehicles[e.id] = e.vehicleId;
                 earningsMap.set(e.id, e);
               });
               (cloudData.earnings || []).forEach((cloudE) => {
                 const localE = earningsMap.get(cloudE.id);
                 const resolvedDriver = localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id];
-                mergedItemDrivers[cloudE.id] = resolvedDriver;
+                const resolvedVehicle = cloudE.vehicleId || localE?.vehicleId || mergedItemVehicles[cloudE.id];
+                if (resolvedDriver) mergedItemDrivers[cloudE.id] = resolvedDriver;
+                if (resolvedVehicle) mergedItemVehicles[cloudE.id] = resolvedVehicle;
 
                 if (localE) {
                   earningsMap.set(cloudE.id, {
@@ -217,17 +226,19 @@ export function App() {
                     startTime: cloudE.startTime || localE.startTime,
                     endTime: cloudE.endTime || localE.endTime,
                     workedHours: cloudE.workedHours !== undefined ? cloudE.workedHours : localE.workedHours,
-                    vehicleId: cloudE.vehicleId || localE.vehicleId,
+                    vehicleId: resolvedVehicle,
                   });
                 } else {
                   earningsMap.set(cloudE.id, {
                     ...cloudE,
                     driverName: resolvedDriver,
+                    vehicleId: resolvedVehicle,
                   });
                 }
               });
 
               await dbService.saveItemDrivers(mergedItemDrivers, storedEmail);
+              await dbService.saveItemVehicles(mergedItemVehicles, storedEmail);
 
               let mergedActiveShift = currentStateData.activeShift;
               if (cloudData.activeShift) {
@@ -374,27 +385,54 @@ export function App() {
 
     // 2. Se for despesa/ganho legado sem vehicleId, inferir com precisão pelas características do item
     const notesLower = (item.notes || '').toLowerCase();
-    const isElectricOrByd = item.category === 'ELECTRIC_CHARGING' || 
-      item.id?.includes('byd') || 
-      notesLower.includes('aliro') || 
-      notesLower.includes('byd') || 
-      notesLower.includes('dolphin') ||
-      notesLower.includes('coelba') ||
-      notesLower.includes('eletroposto');
+    const cat = (item.category || '').toUpperCase();
 
-    if (isElectricOrByd) {
-      return currentVehicle.isElectric || currentVehicle.id === 'veh-byd-dolphin-mini';
-    }
-
-    const isFordOrCombustion = item.category === 'FUEL' || 
+    const isFordOrCombustion = 
+      cat === 'FUEL' || 
+      cat === 'OIL_CHANGE' || 
+      cat === 'SPARK_PLUGS_BELT' || 
+      cat === 'WORKSHOP_MAINTENANCE' ||
       item.id?.includes('ford') || 
       notesLower.includes('ford') || 
       notesLower.includes('ka') || 
       notesLower.includes('gasolina') || 
-      notesLower.includes('etanol');
+      notesLower.includes('etanol') ||
+      notesLower.includes('alcool') ||
+      notesLower.includes('álcool') ||
+      notesLower.includes('oleo') ||
+      notesLower.includes('óleo') ||
+      notesLower.includes('5w20') ||
+      notesLower.includes('5w30') ||
+      notesLower.includes('filtro') ||
+      notesLower.includes('velas') ||
+      notesLower.includes('correia') ||
+      notesLower.includes('radiador') ||
+      notesLower.includes('arrefecimento') ||
+      notesLower.includes('embreagem') ||
+      notesLower.includes('escapamento') ||
+      notesLower.includes('porto seguro') ||
+      notesLower.includes('locatario') ||
+      notesLower.includes('locatário') ||
+      notesLower.includes('locador');
 
     if (isFordOrCombustion) {
       return !currentVehicle.isElectric || currentVehicle.id === 'veh-ford-ka-10' || currentVehicle.id === 'veh-default-generic';
+    }
+
+    const isElectricOrByd = 
+      cat === 'ELECTRIC_CHARGING' || 
+      item.id?.includes('byd') || 
+      notesLower.includes('aliro') || 
+      notesLower.includes('byd') || 
+      notesLower.includes('dolphin') || 
+      notesLower.includes('coelba') || 
+      notesLower.includes('eletroposto') ||
+      notesLower.includes('wallbox') ||
+      notesLower.includes('recarga') ||
+      notesLower.includes('santander');
+
+    if (isElectricOrByd) {
+      return currentVehicle.isElectric || currentVehicle.id === 'veh-byd-dolphin-mini';
     }
 
     // 3. Fallback para itens sem identificação: vincular ao veículo padrão inicial
@@ -492,15 +530,24 @@ export function App() {
     dispatch({ type: 'SOFT_DELETE_EXPENSE', payload: id });
   };
 
-  const handleEditExpense = async (expense: Expense) => {
-    dispatch({ type: 'EDIT_EXPENSE', payload: expense });
-    if (expense.driverName) {
+  const handleEditExpense = async (updatedExpense: Expense) => {
+    dispatch({ type: 'EDIT_EXPENSE', payload: updatedExpense });
+    if (updatedExpense.driverName) {
       try {
         const stored = await dbService.loadItemDriversFromIndexedDB(userEmail);
-        stored[expense.id] = expense.driverName;
+        stored[updatedExpense.id] = updatedExpense.driverName;
         await dbService.saveItemDrivers(stored, userEmail);
       } catch (e) {
-        console.warn('Erro ao salvar mapeamento de motorista da despesa:', e);
+        console.warn('Erro ao salvar mapeamento de motorista da despesa editada:', e);
+      }
+    }
+    if (updatedExpense.vehicleId) {
+      try {
+        const storedVeh = await dbService.loadItemVehiclesFromIndexedDB(userEmail);
+        storedVeh[updatedExpense.id] = updatedExpense.vehicleId;
+        await dbService.saveItemVehicles(storedVeh, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de veículo da despesa editada:', e);
       }
     }
   };
@@ -602,6 +649,16 @@ export function App() {
       }
     }
 
+    if (newEarning.vehicleId) {
+      try {
+        const storedVeh = await dbService.loadItemVehiclesFromIndexedDB(userEmail);
+        storedVeh[newEarning.id] = newEarning.vehicleId;
+        await dbService.saveItemVehicles(storedVeh, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de veículo do ganho:', e);
+      }
+    }
+
     const tripsAfterAdd = tripsBeforeAdd + (earningData.totalTrips || 0);
 
     // Explosão de comemoração disparada APENAS ao bater a meta diária (30 corridas) no lançamento do turno
@@ -625,6 +682,15 @@ export function App() {
         console.warn('Erro ao salvar mapeamento de motorista editado:', e);
       }
     }
+    if (updatedEarning.vehicleId) {
+      try {
+        const storedVeh = await dbService.loadItemVehiclesFromIndexedDB(userEmail);
+        storedVeh[updatedEarning.id] = updatedEarning.vehicleId;
+        await dbService.saveItemVehicles(storedVeh, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de veículo editado:', e);
+      }
+    }
     setEarningToEdit(null);
     setIsAddEarningOpen(false);
   };
@@ -641,11 +707,12 @@ export function App() {
 
   const handleAddExpense = async (expenseData: Omit<Expense, 'id'>) => {
     const selectedDriver = expenseData.driverName || currentDriverName || 'Hugo';
+    const targetVehicleId = expenseData.vehicleId || currentVehicle.id;
     const newExpense: Expense = {
       ...expenseData,
       id: `exp-${Date.now()}`,
       expenseDate: expenseData.expenseDate || new Date().toISOString(),
-      vehicleId: expenseData.vehicleId || currentVehicle.id,
+      vehicleId: targetVehicleId,
       driverName: selectedDriver,
     };
     dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
@@ -657,6 +724,16 @@ export function App() {
         await dbService.saveItemDrivers(stored, userEmail);
       } catch (e) {
         console.warn('Erro ao salvar mapeamento de motorista da nova despesa:', e);
+      }
+    }
+
+    if (targetVehicleId) {
+      try {
+        const storedVeh = await dbService.loadItemVehiclesFromIndexedDB(userEmail);
+        storedVeh[newExpense.id] = targetVehicleId;
+        await dbService.saveItemVehicles(storedVeh, userEmail);
+      } catch (e) {
+        console.warn('Erro ao salvar mapeamento de veículo da nova despesa:', e);
       }
     }
   };
@@ -816,6 +893,7 @@ export function App() {
         {activeTab === 'expenses' && (
           <ExpensesTracker
             vehicle={currentVehicle}
+            vehicles={vehicles}
             expenses={activeExpenses}
             buckets={calculatedBuckets}
             drivers={drivers}

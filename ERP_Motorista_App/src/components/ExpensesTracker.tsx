@@ -6,6 +6,7 @@ import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
 
 interface ExpensesTrackerProps {
   vehicle: Vehicle;
+  vehicles?: Vehicle[];
   expenses: Expense[];
   buckets?: ReserveBucket[];
   drivers?: Driver[];
@@ -18,6 +19,7 @@ interface ExpensesTrackerProps {
 
 export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   vehicle,
+  vehicles = [],
   expenses,
   buckets,
   drivers = [],
@@ -29,6 +31,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicle.id);
   // Estado de edição inline de motorista
   const [editingDriverExpenseId, setEditingDriverExpenseId] = useState<string | null>(null);
   const [editingDriverValue, setEditingDriverValue] = useState<string>('');
@@ -122,6 +125,11 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
       setDriverName(currentDriverName);
     }
   }, [currentDriverName]);
+
+  // Sincronizar selectedVehicleId quando o veículo ativo mudar
+  useEffect(() => {
+    setSelectedVehicleId(vehicle.id);
+  }, [vehicle.id]);
 
   const handleCategoryChange = (newCat: ExpenseCategory) => {
     setCategory(newCat);
@@ -260,7 +268,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentsCount: instTotal,
         installmentNumber: instNum,
         source: 'manual',
-        vehicleId: vehicle.id,
+        vehicleId: selectedVehicleId || vehicle.id,
         driverName: driverName || currentDriverName || 'Hugo',
       });
     } else if (paymentMode === 'AUTO_SPLIT_CARD' && installmentsCount > 1) {
@@ -288,7 +296,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           installmentsCount,
           installmentNumber: i + 1,
           source: 'manual',
-          vehicleId: vehicle.id,
+          vehicleId: selectedVehicleId || vehicle.id,
           driverName: driverName || currentDriverName || 'Hugo',
         });
       }
@@ -308,7 +316,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentsCount: 1,
         installmentNumber: 1,
         source: 'manual',
-        vehicleId: vehicle.id,
+        vehicleId: selectedVehicleId || vehicle.id,
         driverName: driverName || currentDriverName || 'Hugo',
       });
     }
@@ -714,6 +722,34 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                         {exp.category === 'ELECTRIC_CHARGING' && exp.kwhAmount && (
                           <span className="text-[10px] text-emerald-400 font-mono">⚡ {exp.kwhAmount} kWh @ R$ {exp.tariffPerKwh || (exp.amount / exp.kwhAmount).toFixed(4)}/kWh</span>
                         )}
+                        {/* Indicador e Troca de Veículo */}
+                        {vehicles && vehicles.length > 1 && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {vehicles.map((v) => {
+                              const isCurrentVeh = (exp.vehicleId || vehicle.id) === v.id;
+                              return (
+                                <button
+                                  key={v.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (onEditExpense) {
+                                      onEditExpense({ ...exp, vehicleId: v.id });
+                                    }
+                                  }}
+                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors flex items-center gap-0.5 ${
+                                    isCurrentVeh
+                                      ? 'bg-blue-600/30 border-blue-400 text-blue-300 shadow-sm'
+                                      : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                                  }`}
+                                  title={`Trocar vinculação para ${v.model}`}
+                                >
+                                  <Car className="w-2.5 h-2.5" />
+                                  {v.model.split(' ')[0]} {v.model.split(' ')[1] || ''}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </td>
 
@@ -800,6 +836,45 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-3">
                 
+                {/* 0. SELEÇÃO DO VEÍCULO */}
+                {vehicles && vehicles.length > 1 && (
+                  <div>
+                    <label className="text-xs text-slate-400 font-semibold block mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Car className="w-3.5 h-3.5 text-blue-400" /> Veículo da Despesa
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">Vincular custo ao carro correto</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {vehicles.map((v) => {
+                        const isSelected = selectedVehicleId === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedVehicleId(v.id);
+                              if (v.isElectric) {
+                                setCategory('ELECTRIC_CHARGING');
+                              } else {
+                                setCategory('FUEL');
+                              }
+                            }}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                              isSelected
+                                ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-600/20 scale-[1.02]'
+                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                            }`}
+                          >
+                            <Car className="w-3.5 h-3.5" />
+                            <span className="truncate">{v.model}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* 1. SELEÇÃO DO MOTORISTA */}
                 <div>
                   <label className="text-xs text-slate-400 font-semibold block mb-1.5 flex items-center justify-between">

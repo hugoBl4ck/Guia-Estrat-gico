@@ -341,27 +341,30 @@ export class DataRepository implements IDataRepository {
         }
       }
 
-      // 4. Sincronizar Mapeamento de Motoristas no Supabase na tabela turnos (onde notes é TEXT ilimitado)
+      // 4. Sincronizar Mapeamento de Motoristas e Veículos no Supabase na tabela turnos (onde notes é TEXT ilimitado)
       const itemDriversMap: Record<string, string> = {};
+      const itemVehiclesMap: Record<string, string> = {};
       (state.earnings || []).forEach((e) => {
         if (e.driverName) itemDriversMap[e.id] = e.driverName;
+        if (e.vehicleId) itemVehiclesMap[e.id] = e.vehicleId;
       });
       (state.expenses || []).forEach((exp) => {
         if (exp.driverName) itemDriversMap[exp.id] = exp.driverName;
+        if (exp.vehicleId) itemVehiclesMap[exp.id] = exp.vehicleId;
       });
 
-      if (Object.keys(itemDriversMap).length > 0) {
+      if (Object.keys(itemDriversMap).length > 0 || Object.keys(itemVehiclesMap).length > 0) {
         try {
           await supabase.from('turnos').upsert({
-            id: 'shift-system-driver-map',
+            id: 'shift-system-metadata',
             start_time: '2020-01-01T00:00:00.000Z',
             start_odometer_km: 0,
             status: 'SYSTEM',
-            notes: JSON.stringify(itemDriversMap),
+            notes: JSON.stringify({ drivers: itemDriversMap, vehicles: itemVehiclesMap }),
             user_email: userEmail,
           }, { onConflict: 'id' });
         } catch (mapErr) {
-          console.warn('Erro ao salvar mapa de motoristas em turnos:', mapErr);
+          console.warn('Erro ao salvar mapa de metadados em turnos:', mapErr);
         }
       }
 
@@ -411,21 +414,30 @@ export class DataRepository implements IDataRepository {
     }
 
     try {
-      // 1. Carregar mapeamento de motoristas da tabela turnos (TEXT ilimitado)
+      // 1. Carregar mapeamento de motoristas e veículos da tabela turnos (TEXT ilimitado)
       let cloudDriverMap: Record<string, string> = {};
+      let cloudVehicleMap: Record<string, string> = {};
       try {
-        const { data: systemTurno } = await supabase
+        const { data: systemTurnos } = await supabase
           .from('turnos')
-          .select('notes')
-          .eq('id', 'shift-system-driver-map')
-          .eq('user_email', userEmail)
-          .maybeSingle();
+          .select('id, notes')
+          .in('id', ['shift-system-metadata', 'shift-system-driver-map'])
+          .eq('user_email', userEmail);
 
-        if (systemTurno && systemTurno.notes) {
-          cloudDriverMap = JSON.parse(systemTurno.notes);
+        if (Array.isArray(systemTurnos) && systemTurnos.length > 0) {
+          const metaTurno = systemTurnos.find((t) => t.id === 'shift-system-metadata') || systemTurnos[0];
+          if (metaTurno && metaTurno.notes) {
+            const parsed = JSON.parse(metaTurno.notes);
+            if (parsed.drivers || parsed.vehicles) {
+              cloudDriverMap = parsed.drivers || {};
+              cloudVehicleMap = parsed.vehicles || {};
+            } else {
+              cloudDriverMap = parsed;
+            }
+          }
         }
       } catch (e) {
-        console.warn('Erro ao carregar mapa de motoristas do Supabase:', e);
+        console.warn('Erro ao carregar mapa de motoristas e veículos do Supabase:', e);
       }
 
       // 2. Carregar Caixas de Reserva
@@ -465,6 +477,7 @@ export class DataRepository implements IDataRepository {
         earningsList = cloudGanhos.map((e) => {
           const { driverName: extractedDriver, notes } = decodeDriverAndNotes(e.notes, e.driver_name || e.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[e.id];
+          const mappedVehicle = cloudVehicleMap[e.id];
           return {
             id: e.id,
             platform: e.platform,
@@ -479,7 +492,7 @@ export class DataRepository implements IDataRepository {
             startTime: e.start_time || undefined,
             endTime: e.end_time || undefined,
             workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
-            vehicleId: e.vehicle_id || (e.id?.includes('ford') ? 'veh-ford-ka-10' : e.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
+            vehicleId: e.vehicle_id || mappedVehicle || (e.id?.includes('ford') ? 'veh-ford-ka-10' : e.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
             isDeleted: Boolean(e.is_deleted),
           };
         });
@@ -487,6 +500,7 @@ export class DataRepository implements IDataRepository {
         earningsList = cloudFaturamentos.map((f) => {
           const { driverName: extractedDriver, notes } = decodeDriverAndNotes(f.notes || f.observacao, f.driver_name || f.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[f.id];
+          const mappedVehicle = cloudVehicleMap[f.id];
           return {
             id: f.id,
             platform: f.plataforma,
@@ -500,7 +514,7 @@ export class DataRepository implements IDataRepository {
             startTime: f.start_time || f.inicio || undefined,
             endTime: f.end_time || f.fim || undefined,
             workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
-            vehicleId: f.vehicle_id || (f.id?.includes('ford') ? 'veh-ford-ka-10' : f.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
+            vehicleId: f.vehicle_id || mappedVehicle || (f.id?.includes('ford') ? 'veh-ford-ka-10' : f.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
             recordedAt: f.recorded_at,
           };
         });
@@ -515,10 +529,40 @@ export class DataRepository implements IDataRepository {
       if (Array.isArray(cloudDespesas) && cloudDespesas.length > 0) {
         expensesList = cloudDespesas.map((d) => {
           const obsLower = (d.observacao || d.notes || '').toLowerCase();
-          const isFord = d.id?.includes('ford') || obsLower.includes('ford') || obsLower.includes('ka') || d.categoria === 'FUEL';
-          const isByd = d.id?.includes('byd') || obsLower.includes('aliro') || obsLower.includes('byd') || obsLower.includes('dolphin') || obsLower.includes('coelba') || d.categoria === 'ELECTRIC_CHARGING';
+          const cat = (d.categoria || d.category || '').toUpperCase();
+          const isFord = d.id?.includes('ford') || 
+            obsLower.includes('ford') || 
+            obsLower.includes('ka') || 
+            cat === 'FUEL' || 
+            cat === 'OIL_CHANGE' || 
+            cat === 'SPARK_PLUGS_BELT' || 
+            cat === 'WORKSHOP_MAINTENANCE' ||
+            obsLower.includes('oleo') || 
+            obsLower.includes('óleo') || 
+            obsLower.includes('5w20') || 
+            obsLower.includes('5w30') || 
+            obsLower.includes('velas') || 
+            obsLower.includes('correia') || 
+            obsLower.includes('radiador') || 
+            obsLower.includes('gasolina') || 
+            obsLower.includes('etanol') || 
+            obsLower.includes('combustivel') || 
+            obsLower.includes('combustível') || 
+            obsLower.includes('locatario') || 
+            obsLower.includes('locatário') || 
+            obsLower.includes('porto seguro');
+
+          const isByd = d.id?.includes('byd') || 
+            obsLower.includes('aliro') || 
+            obsLower.includes('byd') || 
+            obsLower.includes('dolphin') || 
+            obsLower.includes('coelba') || 
+            obsLower.includes('eletroposto') || 
+            cat === 'ELECTRIC_CHARGING';
+
           const { driverName: extractedDriver, notes } = decodeDriverAndNotes(d.observacao || d.notes, d.driver_name || d.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[d.id];
+          const mappedVehicle = cloudVehicleMap[d.id];
 
           return {
             id: d.id,
@@ -528,7 +572,7 @@ export class DataRepository implements IDataRepository {
             tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
             notes: notes || '',
             expenseDate: d.expense_date,
-            vehicleId: d.vehicle_id || (isFord ? 'veh-ford-ka-10' : isByd ? 'veh-byd-dolphin-mini' : undefined),
+            vehicleId: d.vehicle_id || mappedVehicle || (isFord ? 'veh-ford-ka-10' : isByd ? 'veh-byd-dolphin-mini' : undefined),
             driverName: mappedDriver || undefined,
           };
         });

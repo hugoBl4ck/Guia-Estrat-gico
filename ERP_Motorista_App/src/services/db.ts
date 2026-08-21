@@ -18,6 +18,7 @@ const STORAGE_KEYS = {
   DRIVERS: 'girocerto_drivers_v1',
   CURRENT_DRIVER: 'girocerto_current_driver_v1',
   ITEM_DRIVERS: 'girocerto_item_drivers_v1',
+  ITEM_VEHICLES: 'girocerto_item_vehicles_v1',
   DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1',
   USER_EMAIL: 'erp_driver_user_email'
 };
@@ -298,6 +299,29 @@ export const dbService = {
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_DRIVERS, mappings);
     } catch (error) {
       console.error('Erro ao salvar mapeamento de motoristas no IndexedDB:', error);
+    }
+  },
+
+  async loadItemVehiclesFromIndexedDB(userEmail?: string): Promise<Record<string, string>> {
+    try {
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_VEHICLES}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_VEHICLES;
+      let stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, key);
+      if (!stored) {
+        stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_VEHICLES);
+      }
+      return stored || {};
+    } catch (error) {
+      return {};
+    }
+  },
+
+  async saveItemVehicles(mappings: Record<string, string>, userEmail?: string) {
+    try {
+      const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_VEHICLES}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_VEHICLES;
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, mappings);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_VEHICLES, mappings);
+    } catch (error) {
+      console.error('Erro ao salvar mapeamento de veículos no IndexedDB:', error);
     }
   }
 };
