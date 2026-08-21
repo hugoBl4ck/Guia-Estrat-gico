@@ -564,7 +564,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     <td className="px-3 py-3 hidden md:table-cell whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold">
                         <User className="w-3 h-3 text-emerald-400" />
-                        {exp.driverName || 'Hugo'}
+                        {exp.driverName || vehicle.tenantName || 'Motorista'}
                       </span>
                     </td>
 
@@ -599,7 +599,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                           {getCategoryBadge(exp.category)}
                           <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-bold">
                             <User className="w-2.5 h-2.5 text-emerald-400" />
-                            {exp.driverName || 'Hugo'}
+                            {exp.driverName || vehicle.tenantName || 'Motorista'}
                           </span>
                         </div>
                         {exp.source === 'xml' && (

@@ -1,9 +1,27 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 
-export const INITIAL_DRIVERS: Driver[] = [
-  { id: 'drv-hugo', name: 'Hugo', isDefault: true },
-  { id: 'drv-ari', name: 'Ari' },
-];
+export const getInitialDriversForUser = (email?: string): Driver[] => {
+  if (email && email.trim() !== '') {
+    const usernamePart = email.split('@')[0] || 'Motorista';
+    const cleanName = usernamePart
+      .replace(/[._-]/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/\s+Eng$/i, '')
+      .trim();
+    const primaryName = cleanName.length > 0 ? cleanName : 'Hugo';
+    return [
+      { id: `drv-${email.toLowerCase().replace(/[^a-z0-9]/g, '-')}`, name: primaryName, isDefault: true },
+      { id: 'drv-ari', name: 'Ari' }
+    ];
+  }
+  return [
+    { id: 'drv-hugo', name: 'Hugo', isDefault: true },
+    { id: 'drv-ari', name: 'Ari' }
+  ];
+};
+
+export const INITIAL_DRIVERS: Driver[] = getInitialDriversForUser();
+
 
 export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   id: 'veh-byd-dolphin-mini',
