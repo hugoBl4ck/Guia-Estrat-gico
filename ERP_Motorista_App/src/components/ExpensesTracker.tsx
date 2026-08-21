@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2, Pencil } from 'lucide-react';
 import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver } from '../types';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
 import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
@@ -12,6 +12,7 @@ interface ExpensesTrackerProps {
   currentDriverName?: string;
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   onDeleteExpense: (id: string) => void;
+  onEditExpense?: (expense: Expense) => void;
   onUpdateVehicle?: (updated: Vehicle) => void;
 }
 
@@ -23,10 +24,15 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   currentDriverName = '',
   onAddExpense,
   onDeleteExpense,
+  onEditExpense,
   onUpdateVehicle,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
+  // Estado de edição inline de motorista
+  const [editingDriverExpenseId, setEditingDriverExpenseId] = useState<string | null>(null);
+  const [editingDriverValue, setEditingDriverValue] = useState<string>('');
+  const editingDriverRef = useRef<HTMLDivElement>(null);
 
   // Lista de motoristas disponíveis com fallback dinâmico
   const availableDrivers: Driver[] = drivers.length > 0 ? drivers : (currentDriverName ? [{ id: 'drv-current', name: currentDriverName, isDefault: true }] : []);
@@ -560,12 +566,67 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                       {new Date(exp.expenseDate).toLocaleDateString('pt-BR')}
                     </td>
 
-                    {/* Motorista */}
+                    {/* Motorista — clicável para edição */}
                     <td className="px-3 py-3 hidden md:table-cell whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-                        <User className="w-3 h-3 text-emerald-400" />
-                        {exp.driverName || vehicle.tenantName || 'Motorista'}
-                      </span>
+                      {editingDriverExpenseId === exp.id ? (
+                        <div ref={editingDriverRef} className="flex flex-col gap-1 min-w-[140px]">
+                          <div className="flex gap-1 flex-wrap">
+                            {(availableDrivers.length > 0 ? availableDrivers : [{id:'drv-hugo',name:'Hugo'},{id:'drv-ari',name:'Ari'}]).map((d) => (
+                              <button
+                                key={d.id}
+                                onClick={() => setEditingDriverValue(d.name)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                  editingDriverValue === d.name
+                                    ? 'bg-emerald-500 border-emerald-400 text-white'
+                                    : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-emerald-500'
+                                }`}
+                              >
+                                {d.name}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="text"
+                            value={editingDriverValue}
+                            onChange={(e) => setEditingDriverValue(e.target.value)}
+                            placeholder="Ou digite o nome..."
+                            className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-[10px] text-white focus:border-emerald-400 outline-none"
+                            autoFocus
+                          />
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                if (editingDriverValue.trim() && onEditExpense) {
+                                  onEditExpense({ ...exp, driverName: editingDriverValue.trim() });
+                                }
+                                setEditingDriverExpenseId(null);
+                              }}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold py-0.5 rounded transition-colors"
+                            >
+                              ✓ Salvar
+                            </button>
+                            <button
+                              onClick={() => setEditingDriverExpenseId(null)}
+                              className="px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] rounded transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingDriverExpenseId(exp.id);
+                            setEditingDriverValue(exp.driverName || currentDriverName || '');
+                          }}
+                          className="group inline-flex items-center gap-1 bg-slate-800 border border-slate-700 hover:border-emerald-500 text-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-colors"
+                          title="Clique para editar o motorista"
+                        >
+                          <User className="w-3 h-3 text-emerald-400" />
+                          {exp.driverName || vehicle.tenantName || 'Motorista'}
+                          <Pencil className="w-2.5 h-2.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                        </button>
+                      )}
                     </td>
 
                     {/* Categoria */}
@@ -597,10 +658,47 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                         </span>
                         <div className="flex items-center flex-wrap gap-1 sm:hidden">
                           {getCategoryBadge(exp.category)}
-                          <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-bold">
-                            <User className="w-2.5 h-2.5 text-emerald-400" />
-                            {exp.driverName || vehicle.tenantName || 'Motorista'}
-                          </span>
+                          {/* Mobile: motorista editável */}
+                          {editingDriverExpenseId === exp.id ? (
+                            <div className="flex flex-col gap-1 w-full mt-1">
+                              <div className="flex gap-1 flex-wrap">
+                                {(availableDrivers.length > 0 ? availableDrivers : [{id:'drv-hugo',name:'Hugo'},{id:'drv-ari',name:'Ari'}]).map((d) => (
+                                  <button
+                                    key={d.id}
+                                    onClick={() => setEditingDriverValue(d.name)}
+                                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-colors ${
+                                      editingDriverValue === d.name
+                                        ? 'bg-emerald-500 border-emerald-400 text-white'
+                                        : 'bg-slate-800 border-slate-600 text-slate-300'
+                                    }`}
+                                  >
+                                    {d.name}
+                                  </button>
+                                ))}
+                              </div>
+                              <input
+                                type="text"
+                                value={editingDriverValue}
+                                onChange={(e) => setEditingDriverValue(e.target.value)}
+                                placeholder="Nome do motorista..."
+                                className="bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-[9px] text-white outline-none w-full"
+                              />
+                              <div className="flex gap-1">
+                                <button onClick={() => { if (editingDriverValue.trim() && onEditExpense) onEditExpense({ ...exp, driverName: editingDriverValue.trim() }); setEditingDriverExpenseId(null); }} className="flex-1 bg-emerald-600 text-white text-[9px] font-bold py-0.5 rounded">✓ Salvar</button>
+                                <button onClick={() => setEditingDriverExpenseId(null)} className="px-2 bg-slate-700 text-slate-300 text-[9px] rounded">✕</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setEditingDriverExpenseId(exp.id); setEditingDriverValue(exp.driverName || currentDriverName || ''); }}
+                              className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-bold"
+                              title="Editar motorista"
+                            >
+                              <User className="w-2.5 h-2.5 text-emerald-400" />
+                              {exp.driverName || vehicle.tenantName || 'Motorista'}
+                              <Pencil className="w-2 h-2 text-slate-500" />
+                            </button>
+                          )}
                         </div>
                         {exp.source === 'xml' && (
                           <span className="bg-blue-950 text-blue-400 border border-blue-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded w-fit">NF-e XML</span>

@@ -123,8 +123,8 @@ export function App() {
           repository.loadDataAsync(),
           repository.loadVehiclesAsync(),
           repository.loadCurrentVehicleAsync(),
-          dbService.loadDriversFromIndexedDB(),
-          dbService.loadCurrentDriverName()
+          dbService.loadDriversFromIndexedDB(storedEmail),
+          dbService.loadCurrentDriverName(storedEmail)
         ]);
 
         let currentStateData = dbData || {
@@ -251,14 +251,14 @@ export function App() {
   useEffect(() => {
     const saveDrivers = async () => {
       try {
-        await dbService.saveDrivers(drivers);
+        await dbService.saveDrivers(drivers, userEmail);
       } catch (e) {
         console.warn('Erro ao salvar motoristas:', e);
       }
     };
 
     saveDrivers();
-  }, [drivers]);
+  }, [drivers, userEmail]);
 
   const handleSaveDriver = (newDriver: Driver) => {
     setDrivers((prev) => {
@@ -411,6 +411,10 @@ export function App() {
     dispatch({ type: 'SOFT_DELETE_EXPENSE', payload: id });
   };
 
+  const handleEditExpense = (expense: Expense) => {
+    dispatch({ type: 'EDIT_EXPENSE', payload: expense });
+  };
+
   const handleUndo = () => {
     dispatch({ type: 'UNDO_LAST_ACTION' });
   };
@@ -457,7 +461,7 @@ export function App() {
     const clean = name.trim();
     if (!clean) return;
     setCurrentDriverName(clean);
-    dbService.saveCurrentDriverName(clean);
+    dbService.saveCurrentDriverName(clean, userEmail);
   };
 
   const handleAddDriver = (name: string) => {
@@ -691,6 +695,7 @@ export function App() {
             currentDriverName={currentDriverName}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
+            onEditExpense={handleEditExpense}
             onUpdateVehicle={handleUpdateVehicle}
           />
         )}

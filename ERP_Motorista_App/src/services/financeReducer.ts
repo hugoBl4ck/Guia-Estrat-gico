@@ -17,6 +17,7 @@ export type FinanceAction =
   | { type: 'EDIT_EARNING'; payload: Earning }
   | { type: 'SOFT_DELETE_EARNING'; payload: string }
   | { type: 'ADD_EXPENSE'; payload: Expense }
+  | { type: 'EDIT_EXPENSE'; payload: Expense }
   | { type: 'SOFT_DELETE_EXPENSE'; payload: string }
   | { type: 'START_SHIFT'; payload: Shift }
   | { type: 'END_SHIFT' }
@@ -173,6 +174,21 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         buckets: updatedBuckets,
         previousSnapshot: snapshot,
         lastActionDescription: `Despesa de R$ ${action.payload.amount.toFixed(2)} lançada`,
+      };
+    }
+
+    case 'EDIT_EXPENSE': {
+      // Edição de metadados da despesa (ex: driverName). Não recalcula buckets,
+      // pois apenas dados descritivos são alterados (valor permanece igual).
+      const snapshot: FinanceState = { ...state, previousSnapshot: undefined };
+      const updatedExpenses = state.expenses.map((exp) =>
+        exp.id === action.payload.id ? { ...action.payload, updatedAt: new Date().toISOString() } : exp
+      );
+      return {
+        ...state,
+        expenses: updatedExpenses,
+        previousSnapshot: snapshot,
+        lastActionDescription: `Despesa editada`,
       };
     }
 
