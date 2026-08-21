@@ -20,7 +20,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   expenses,
   buckets,
   drivers = [],
-  currentDriverName = 'Hugo',
+  currentDriverName = '',
   onAddExpense,
   onDeleteExpense,
   onUpdateVehicle,
@@ -28,11 +28,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
 
-  // Lista de motoristas disponíveis com fallback seguro
-  const availableDrivers: Driver[] = drivers.length > 0 ? drivers : [
-    { id: 'drv-hugo', name: 'Hugo', isDefault: true },
-    { id: 'drv-ari', name: 'Ari' },
-  ];
+  // Lista de motoristas disponíveis com fallback dinâmico
+  const availableDrivers: Driver[] = drivers.length > 0 ? drivers : (currentDriverName ? [{ id: 'drv-current', name: currentDriverName, isDefault: true }] : []);
 
   // Ordenação da tabela de despesas
   type SortKey = 'date' | 'category' | 'description' | 'amount' | 'driver';
@@ -714,31 +711,40 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     <span className="text-[10px] text-slate-500 font-mono">Quem realizou o gasto</span>
                   </label>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {availableDrivers.map((drv) => {
-                      const isSelected = driverName === drv.name;
-                      return (
-                        <button
-                          key={drv.id}
-                          type="button"
-                          onClick={() => setDriverName(drv.name)}
-                          className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
-                            isSelected
-                              ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/20 scale-[1.02]'
-                              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[9px] font-mono overflow-hidden">
-                            {drv.photoUrl ? (
-                              <img src={drv.photoUrl} alt={drv.name} className="w-full h-full object-cover" />
-                            ) : (
-                              drv.name.slice(0, 1)
-                            )}
-                          </div>
-                          <span className="truncate">{drv.name}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-col space-y-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {availableDrivers.map((drv) => {
+                        const isSelected = driverName === drv.name;
+                        return (
+                          <button
+                            key={drv.id}
+                            type="button"
+                            onClick={() => setDriverName(drv.name)}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                              isSelected
+                                ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/20 scale-[1.02]'
+                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[9px] font-mono overflow-hidden">
+                              {drv.photoUrl ? (
+                                <img src={drv.photoUrl} alt={drv.name} className="w-full h-full object-cover" />
+                              ) : (
+                                drv.name.slice(0, 1)
+                              )}
+                            </div>
+                            <span className="truncate">{drv.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input
+                      type="text"
+                      value={driverName}
+                      onChange={(e) => setDriverName(e.target.value)}
+                      placeholder="Ou digite o nome do motorista..."
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-emerald-500"
+                    />
                   </div>
                 </div>
 
@@ -794,14 +800,39 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                 {/* 4. OPÇÕES ESPECÍFICAS PARA RECARGA ELÉTRICA (EV) COM CÁLCULO INTELIGENTE */}
                 {category === 'ELECTRIC_CHARGING' && (
                   <div className="space-y-3 p-3.5 bg-slate-900 border border-emerald-900/60 rounded-2xl">
-                    <div className="flex items-center justify-between text-[11px] bg-emerald-950/80 p-2 rounded-xl border border-emerald-800/80 text-emerald-300 font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-emerald-400" />
-                        Motorista que Recarregou:
-                      </span>
-                      <span className="bg-emerald-500 text-black px-2 py-0.5 rounded-md font-black">
-                        👤 {driverName || currentDriverName || 'Hugo'}
-                      </span>
+                    <div className="space-y-1.5 bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-800/60">
+                      <label className="text-[11px] text-emerald-300 font-bold flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-emerald-400" />
+                          Motorista que Fez a Recarga:
+                        </span>
+                      </label>
+                      <div className="flex gap-1.5 flex-wrap items-center">
+                        {availableDrivers.map((drv) => {
+                          const isSelected = driverName === drv.name;
+                          return (
+                            <button
+                              key={drv.id}
+                              type="button"
+                              onClick={() => setDriverName(drv.name)}
+                              className={`py-1.5 px-2.5 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all ${
+                                isSelected
+                                  ? 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md'
+                                  : 'bg-black text-slate-300 border-slate-800 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>👤 {drv.name}</span>
+                            </button>
+                          );
+                        })}
+                        <input
+                          type="text"
+                          value={driverName}
+                          onChange={(e) => setDriverName(e.target.value)}
+                          placeholder="Ou digite o nome..."
+                          className="bg-black border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500 font-bold flex-1 min-w-[130px]"
+                        />
+                      </div>
                     </div>
 
                     <div>

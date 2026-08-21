@@ -17,7 +17,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
   onClose,
   vehicle,
   drivers = [],
-  currentDriverName = 'Hugo',
+  currentDriverName = '',
   onAddExpense,
 }) => {
   const [activeTab, setActiveTab] = useState<'PHOTO' | 'XML'>('PHOTO');
@@ -26,11 +26,8 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Lista de motoristas
-  const availableDrivers: Driver[] = drivers.length > 0 ? drivers : [
-    { id: 'drv-hugo', name: 'Hugo', isDefault: true },
-    { id: 'drv-ari', name: 'Ari' },
-  ];
-  const [driverName, setDriverName] = useState<string>(currentDriverName || 'Hugo');
+  const availableDrivers: Driver[] = drivers.length > 0 ? drivers : (currentDriverName ? [{ id: 'drv-current', name: currentDriverName, isDefault: true }] : []);
+  const [driverName, setDriverName] = useState<string>(currentDriverName || '');
 
   // Form State do Preview de Confirmação
   const [amount, setAmount] = useState('');
@@ -310,22 +307,31 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
               <label className="text-slate-400 font-semibold block mb-1 flex items-center gap-1">
                 <User className="w-3.5 h-3.5 text-emerald-400" /> Motorista Responsável
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {availableDrivers.map((drv) => (
-                  <button
-                    key={drv.id}
-                    type="button"
-                    onClick={() => setDriverName(drv.name)}
-                    className={`py-1.5 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 border transition-all ${
-                      driverName === drv.name
-                        ? 'bg-emerald-500 text-black border-emerald-400 shadow-sm'
-                        : 'bg-black border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <User className="w-3 h-3" />
-                    <span className="truncate">{drv.name}</span>
-                  </button>
-                ))}
+              <div className="flex flex-col space-y-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {availableDrivers.map((drv) => (
+                    <button
+                      key={drv.id}
+                      type="button"
+                      onClick={() => setDriverName(drv.name)}
+                      className={`py-1.5 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 border transition-all ${
+                        driverName === drv.name
+                          ? 'bg-emerald-500 text-black border-emerald-400 shadow-sm'
+                          : 'bg-black border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <User className="w-3 h-3" />
+                      <span className="truncate">{drv.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={driverName}
+                  onChange={(e) => setDriverName(e.target.value)}
+                  placeholder="Ou digite o nome do motorista..."
+                  className="w-full bg-black border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-bold outline-none focus:border-emerald-500"
+                />
               </div>
             </div>
 
@@ -374,6 +380,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
               >
                 <option value="FUEL">Abastecimento (Combustível)</option>
                 <option value="ELECTRIC_CHARGING">Recarga Elétrica (kWh)</option>
+                <option value="FINANCING">🏦 Parcela de Financiamento / Prestação</option>
                 <option value="MAINTENANCE">Manutenção / Pneu / Borracharia</option>
                 <option value="OIL_CHANGE">Troca de Óleo 5W20 + Filtros</option>
                 <option value="WASH">Lava-Jato</option>
