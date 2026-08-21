@@ -150,13 +150,14 @@ export function App() {
         }
 
         if (dbDrivers && dbDrivers.length > 0) {
-          setDrivers(dbDrivers);
+          const normalized = dbDrivers.map((d: Driver) => d.name === 'Hugovieira' ? { ...d, name: 'Hugo' } : d);
+          setDrivers(normalized);
         } else if (storedEmail) {
           setDrivers(getInitialDriversForUser(storedEmail));
         }
 
         if (dbCurrentDriver) {
-          setCurrentDriverName(dbCurrentDriver);
+          setCurrentDriverName(dbCurrentDriver === 'Hugovieira' ? 'Hugo' : dbCurrentDriver);
         }
 
         // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
