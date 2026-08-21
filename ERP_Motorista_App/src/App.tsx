@@ -149,7 +149,14 @@ export function App() {
         }
 
         if (dbDrivers && dbDrivers.length > 0) {
-          setDrivers(dbDrivers);
+          // Garantir que o motorista Ari sempre está presente na lista
+          const hasAri = dbDrivers.some((d: Driver) => d.name.toLowerCase() === 'ari');
+          if (!hasAri) {
+            const withAri = [...dbDrivers, { id: 'drv-ari', name: 'Ari' }];
+            setDrivers(withAri);
+          } else {
+            setDrivers(dbDrivers);
+          }
         }
 
         if (dbCurrentDriver) {
