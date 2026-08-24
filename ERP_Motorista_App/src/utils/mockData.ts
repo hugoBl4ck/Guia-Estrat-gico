@@ -1,30 +1,23 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 
 export const getInitialDriversForUser = (email?: string): Driver[] => {
-  let primaryName = 'Hugo';
+  let primaryName = 'Motorista Principal';
   if (email && email.trim() !== '') {
-    const usernamePart = email.split('@')[0] || 'Hugo';
+    const usernamePart = email.split('@')[0] || 'Motorista';
     let cleanName = usernamePart
       .replace(/[._-]/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase())
-      .replace(/\s+Eng$/i, '')
       .trim();
 
-    // Se o email era hugovieira sem separador, ajusta para Hugo
-    if (cleanName.toLowerCase() === 'hugovieira') {
-      cleanName = 'Hugo';
-    }
-
-    primaryName = cleanName.length > 0 ? cleanName : 'Hugo';
+    primaryName = cleanName.length > 0 ? cleanName : 'Motorista';
   }
 
   const primaryId = email && email.trim() !== ''
     ? `drv-${email.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
-    : 'drv-hugo';
+    : 'drv-primary';
 
   return [
-    { id: primaryId, name: primaryName, isDefault: true },
-    { id: 'drv-ari', name: 'Ari' }
+    { id: primaryId, name: primaryName, isDefault: true }
   ];
 };
 

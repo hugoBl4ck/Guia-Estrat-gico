@@ -97,7 +97,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   }, [showModal]);
 
   // Form State
-  const [driverName, setDriverName] = useState<string>(currentDriverName || 'Hugo');
+  const [driverName, setDriverName] = useState<string>(currentDriverName || '');
   const [category, setCategory] = useState<ExpenseCategory>(
     vehicle.isElectric ? 'ELECTRIC_CHARGING' : 'FUEL'
   );
@@ -269,7 +269,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentNumber: instNum,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
-        driverName: driverName || currentDriverName || 'Hugo',
+        driverName: driverName || currentDriverName || undefined,
       });
     } else if (paymentMode === 'AUTO_SPLIT_CARD' && installmentsCount > 1) {
       const installmentVal = Math.round((val / installmentsCount) * 100) / 100;
@@ -297,7 +297,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           installmentNumber: i + 1,
           source: 'manual',
           vehicleId: selectedVehicleId || vehicle.id,
-          driverName: driverName || currentDriverName || 'Hugo',
+          driverName: driverName || currentDriverName || undefined,
         });
       }
     } else {
@@ -317,7 +317,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentNumber: 1,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
-        driverName: driverName || currentDriverName || 'Hugo',
+        driverName: driverName || currentDriverName || undefined,
       });
     }
 
@@ -1075,7 +1075,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                         Motorista que Abasteceu:
                       </span>
                       <span className="bg-amber-500 text-black px-2 py-0.5 rounded-md font-black">
-                        👤 {driverName || currentDriverName || 'Hugo'}
+                        👤 {driverName || currentDriverName || 'Motorista'}
                       </span>
                     </div>
 

@@ -43,7 +43,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     if (earningToEdit) {
       setEarningType(earningToEdit.earningType || 'RIDE');
       setPlatform(earningToEdit.platform);
-      setDriverName(earningToEdit.driverName || currentDriverName || 'Hugo');
+      setDriverName(earningToEdit.driverName || currentDriverName || '');
       setGrossAmount(earningToEdit.grossAmount.toString());
       setTipsAmount(earningToEdit.tipsAmount ? earningToEdit.tipsAmount.toString() : '');
       setTotalTrips(earningToEdit.totalTrips ? earningToEdit.totalTrips.toString() : '1');
@@ -58,7 +58,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     } else {
       setEarningType('RIDE');
       setPlatform('UBER');
-      setDriverName(currentDriverName || 'Hugo');
+      setDriverName(currentDriverName || '');
       setGrossAmount('');
       setTipsAmount('');
       setTotalTrips('18');
@@ -118,7 +118,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     if (isNaN(gross) || gross <= 0) return;
 
     const recordedAtIso = new Date(`${recordedDate}T12:00:00`).toISOString();
-    const selectedDriver = driverName || 'Hugo';
+    const selectedDriver = driverName || currentDriverName || undefined;
     const isReferralOrBonus = earningType === 'REFERRAL' || earningType === 'BONUS';
     const trips = isReferralOrBonus ? (totalTrips ? parseInt(totalTrips, 10) : 0) : (totalTrips ? parseInt(totalTrips, 10) : 1);
     const distance = isReferralOrBonus ? 0 : (rideDistanceKm ? parseFloat(rideDistanceKm) : 0);
@@ -442,7 +442,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-white flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-emerald-400" />
-                      Horas Trabalhadas ({driverName || 'Hugo'})
+                      Horas Trabalhadas {driverName || currentDriverName ? `(${driverName || currentDriverName})` : ''}
                     </span>
                     <span className="text-[10px] bg-emerald-950 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-800">
                       Opcional

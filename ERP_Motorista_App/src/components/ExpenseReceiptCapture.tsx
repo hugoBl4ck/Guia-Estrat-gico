@@ -145,7 +145,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
           nfeKey,
           cnpjIssuer,
           vehicleId: vehicle.id,
-          driverName: driverName || currentDriverName || 'Hugo',
+          driverName: driverName || currentDriverName || undefined,
         });
       }
     } else {
@@ -162,7 +162,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
         nfeKey,
         cnpjIssuer,
         vehicleId: vehicle.id,
-        driverName: driverName || currentDriverName || 'Hugo',
+        driverName: driverName || currentDriverName || undefined,
       });
     }
 

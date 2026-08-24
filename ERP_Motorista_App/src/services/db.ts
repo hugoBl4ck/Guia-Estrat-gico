@@ -262,10 +262,10 @@ export const dbService = {
       if (!stored) {
         stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
       }
-      const defaultName = getInitialDriversForUser(userEmail)[0]?.name || 'Hugo';
+      const defaultName = getInitialDriversForUser(userEmail)[0]?.name || 'Motorista';
       return stored || defaultName;
     } catch (error) {
-      return getInitialDriversForUser(userEmail)[0]?.name || 'Hugo';
+      return getInitialDriversForUser(userEmail)[0]?.name || 'Motorista';
     }
   },
 

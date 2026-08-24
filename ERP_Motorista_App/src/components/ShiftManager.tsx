@@ -45,12 +45,12 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
 
   const [startKmInput, setStartKmInput] = useState('');
   const [endKmInput, setEndKmInput] = useState('');
-  const [shiftDriverName, setShiftDriverName] = useState<string>(currentDriverName || 'Hugo');
+  const [shiftDriverName, setShiftDriverName] = useState<string>(currentDriverName || '');
 
   // Form para novos ganhos
   const [earningType, setEarningType] = useState<EarningType>('RIDE');
   const [platform, setPlatform] = useState<PlatformType>('UBER');
-  const [driverName, setDriverName] = useState<string>(currentDriverName || 'Hugo');
+  const [driverName, setDriverName] = useState<string>(currentDriverName || '');
   const [grossAmount, setGrossAmount] = useState('');
   const [tipsAmount, setTipsAmount] = useState('');
   const [totalTrips, setTotalTrips] = useState('');
@@ -129,7 +129,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
       rideDistanceKm: distance,
       notes: notes.trim() || defaultNotes,
       recordedAt: recordedAtIso,
-      driverName: driverName || 'Hugo',
+      driverName: driverName || currentDriverName || undefined,
       startTime: startTime.trim() || undefined,
       endTime: endTime.trim() || undefined,
       workedHours: parsedWorkedHours !== undefined && !isNaN(parsedWorkedHours) && parsedWorkedHours > 0 ? parsedWorkedHours : undefined,
@@ -255,7 +255,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                   <h3 className="font-extrabold text-sm text-white flex items-center gap-2 flex-wrap">
                     Turno em Rodagem
                     <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                      👤 {activeShift.driverName || currentDriverName || 'Hugo'}
+                      👤 {activeShift.driverName || currentDriverName || 'Motorista'}
                     </span>
                   </h3>
                   <p className="text-xs font-mono text-slate-400">KM Inicial: {activeShift.startOdometerKm} km</p>
@@ -393,13 +393,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                               </span>
                             )}
                             {driver && (
-                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border ${
-                                driver.toLowerCase().includes('ari')
-                                  ? 'bg-amber-950 text-amber-400 border-amber-800'
-                                  : driver.toLowerCase().includes('hugo')
-                                  ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
-                                  : 'bg-indigo-950 text-indigo-400 border-indigo-800'
-                              }`}>
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border bg-slate-800 text-emerald-300 border-slate-700">
                                 👤 {driver}
                               </span>
                             )}
@@ -706,7 +700,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-white flex items-center gap-1.5">
                           <Clock className="w-4 h-4 text-emerald-400" />
-                          Horas Trabalhadas ({driverName || 'Hugo'})
+                          Horas Trabalhadas {driverName || currentDriverName ? `(${driverName || currentDriverName})` : ''}
                         </span>
                         <span className="text-[10px] bg-emerald-950 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-800">
                           Opcional

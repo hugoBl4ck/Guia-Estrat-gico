@@ -372,7 +372,7 @@ export class DataRepository implements IDataRepository {
       if (state.activeShift) {
         const payloadShift: Record<string, any> = {
           id: state.activeShift.id,
-          vehicle_id: state.activeShift.vehicleId || 'veh-byd-dolphin-mini',
+          vehicle_id: state.activeShift.vehicleId || null,
           driver_name: state.activeShift.driverName || null,
           start_time: state.activeShift.startTime,
           end_time: state.activeShift.endTime || null,
@@ -492,7 +492,7 @@ export class DataRepository implements IDataRepository {
             startTime: e.start_time || undefined,
             endTime: e.end_time || undefined,
             workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
-            vehicleId: e.vehicle_id || mappedVehicle || (e.id?.includes('ford') ? 'veh-ford-ka-10' : e.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
+            vehicleId: e.vehicle_id || mappedVehicle || undefined,
             isDeleted: Boolean(e.is_deleted),
           };
         });
@@ -514,7 +514,7 @@ export class DataRepository implements IDataRepository {
             startTime: f.start_time || f.inicio || undefined,
             endTime: f.end_time || f.fim || undefined,
             workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
-            vehicleId: f.vehicle_id || mappedVehicle || (f.id?.includes('ford') ? 'veh-ford-ka-10' : f.id?.includes('byd') ? 'veh-byd-dolphin-mini' : undefined),
+            vehicleId: f.vehicle_id || mappedVehicle || undefined,
             recordedAt: f.recorded_at,
           };
         });
@@ -530,39 +530,10 @@ export class DataRepository implements IDataRepository {
         expensesList = cloudDespesas.map((d) => {
           const obsLower = (d.observacao || d.notes || '').toLowerCase();
           const cat = (d.categoria || d.category || '').toUpperCase();
-          const isFord = d.id?.includes('ford') || 
-            obsLower.includes('ford') || 
-            obsLower.includes('ka') || 
-            cat === 'FUEL' || 
-            cat === 'OIL_CHANGE' || 
-            cat === 'SPARK_PLUGS_BELT' || 
-            cat === 'WORKSHOP_MAINTENANCE' ||
-            obsLower.includes('oleo') || 
-            obsLower.includes('óleo') || 
-            obsLower.includes('5w20') || 
-            obsLower.includes('5w30') || 
-            obsLower.includes('velas') || 
-            obsLower.includes('correia') || 
-            obsLower.includes('radiador') || 
-            obsLower.includes('gasolina') || 
-            obsLower.includes('etanol') || 
-            obsLower.includes('combustivel') || 
-            obsLower.includes('combustível') || 
-            obsLower.includes('locatario') || 
-            obsLower.includes('locatário') || 
-            obsLower.includes('porto seguro');
-
-          const isByd = d.id?.includes('byd') || 
-            obsLower.includes('aliro') || 
-            obsLower.includes('byd') || 
-            obsLower.includes('dolphin') || 
-            obsLower.includes('coelba') || 
-            obsLower.includes('eletroposto') || 
-            cat === 'ELECTRIC_CHARGING';
-
           const { driverName: extractedDriver, notes } = decodeDriverAndNotes(d.observacao || d.notes, d.driver_name || d.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[d.id];
-          const mappedVehicle = cloudVehicleMap[d.id];
+          const rawVehicleId = d.veiculo_id || cloudVehicleMap[d.id];
+          const resolvedVehicleId = rawVehicleId || d.vehicle_id;
 
           return {
             id: d.id,
@@ -572,7 +543,7 @@ export class DataRepository implements IDataRepository {
             tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
             notes: notes || '',
             expenseDate: d.expense_date,
-            vehicleId: d.vehicle_id || mappedVehicle || (isFord ? 'veh-ford-ka-10' : isByd ? 'veh-byd-dolphin-mini' : undefined),
+            vehicleId: resolvedVehicleId,
             driverName: mappedDriver || undefined,
           };
         });

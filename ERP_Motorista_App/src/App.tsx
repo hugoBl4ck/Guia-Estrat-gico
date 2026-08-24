@@ -58,7 +58,7 @@ export function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => [VEHICLES_LIST[0]]);
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => VEHICLES_LIST[0]);
   const [drivers, setDrivers] = useState<Driver[]>(() => INITIAL_DRIVERS);
-  const [currentDriverName, setCurrentDriverName] = useState<string>('Hugo');
+  const [currentDriverName, setCurrentDriverName] = useState<string>(() => INITIAL_DRIVERS[0]?.name || '');
 
   // Carregar estado inicial via IndexedDB de forma assíncrona
   const [state, dispatch] = useReducer(financeReducer, {
@@ -369,74 +369,13 @@ export function App() {
     setDrivers((prev) => prev.filter((d) => d.id !== driverId));
   };
 
-  // Função robusta de vinculação do item ao veículo selecionado
-  const isItemForCurrentVehicle = (item: { vehicleId?: string; notes?: string; category?: string; id?: string }) => {
-    // 1. Se o item possui vehicleId explícito, deve bater com o veículo selecionado
+  // Vinculação estrita do item ao veículo selecionado através da chave relacional vehicleId
+  const isItemForCurrentVehicle = (item: { vehicleId?: string; id?: string }) => {
     if (item.vehicleId) {
-      if (item.vehicleId === currentVehicle.id) return true;
-      if (
-        (item.vehicleId === 'veh-ford-ka-10' || item.vehicleId === 'veh-default-generic') &&
-        (currentVehicle.id === 'veh-ford-ka-10' || currentVehicle.id === 'veh-default-generic')
-      ) {
-        return true;
-      }
-      return false;
+      return item.vehicleId === currentVehicle.id;
     }
-
-    // 2. Se for despesa/ganho legado sem vehicleId, inferir com precisão pelas características do item
-    const notesLower = (item.notes || '').toLowerCase();
-    const cat = (item.category || '').toUpperCase();
-
-    const isFordOrCombustion = 
-      cat === 'FUEL' || 
-      cat === 'OIL_CHANGE' || 
-      cat === 'SPARK_PLUGS_BELT' || 
-      cat === 'WORKSHOP_MAINTENANCE' ||
-      item.id?.includes('ford') || 
-      notesLower.includes('ford') || 
-      notesLower.includes('ka') || 
-      notesLower.includes('gasolina') || 
-      notesLower.includes('etanol') ||
-      notesLower.includes('alcool') ||
-      notesLower.includes('álcool') ||
-      notesLower.includes('oleo') ||
-      notesLower.includes('óleo') ||
-      notesLower.includes('5w20') ||
-      notesLower.includes('5w30') ||
-      notesLower.includes('filtro') ||
-      notesLower.includes('velas') ||
-      notesLower.includes('correia') ||
-      notesLower.includes('radiador') ||
-      notesLower.includes('arrefecimento') ||
-      notesLower.includes('embreagem') ||
-      notesLower.includes('escapamento') ||
-      notesLower.includes('porto seguro') ||
-      notesLower.includes('locatario') ||
-      notesLower.includes('locatário') ||
-      notesLower.includes('locador');
-
-    if (isFordOrCombustion) {
-      return !currentVehicle.isElectric || currentVehicle.id === 'veh-ford-ka-10' || currentVehicle.id === 'veh-default-generic';
-    }
-
-    const isElectricOrByd = 
-      cat === 'ELECTRIC_CHARGING' || 
-      item.id?.includes('byd') || 
-      notesLower.includes('aliro') || 
-      notesLower.includes('byd') || 
-      notesLower.includes('dolphin') || 
-      notesLower.includes('coelba') || 
-      notesLower.includes('eletroposto') ||
-      notesLower.includes('wallbox') ||
-      notesLower.includes('recarga') ||
-      notesLower.includes('santander');
-
-    if (isElectricOrByd) {
-      return currentVehicle.isElectric || currentVehicle.id === 'veh-byd-dolphin-mini';
-    }
-
-    // 3. Fallback para itens sem identificação: vincular ao veículo padrão inicial
-    return currentVehicle.id === (vehicles[0]?.id || 'default');
+    // Para itens sem vehicleId legado, vincula ao primeiro veículo cadastrado
+    return currentVehicle.id === (vehicles[0]?.id || '');
   };
 
   // Filtrar dados ativos por Veículo Selecionado (currentVehicle.id) e excluindo Soft Delete
@@ -849,6 +788,9 @@ export function App() {
             earnings={activeEarnings}
             expenses={activeExpenses}
             buckets={calculatedBuckets}
+            drivers={drivers}
+            currentDriverName={currentDriverName}
+            onSelectDriver={handleSelectDriver}
             onOpenVoice={() => setIsVoiceOpen(true)}
             onOpenAddEarning={() => {
               setEarningToEdit(null);

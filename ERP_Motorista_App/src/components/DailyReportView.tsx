@@ -267,24 +267,26 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          {driverStatsList.map((d) => (
-            <div key={d.name} className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
-              <div>
-                <p className="font-extrabold text-white flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${
-                    d.name.toLowerCase().includes('ari') ? 'bg-amber-400' : d.name.toLowerCase().includes('hugo') ? 'bg-emerald-400' : 'bg-indigo-400'
-                  }`}></span>
-                  Motorista {d.name}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {d.trips} corridas • {d.km.toFixed(1)} km rodados {d.hours > 0 ? `• ${d.hours.toFixed(1)}h (R$ ${(d.revenue / d.hours).toFixed(2)}/h)` : ''}
-                </p>
+          {driverStatsList.map((d, idx) => {
+            const colors = ['bg-emerald-400', 'bg-amber-400', 'bg-cyan-400', 'bg-indigo-400', 'bg-purple-400', 'bg-rose-400'];
+            const colorClass = colors[idx % colors.length];
+            return (
+              <div key={d.name} className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+                <div>
+                  <p className="font-extrabold text-white flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${colorClass}`}></span>
+                    Motorista {d.name}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {d.trips} corridas • {d.km.toFixed(1)} km rodados {d.hours > 0 ? `• ${d.hours.toFixed(1)}h (R$ ${(d.revenue / d.hours).toFixed(2)}/h)` : ''}
+                  </p>
+                </div>
+                <span className="text-sm font-black text-emerald-400 font-mono">
+                  R$ {d.revenue.toFixed(2)}
+                </span>
               </div>
-              <span className="text-sm font-black text-emerald-400 font-mono">
-                R$ {d.revenue.toFixed(2)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

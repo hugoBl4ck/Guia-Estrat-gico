@@ -34,10 +34,10 @@ describe('Driver Persistence & Fallback', () => {
     expect(res4.notes).toBe('Corrida simples');
   });
 
-  it('getInitialDriversForUser deve fornecer tanto Hugo quanto Ari por padrão', () => {
-    const drivers = getInitialDriversForUser('hugovieira.eng@gmail.com');
-    expect(drivers.some((d) => d.name === 'Hugo')).toBe(true);
-    expect(drivers.some((d) => d.name === 'Ari')).toBe(true);
+  it('getInitialDriversForUser deve extrair o nome do motorista a partir do e-mail', () => {
+    const drivers = getInitialDriversForUser('carlos.silva@empresa.com');
+    expect(drivers.length).toBeGreaterThan(0);
+    expect(drivers[0].name).toBe('Carlos Silva');
   });
 
   it('EDIT_EARNING deve preservar a troca de motorista de Hugo para Ari', () => {
