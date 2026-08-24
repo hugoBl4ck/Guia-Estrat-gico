@@ -645,7 +645,7 @@ export function App() {
   };
 
   const handleAddExpense = async (expenseData: Omit<Expense, 'id'>) => {
-    const selectedDriver = expenseData.driverName || currentDriverName || 'Hugo';
+    const selectedDriver = expenseData.driverName || currentDriverName || undefined;
     const targetVehicleId = expenseData.vehicleId || currentVehicle.id;
     const newExpense: Expense = {
       ...expenseData,

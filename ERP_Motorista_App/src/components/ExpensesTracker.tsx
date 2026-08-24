@@ -32,9 +32,10 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicle.id);
-  // Estado de edição inline de motorista
+  // Estado de edição inline de motorista e veículo
   const [editingDriverExpenseId, setEditingDriverExpenseId] = useState<string | null>(null);
   const [editingDriverValue, setEditingDriverValue] = useState<string>('');
+  const [editingVehicleExpenseId, setEditingVehicleExpenseId] = useState<string | null>(null);
   const editingDriverRef = useRef<HTMLDivElement>(null);
 
   // Lista de motoristas disponíveis com fallback dinâmico
@@ -535,6 +536,14 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     </span>
                   </th>
                   <th
+                    className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none hidden lg:table-cell"
+                  >
+                    <span className="flex items-center gap-1">
+                      <Car className="w-3 h-3 text-amber-400" />
+                      Veículo
+                    </span>
+                  </th>
+                  <th
                     onClick={() => handleSort('category')}
                     className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-pma-acid select-none transition-colors hidden sm:table-cell"
                   >
@@ -633,6 +642,55 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                           <User className="w-3 h-3 text-emerald-400" />
                           {exp.driverName || vehicle.tenantName || 'Motorista'}
                           <Pencil className="w-2.5 h-2.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                        </button>
+                      )}
+                    </td>
+
+                    {/* Veículo — clicável para transferência */}
+                    <td className="px-3 py-3 hidden lg:table-cell whitespace-nowrap">
+                      {editingVehicleExpenseId === exp.id ? (
+                        <div className="flex flex-col gap-1 min-w-[150px] bg-slate-900 p-2 rounded-xl border border-amber-500/60 shadow-xl">
+                          <span className="text-[9px] font-extrabold uppercase text-amber-400">Transferir para:</span>
+                          <div className="flex flex-col gap-1">
+                            {vehicles.map((v) => (
+                              <button
+                                key={v.id}
+                                onClick={() => {
+                                  if (onEditExpense) {
+                                    onEditExpense({ ...exp, vehicleId: v.id });
+                                  }
+                                  setEditingVehicleExpenseId(null);
+                                }}
+                                className={`px-2 py-1 rounded text-[10px] font-bold border text-left flex items-center justify-between transition-colors ${
+                                  (exp.vehicleId || vehicle.id) === v.id
+                                    ? 'bg-amber-500 border-amber-400 text-black'
+                                    : 'bg-slate-800 border-slate-700 text-slate-200 hover:border-amber-400'
+                                }`}
+                              >
+                                <span>{v.isElectric ? '⚡' : '🚗'} {v.model.split(' ')[0]} {v.model.split(' ')[1] || ''}</span>
+                                <span className="text-[9px] font-mono opacity-80">{v.licensePlate}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setEditingVehicleExpenseId(null)}
+                            className="px-2 py-0.5 mt-1 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[9px] rounded transition-colors text-center"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingVehicleExpenseId(exp.id)}
+                          className="group inline-flex items-center gap-1 bg-slate-800 border border-slate-700 hover:border-amber-400 text-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-colors"
+                          title="Clique para transferir o veículo desta despesa"
+                        >
+                          <Car className="w-3 h-3 text-amber-400" />
+                          {(() => {
+                            const assignedVeh = vehicles.find((v) => v.id === exp.vehicleId);
+                            return assignedVeh ? `${assignedVeh.isElectric ? '⚡' : '🚗'} ${assignedVeh.model.split(' ')[0]}` : (vehicle.isElectric ? '⚡ BYD' : '🚗 Ka');
+                          })()}
+                          <Pencil className="w-2.5 h-2.5 text-slate-500 group-hover:text-amber-400 transition-colors" />
                         </button>
                       )}
                     </td>
