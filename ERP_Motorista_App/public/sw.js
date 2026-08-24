@@ -1,5 +1,5 @@
 // GiroCerto ERP - Service Worker PWA Daemon (Network-First para Navegação & Cache-First para Assets Imutáveis)
-const CACHE_NAME = 'girocerto-erp-v9';
+const CACHE_NAME = 'girocerto-erp-v10';
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
