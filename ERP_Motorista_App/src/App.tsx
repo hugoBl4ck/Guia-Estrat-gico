@@ -134,16 +134,23 @@ export function App() {
         ]);
 
         let currentStateData = dbData || {
-          earnings: [],
-          expenses: [],
+          earnings: INITIAL_EARNINGS_BYD,
+          expenses: INITIAL_EXPENSES_BYD,
           activeShift: null,
           buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
           personalLogs: [],
-          isDataCleared: true,
+          isDataCleared: false,
         };
 
         if (dbData) {
-          dispatch({ type: 'SET_ALL', payload: dbData });
+          const mergedData = {
+            ...dbData,
+            expenses: (dbData.expenses && dbData.expenses.length > 0) ? dbData.expenses : INITIAL_EXPENSES_BYD,
+          };
+          currentStateData = mergedData;
+          dispatch({ type: 'SET_ALL', payload: mergedData });
+        } else {
+          dispatch({ type: 'SET_ALL', payload: currentStateData });
         }
 
         if (dbVehicles && dbVehicles.length > 0) {
@@ -924,7 +931,7 @@ export function App() {
           <ExpensesTracker
             vehicle={currentVehicle}
             vehicles={vehicles}
-            expenses={activeExpenses}
+            expenses={(state.expenses || []).filter((e) => !e.isDeleted)}
             buckets={calculatedBuckets}
             drivers={drivers}
             currentDriverName={currentDriverName}

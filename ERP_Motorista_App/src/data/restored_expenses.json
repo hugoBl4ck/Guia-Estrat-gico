@@ -1,0 +1,400 @@
+[
+  {
+    "id": "exp-1787153906271",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 48.36,
+    "kwhAmount": 33.36,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-18T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1787153849410",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 33.51,
+    "kwhAmount": 19.8,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-19T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1787153760993",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 37.38,
+    "kwhAmount": 20.88,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-18T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786983743294",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 39.76,
+    "kwhAmount": 30.82,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-15T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786983500577",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 39.61,
+    "kwhAmount": 23.4,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-12T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786983472407",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 46.41,
+    "kwhAmount": 27.5,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-13T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786725502001",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 24.78,
+    "kwhAmount": 16.4,
+    "tariffPerKwh": 1.69,
+    "notes": "Recarga Ari",
+    "expenseDate": "2026-08-14T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Ari"
+  },
+  {
+    "id": "exp-1786633367497",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 18.78,
+    "kwhAmount": 10.49,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-09T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786633262556",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 38.39,
+    "kwhAmount": 21.45,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-06T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786633051464",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 24.26,
+    "kwhAmount": 14.4,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-12T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786423884408",
+    "category": "MAINTENANCE",
+    "amount": 150,
+    "notes": "Troca de Oleo",
+    "expenseDate": "2026-08-11T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786983560858",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 30.69,
+    "kwhAmount": 20.65,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-17T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786633435912",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 38.08,
+    "kwhAmount": 21.27,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-04T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786633143921",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 42.86,
+    "kwhAmount": 23.94,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-13T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-26-jul-recarga",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 37.08,
+    "kwhAmount": 21.9,
+    "tariffPerKwh": 1.69,
+    "notes": "Abastecimento/Recarga 26/07 (21.9 kWh)",
+    "expenseDate": "2026-07-26T14:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1785796461209",
+    "category": "INSURANCE",
+    "amount": 299.71,
+    "notes": "",
+    "expenseDate": "2026-07-31T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1785597755918",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 62.31,
+    "kwhAmount": 36.9,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-01T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1785717216838",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 25.4,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-03T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-30-jul-recarga",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 19.32,
+    "kwhAmount": 11.4,
+    "tariffPerKwh": 1.69,
+    "notes": "Abastecimento/Recarga 30/07 (11.4 kWh)",
+    "expenseDate": "2026-07-30T14:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786633218034",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 33.56,
+    "kwhAmount": 19.86,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-05T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786205658011",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 47.53,
+    "kwhAmount": 28.1,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-08T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786127924176",
+    "category": "WORKSHOP_MAINTENANCE",
+    "amount": 335,
+    "notes": "Magueira reservatorio, 2 buchas estabilizadoras, flange carcaça bomba dagua",
+    "expenseDate": "2026-08-07T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786127782603",
+    "category": "MAINTENANCE",
+    "amount": 48,
+    "notes": "Fluido para radiador 6 litros (pago por Hugo)",
+    "expenseDate": "2026-08-07T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786026007793",
+    "category": "WORKSHOP_MAINTENANCE",
+    "amount": 250,
+    "notes": "Mão de obra oficina JDK - Substituição Sensor bomba combustível",
+    "expenseDate": "2026-08-04T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786288002919",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 48.05,
+    "kwhAmount": 28.4,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-09T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786127839734",
+    "category": "WORKSHOP_MAINTENANCE",
+    "amount": 125,
+    "notes": "Jogo de velas (pago por Hugo)",
+    "expenseDate": "2026-08-07T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786035450568",
+    "category": "WORKSHOP_MAINTENANCE",
+    "amount": 227,
+    "notes": "Sensor de Nível Boia Bosch ",
+    "expenseDate": "2026-08-04T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786631794350",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 21.39,
+    "kwhAmount": 12.7,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-13T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786567744597",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 14.43,
+    "kwhAmount": 9.07,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-12T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786484024620",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 39.38,
+    "kwhAmount": 23.3,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-11T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786287958666",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 47.53,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-08T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786983785768",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 26.51,
+    "kwhAmount": 20.55,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-15T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1785536908772",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 20.61,
+    "kwhAmount": 12.2,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-07-31T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1785450604345",
+    "category": "MAINTENANCE",
+    "amount": 343.05,
+    "notes": "Insulfilm",
+    "expenseDate": "2026-07-30T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1785514915504",
+    "category": "MAINTENANCE",
+    "amount": 97.49,
+    "notes": "Kit Tapete Bandeja Byd Dolphin Mini (Parcela 1/3)",
+    "expenseDate": "2026-07-27T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786983600874",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 29.37,
+    "kwhAmount": 19.7,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-15T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-1786398111920",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 39.73,
+    "kwhAmount": 22.19,
+    "tariffPerKwh": 1.69,
+    "notes": "",
+    "expenseDate": "2026-08-10T15:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-28-jul-recarga",
+    "category": "ELECTRIC_CHARGING",
+    "amount": 63.7,
+    "kwhAmount": 37.7,
+    "tariffPerKwh": 1.69,
+    "notes": "Abastecimento/Recarga 28/07 (37.7 kWh)",
+    "expenseDate": "2026-07-28T14:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  }
+]

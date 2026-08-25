@@ -184,7 +184,12 @@ export const INITIAL_EARNINGS_BYD: Earning[] = [
   }
 ];
 
-export const INITIAL_EXPENSES_BYD: Expense[] = [];
+import restoredExpensesRaw from '../data/restored_expenses.json';
+
+export const INITIAL_EXPENSES_BYD: Expense[] = (restoredExpensesRaw as any[]).map((exp) => ({
+  ...exp,
+  source: 'manual',
+}));
 
 // Dados do Ford Ka 1.0
 export const INITIAL_EARNINGS_FORD_KA: Earning[] = [
