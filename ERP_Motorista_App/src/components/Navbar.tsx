@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  const currentAppUrl = typeof window !== 'undefined' ? window.location.href : 'https://erp-motorista-app.vercel.app';
+  const currentAppUrl = typeof window !== 'undefined' ? window.location.href : 'https://app-girocerto.vercel.app';
 
   // Fallback seguro caso currentVehicle venha undefined no primeiro render
   const safeVehicle = currentVehicle || vehicles[0] || {
