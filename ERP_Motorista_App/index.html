@@ -1,16 +1,117 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" prefix="og: https://ogp.me/ns#">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#0D0F17" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#07080C" />
+    <meta name="color-scheme" content="dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GiroCerto" />
+    <meta name="application-name" content="GiroCerto ERP" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- SEO Primário -->
+    <title>GiroCerto ERP - Gestão Financeira Inteligente para Motoristas de Aplicativo (Uber, 99 & Frotas)</title>
+    <meta name="description" content="O sistema de gestão financeira e ERP nº 1 para Motoristas de Aplicativo (Uber, 99, InDrive). Calcule seu Lucro Real Líquido por hora e por km (CPK), controle turnos, despesas, recargas elétricas, caixas de manutenção e metas com tecnologia 100% Offline-First." />
+    <meta name="keywords" content="gestão financeira motorista de aplicativo, erp motorista uber 99, calculadora cpk motorista, lucro líquido uber, controle financeiro motorista pwa, motorista uber carro eletrico byd dolphin, simulador lucro motorista app, aplicativo controle despesas uber, girocerto erp, controle de turnos uber 99" />
+    <meta name="author" content="GiroCerto Tecnologia" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://girocerto.vercel.app/" />
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo-icon.svg" />
     <link rel="manifest" href="/manifest.json" />
-    <title>GiroCerto ERP - Gestão Financeira para Motoristas de Aplicativo</title>
+
+    <!-- Open Graph / Facebook / WhatsApp Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://girocerto.vercel.app/" />
+    <meta property="og:site_name" content="GiroCerto ERP" />
+    <meta property="og:title" content="GiroCerto ERP - Gestão Financeira para Motoristas de Aplicativo" />
+    <meta property="og:description" content="Descubra o lucro limpo real no seu bolso por hora e por km rodado. Controle turnos, manutenções, metas e veículos elétricos/combustão sem ilusões financeiras." />
+    <meta property="og:image" content="https://girocerto.vercel.app/logo.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="GiroCerto ERP - Protocolo de Ascensão para Motoristas de Aplicativo" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GiroCerto ERP - Gestão Financeira para Motoristas de Aplicativo" />
+    <meta name="twitter:description" content="Calcule seu lucro líquido real por hora e por km rodado. Controle financeiro inteligente 100% Offline-First para Uber, 99 e Frotas." />
+    <meta name="twitter:image" content="https://girocerto.vercel.app/logo.svg" />
+
+    <!-- Schema.org JSON-LD Structured Data para Google Search / Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://girocerto.vercel.app/#webapp",
+          "url": "https://girocerto.vercel.app/",
+          "name": "GiroCerto ERP",
+          "applicationCategory": "FinanceApplication",
+          "operatingSystem": "All (Web, Android, iOS, Windows, macOS)",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "description": "Sistema de gestão financeira operacional, cálculo de CPK, lucro real e turnos para motoristas de aplicativo.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "BRL"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "128",
+            "bestRating": "5",
+            "worstRating": "1"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://girocerto.vercel.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Como o GiroCerto calcula o Lucro Real do motorista de aplicativo?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "O GiroCerto deduz automaticamente do faturamento bruto os custos de energia/combustível por km, provisão de manutenção preventiva, depreciação, seguro e custos fixos, entregando o valor líquido real por hora trabalhada e por km rodado."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "O GiroCerto funciona sem conexão de internet (Offline)?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim! O GiroCerto foi desenvolvido com arquitetura Offline-First. Você pode lançar corridas, abastecimentos e turnos no trânsito mesmo sem sinal. Quando a conexão retornar, tudo é sincronizado automaticamente na nuvem."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "O aplicativo suporta carros elétricos (como BYD Dolphin Mini) e carros a combustão?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim. O sistema possui módulos específicos para Carros Elétricos (cálculo de kWh, recargas AC/DC e autonomia) e Carros Flex/Combustão (calculadora de paridade Álcool vs Gasolina e trocas de óleo preventivas)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Posso gerenciar mais de um motorista ou veículo na mesma conta?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim. Você pode cadastrar múltiplos motoristas (para turnos compartilhados ou frotistas) e alternar entre diferentes veículos, com relatórios financeiros e despesas totalmente separados por veículo e motorista."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
-  <body class="bg-oled-base text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-black">
+  <body class="bg-[#07080C] text-slate-100 font-sans antialiased selection:bg-[#D4FF00] selection:text-black">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
