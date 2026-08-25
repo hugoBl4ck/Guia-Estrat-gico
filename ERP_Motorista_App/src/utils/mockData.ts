@@ -6,7 +6,7 @@ export const getInitialDriversForUser = (email?: string, name?: string): Driver[
   if (name && name.trim() !== '') {
     primaryName = name.trim();
   } else if (email && email.trim() !== '') {
-    const usernamePart = email.split('@')[0] || 'Motorista';
+    const usernamePart = email.split('@')[0] || '';
     const cleaned = usernamePart
       .replace(/\.(eng|adv|dev|adm|med|arq|vet|psi|cont)\b/gi, '')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
