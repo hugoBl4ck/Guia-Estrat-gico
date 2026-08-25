@@ -235,11 +235,6 @@ export const dbService = {
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
         return getInitialDriversForUser(userEmail, userName);
       }
-      stored = stored.map((d) => (d.name === 'Hugovieira' || d.name === 'Motorista Principal' ? { ...d, name: 'Hugo' } : d));
-      const hasAri = stored.some((d) => d.name.toLowerCase() === 'ari');
-      if (!hasAri) {
-        stored = [...stored, { id: 'drv-ari', name: 'Ari' }];
-      }
       return stored;
     } catch (error) {
       return getInitialDriversForUser(userEmail, userName);
@@ -263,13 +258,10 @@ export const dbService = {
       if (!stored) {
         stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
       }
-      if (stored === 'Hugovieira' || stored === 'Motorista Principal') {
-        stored = 'Hugo';
-      }
-      const defaultName = getInitialDriversForUser(userEmail, userName)[0]?.name || 'Hugo';
+      const defaultName = getInitialDriversForUser(userEmail, userName)[0]?.name || 'Motorista';
       return stored || defaultName;
     } catch (error) {
-      return getInitialDriversForUser(userEmail, userName)[0]?.name || 'Hugo';
+      return getInitialDriversForUser(userEmail, userName)[0]?.name || 'Motorista';
     }
   },
 

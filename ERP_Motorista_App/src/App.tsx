@@ -154,30 +154,58 @@ export function App() {
           setCurrentVehicle(dbCurrentVehicle);
         }
 
-        const initialDrivers = getInitialDriversForUser(storedEmail, sessionUserName);
-        const defaultPrimaryDriver = initialDrivers[0];
+        const defaultPrimaryDriver = getInitialDriversForUser(storedEmail, sessionUserName)[0];
 
         let resolvedDrivers: Driver[] = [];
         if (dbDrivers && dbDrivers.length > 0) {
           resolvedDrivers = dbDrivers.map((d: Driver) => {
-            const isGeneric = d.name.toLowerCase() === 'motorista principal' || d.name.toLowerCase() === 'motorista' || d.name.toLowerCase() === 'hugovieira';
-            if (isGeneric && defaultPrimaryDriver) {
+            const isGeneric = d.name.toLowerCase() === 'motorista principal' || d.name.toLowerCase() === 'motorista';
+            if (isGeneric && defaultPrimaryDriver && defaultPrimaryDriver.name !== 'Motorista') {
               return { ...d, name: defaultPrimaryDriver.name };
             }
             return d;
           });
         } else {
-          resolvedDrivers = [...initialDrivers];
+          resolvedDrivers = getInitialDriversForUser(storedEmail, sessionUserName);
         }
 
-        // Garante que todos os motoristas de initialDrivers (ex: Ari) estejam presentes na lista
-        const driverNameSet = new Set(resolvedDrivers.map((d) => d.name.toLowerCase()));
-        initialDrivers.forEach((initD) => {
-          if (!driverNameSet.has(initD.name.toLowerCase())) {
-            resolvedDrivers.push(initD);
-            driverNameSet.add(initD.name.toLowerCase());
+        const existingDriverNames = new Set(resolvedDrivers.map((d) => d.name.toLowerCase()));
+
+        // Descobre dinamicamente motoristas presentes nas transações locais do banco de dados
+        (currentStateData.earnings || []).forEach((e) => {
+          if (e.driverName && e.driverName.trim()) {
+            const clean = e.driverName.trim();
+            if (!existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+              resolvedDrivers.push({
+                id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+                name: clean,
+              });
+              existingDriverNames.add(clean.toLowerCase());
+            }
           }
         });
+        (currentStateData.expenses || []).forEach((exp) => {
+          if (exp.driverName && exp.driverName.trim()) {
+            const clean = exp.driverName.trim();
+            if (!existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+              resolvedDrivers.push({
+                id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+                name: clean,
+              });
+              existingDriverNames.add(clean.toLowerCase());
+            }
+          }
+        });
+        if (currentStateData.activeShift?.driverName) {
+          const clean = currentStateData.activeShift.driverName.trim();
+          if (!existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+            resolvedDrivers.push({
+              id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+              name: clean,
+            });
+            existingDriverNames.add(clean.toLowerCase());
+          }
+        }
 
         // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
         if (storedEmail) {
@@ -185,7 +213,6 @@ export function App() {
             const cloudData = await repository.fetchFromCloud(storedEmail);
             if (cloudData) {
               // Descobre dinamicamente motoristas presentes nas transações da nuvem
-              const existingDriverNames = new Set(resolvedDrivers.map((d) => d.name.toLowerCase()));
               const discoveredDrivers = new Set<string>();
 
               (cloudData.earnings || []).forEach((e) => { if (e.driverName) discoveredDrivers.add(e.driverName); });
@@ -424,21 +451,17 @@ export function App() {
 
   // Vinculação estrita do item ao veículo selecionado através da chave relacional vehicleId
   const isItemForCurrentVehicle = (item: { vehicleId?: string; id?: string }) => {
-    if (item.vehicleId) {
-      return item.vehicleId === currentVehicle.id;
+    if (!item) return false;
+    // Se o usuário tem 1 veículo ou o registro não possui vehicleId vinculado, exibe no veículo ativo
+    if (vehicles.length <= 1 || !item.vehicleId) {
+      return true;
     }
-    // Para itens sem vehicleId legado, vincula ao primeiro veículo cadastrado
-    return currentVehicle.id === (vehicles[0]?.id || '');
+    return item.vehicleId === currentVehicle.id;
   };
 
   // Filtrar dados ativos por Veículo Selecionado (currentVehicle.id) e excluindo Soft Delete
-  const activeEarnings = userEmail
-    ? (state.earnings || []).filter((e) => !e.isDeleted && isItemForCurrentVehicle(e))
-    : [];
-
-  const activeExpenses = userEmail
-    ? (state.expenses || []).filter((exp) => !exp.isDeleted && isItemForCurrentVehicle(exp))
-    : [];
+  const activeEarnings = (state.earnings || []).filter((e) => !e.isDeleted && isItemForCurrentVehicle(e));
+  const activeExpenses = (state.expenses || []).filter((exp) => !exp.isDeleted && isItemForCurrentVehicle(exp));
 
   // Recalcular em tempo real o saldo de cada caixa virtual com base no Lucro Líquido Real (Receita Bruta - Despesas Reais)
   const totalEarningsAmount = activeEarnings.reduce((sum, e) => sum + (e.isDeleted ? 0 : e.grossAmount + e.tipsAmount), 0);
