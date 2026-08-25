@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Plus, X, CheckCircle2, Car, Compass, Calendar, Pencil, User, Clock, Gift, Trophy, Sparkles } from 'lucide-react';
 import { Earning, PlatformType, Driver, EarningType } from '../types';
 import { calculateHoursBetween } from '../utils/financialCalculators';
+import { getTodayLocalDateString, formatToLocalDateString } from '../utils/dateUtils';
 
 interface AddEarningModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
   const [totalTrips, setTotalTrips] = useState('18');
   const [rideDistanceKm, setRideDistanceKm] = useState('70');
   const [notes, setNotes] = useState('');
-  const [recordedDate, setRecordedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [recordedDate, setRecordedDate] = useState<string>(getTodayLocalDateString());
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
   const [workedHours, setWorkedHours] = useState<string>('');
@@ -53,7 +54,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
       setEndTime(earningToEdit.endTime || '');
       setWorkedHours(earningToEdit.workedHours ? earningToEdit.workedHours.toString() : '');
       if (earningToEdit.recordedAt) {
-        setRecordedDate(new Date(earningToEdit.recordedAt).toISOString().slice(0, 10));
+        setRecordedDate(formatToLocalDateString(earningToEdit.recordedAt));
       }
     } else {
       setEarningType('RIDE');
@@ -67,7 +68,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
       setStartTime('');
       setEndTime('');
       setWorkedHours('');
-      setRecordedDate(new Date().toISOString().slice(0, 10));
+      setRecordedDate(getTodayLocalDateString());
     }
   }, [earningToEdit, isOpen, currentDriverName]);
 
@@ -173,7 +174,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     setStartTime('');
     setEndTime('');
     setWorkedHours('');
-    setRecordedDate(new Date().toISOString().slice(0, 10));
+    setRecordedDate(getTodayLocalDateString());
     onClose();
   };
 

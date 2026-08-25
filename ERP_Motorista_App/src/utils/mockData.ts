@@ -1,28 +1,11 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 
-export const getInitialDriversForUser = (email?: string, name?: string): Driver[] => {
-  let primaryName = 'Motorista';
-
-  if (name && name.trim() !== '') {
-    primaryName = name.trim();
-  } else if (email && email.trim() !== '') {
-    const usernamePart = email.split('@')[0] || '';
-    const cleaned = usernamePart
-      .replace(/\.(eng|adv|dev|adm|med|arq|vet|psi|cont)\b/gi, '')
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/[._-]/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-      .trim();
-
-    primaryName = cleaned.length > 0 ? cleaned : 'Motorista';
-  }
-
-  const primaryId = email && email.trim() !== ''
-    ? `drv-${email.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
-    : 'drv-primary';
-
+export const getInitialDriversForUser = (_email?: string, name?: string): Driver[] => {
+  const primaryName = name && name.trim() !== '' ? name.trim() : 'Hugo';
+  
   return [
-    { id: primaryId, name: primaryName, isDefault: true }
+    { id: 'drv-hugo', name: primaryName, isDefault: true },
+    { id: 'drv-ari', name: 'Ari', isDefault: false }
   ];
 };
 

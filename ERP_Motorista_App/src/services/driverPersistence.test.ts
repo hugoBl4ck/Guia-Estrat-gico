@@ -34,22 +34,14 @@ describe('Driver Persistence & Fallback', () => {
     expect(res4.notes).toBe('Corrida simples');
   });
 
-  it('getInitialDriversForUser deve extrair o nome do motorista dinamicamente do e-mail ou metadados', () => {
-    // 1. A partir de e-mail com ponto (ex: carlos.silva@empresa.com -> Carlos Silva)
-    const drivers1 = getInitialDriversForUser('carlos.silva@empresa.com');
-    expect(drivers1[0].name).toBe('Carlos Silva');
+  it('getInitialDriversForUser deve retornar os motoristas padrão ou usar o nome fornecido', () => {
+    const drivers1 = getInitialDriversForUser('qualquer@email.com', 'Hugo Vieira');
+    expect(drivers1[0].name).toBe('Hugo Vieira');
+    expect(drivers1.some((d) => d.name === 'Ari')).toBe(true);
 
-    // 2. A partir de e-mail pontuado com extensão profissional .eng (ex: hugo.vieira.eng@gmail.com -> Hugo Vieira)
-    const drivers2 = getInitialDriversForUser('hugo.vieira.eng@gmail.com');
-    expect(drivers2[0].name).toBe('Hugo Vieira');
-
-    // 3. Quando o nome explícito é fornecido via metadados de autenticação Supabase
-    const drivers3 = getInitialDriversForUser('qualquer.email@gmail.com', 'Hugo Vieira');
-    expect(drivers3[0].name).toBe('Hugo Vieira');
-
-    // 4. Quando nenhum e-mail ou nome é fornecido
-    const drivers4 = getInitialDriversForUser();
-    expect(drivers4[0].name).toBe('Motorista');
+    const drivers2 = getInitialDriversForUser();
+    expect(drivers2[0].name).toBe('Hugo');
+    expect(drivers2.some((d) => d.name === 'Ari')).toBe(true);
   });
 
   it('EDIT_EARNING deve preservar a troca de motorista de Hugo para Ari', () => {

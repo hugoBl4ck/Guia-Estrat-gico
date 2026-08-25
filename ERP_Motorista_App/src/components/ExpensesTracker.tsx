@@ -3,6 +3,7 @@ import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Tr
 import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver } from '../types';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
 import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
+import { getTodayLocalDateString, formatToLocalDateString, formatToBrazilianDate } from '../utils/dateUtils';
 
 interface ExpensesTrackerProps {
   vehicle: Vehicle;
@@ -105,7 +106,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [amount, setAmount] = useState('');
   const [odometerKm, setOdometerKm] = useState('');
   const [notes, setNotes] = useState('');
-  const [expenseDateInput, setExpenseDateInput] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [expenseDateInput, setExpenseDateInput] = useState<string>(getTodayLocalDateString());
   const [installmentsCount, setInstallmentsCount] = useState<number>(1);
   const [paymentMode, setPaymentMode] = useState<'SINGLE_CASH' | 'SPECIFIC_INSTALLMENT' | 'AUTO_SPLIT_CARD'>('SINGLE_CASH');
   const [specificInstallmentNumber, setSpecificInstallmentNumber] = useState<string>('48');
@@ -329,7 +330,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     setFuelLiters('');
     setInstallmentsCount(1);
     setPaymentMode('SINGLE_CASH');
-    setExpenseDateInput(new Date().toISOString().slice(0, 10));
+    setExpenseDateInput(getTodayLocalDateString());
     setShowModal(false);
   };
 
@@ -580,7 +581,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                   >
                     {/* Data */}
                     <td className="px-4 py-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                      {new Date(exp.expenseDate).toLocaleDateString('pt-BR')}
+                      {formatToBrazilianDate(exp.expenseDate)}
                     </td>
 
                     {/* Motorista — clicável para edição */}

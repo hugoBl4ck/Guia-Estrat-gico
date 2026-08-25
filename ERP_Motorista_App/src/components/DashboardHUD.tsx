@@ -34,6 +34,7 @@ import confetti from 'canvas-confetti';
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 import { calculateCPK, calculateShiftSummary, calculateHoursBetween } from '../utils/financialCalculators';
 import { runAnomalyAudit, AuditAnomaly } from '../services/anomalyDetector';
+import { getTodayLocalDateString, formatToLocalDateString, isDateToday } from '../utils/dateUtils';
 
 interface DashboardHUDProps {
   vehicle: Vehicle;
@@ -72,16 +73,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const [goalProfile, setGoalProfile] = useState<'LEVE' | 'MODERADA' | 'AGRESSIVA'>('MODERADA');
   const [driverFilter, setDriverFilter] = useState<string>('ALL');
 
-  // Fuso Horario Local (YYYY-MM-DD)
-  const getLocalDateString = (d: Date | string) => {
-    const dateObj = typeof d === 'string' ? new Date(d) : d;
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const todayStr = getLocalDateString(new Date());
+  const todayStr = getTodayLocalDateString();
 
   // Filtragem de Dados com base no Motorista Selecionado no HUD
   const isDriverMatch = (itemDriverName?: string | null) => {
@@ -102,7 +94,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   // Ganhos e Corridas do Dia (Hoje)
   const todayEarnings = filteredEarnings.filter((e) => {
     if (!e.recordedAt) return true;
-    return getLocalDateString(e.recordedAt) === todayStr;
+    return isDateToday(e.recordedAt);
   });
 
   const todayRevenue = todayEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
@@ -110,10 +102,10 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const todayTrips = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
 
   const todayExpenses = filteredExpenses
-    .filter((e) => e.expenseDate && getLocalDateString(e.expenseDate) === todayStr)
+    .filter((e) => e.expenseDate && isDateToday(e.expenseDate))
     .reduce((sum, exp) => sum + exp.amount, 0);
 
-  // Estatísticas detalhadas por Motorista (Hugo, Ari e novos cadastrados)
+  // Estatísticas detalhadas por Motorista
   const driverStatsMap: {
     [name: string]: {
       trips: number;
@@ -137,7 +129,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     driverStatsMap[dName].km += e.rideDistanceKm || 0;
     driverStatsMap[dName].hours += itemHours;
 
-    if (e.recordedAt && getLocalDateString(e.recordedAt) === todayStr) {
+    if (e.recordedAt && isDateToday(e.recordedAt)) {
       driverStatsMap[dName].todayTrips += e.totalTrips || 1;
       driverStatsMap[dName].todayRevenue += itemRev;
     }
@@ -185,7 +177,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const currentFinancingBalance = financingBucket ? financingBucket.currentBalance : 0;
 
   const uniqueDaysWorked = new Set(
-    filteredEarnings.filter((e) => e.recordedAt).map((e) => getLocalDateString(e.recordedAt))
+    filteredEarnings.filter((e) => e.recordedAt).map((e) => formatToLocalDateString(e.recordedAt))
   ).size || 1;
 
   const targetFinancingTotal = monthlyFinancing;

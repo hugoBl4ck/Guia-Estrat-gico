@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Compass, Play, Square, Plus, DollarSign, MapPin, Clock, Calendar, ShieldCheck, Trash2, Pencil, X, ArrowUpDown, User, Gift, Trophy, Car } from 'lucide-react';
 import { Shift, Earning, PlatformType, Driver, EarningType } from '../types';
 import { calculateHoursBetween } from '../utils/financialCalculators';
+import { getTodayLocalDateString, formatToBrazilianDate } from '../utils/dateUtils';
 
 interface ShiftManagerProps {
   activeShift: Shift | null;
@@ -56,7 +57,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
   const [totalTrips, setTotalTrips] = useState('');
   const [rideDistanceKm, setRideDistanceKm] = useState('');
   const [notes, setNotes] = useState('');
-  const [recordedDate, setRecordedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [recordedDate, setRecordedDate] = useState<string>(getTodayLocalDateString());
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
   const [workedHours, setWorkedHours] = useState<string>('');
@@ -143,7 +144,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
     setStartTime('');
     setEndTime('');
     setWorkedHours('');
-    setRecordedDate(new Date().toISOString().slice(0, 10));
+    setRecordedDate(getTodayLocalDateString());
     setShowAddModal(false);
   };
 
@@ -162,7 +163,7 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
   // Agrupamento por Data (YYYY-MM-DD)
   const groupedByDate: { [dateStr: string]: Earning[] } = {};
   sortedEarnings.forEach((e) => {
-    const dateKey = new Date(e.recordedAt).toLocaleDateString('pt-BR');
+    const dateKey = formatToBrazilianDate(e.recordedAt);
     if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
     groupedByDate[dateKey].push(e);
   });

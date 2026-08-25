@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Pin, CheckCircle2, ChevronRight, Filter } from 'lucide-react';
+import { getTodayLocalDateString, formatToLocalDateString, isDateToday } from '../utils/dateUtils';
 
 export type ReportPeriodMode = 'MENSAL' | 'QUINZENAL' | 'SEMANAL' | 'HOJE' | 'PERIODO' | 'TODOS';
 
@@ -21,12 +22,13 @@ export const ReportPeriodFilter: React.FC<ReportPeriodFilterProps> = ({
   className = '',
 }) => {
   const [periodMode, setPeriodMode] = useState<ReportPeriodMode>('MENSAL');
-  const [customStart, setCustomStart] = useState<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
-  );
-  const [customEnd, setCustomEnd] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [customStart, setCustomStart] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  });
+  const [customEnd, setCustomEnd] = useState<string>(getTodayLocalDateString());
   const [fixedMode, setFixedMode] = useState<ReportPeriodMode | null>(null);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
 
@@ -243,6 +245,7 @@ export function filterItemsByPeriod<T extends { recordedAt?: string; expenseDate
   customEnd?: string
 ): T[] {
   const now = new Date();
+  const todayStr = getTodayLocalDateString();
 
   return items.filter((item) => {
     if (item.isDeleted) return false;
@@ -250,36 +253,32 @@ export function filterItemsByPeriod<T extends { recordedAt?: string; expenseDate
     const rawDate = item.expenseDate || item.recordedAt;
     if (!rawDate) return true;
 
-    const itemDate = new Date(rawDate);
+    const itemLocalDateStr = formatToLocalDateString(rawDate);
+    if (!itemLocalDateStr) return true;
 
     if (periodMode === 'HOJE') {
-      const todayStr = now.toISOString().slice(0, 10);
-      const itemStr = itemDate.toISOString().slice(0, 10);
-      return todayStr === itemStr;
+      return itemLocalDateStr === todayStr;
     }
 
     if (periodMode === 'SEMANAL') {
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
-      sevenDaysAgo.setHours(0, 0, 0, 0);
-      return itemDate >= sevenDaysAgo && itemDate <= now;
+      const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      const sevenDaysAgoStr = formatToLocalDateString(sevenDaysAgo);
+      return itemLocalDateStr >= sevenDaysAgoStr && itemLocalDateStr <= todayStr;
     }
 
     if (periodMode === 'QUINZENAL') {
-      const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 3600 * 1000);
-      fifteenDaysAgo.setHours(0, 0, 0, 0);
-      return itemDate >= fifteenDaysAgo && itemDate <= now;
+      const fifteenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 15);
+      const fifteenDaysAgoStr = formatToLocalDateString(fifteenDaysAgo);
+      return itemLocalDateStr >= fifteenDaysAgoStr && itemLocalDateStr <= todayStr;
     }
 
     if (periodMode === 'MENSAL') {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      return itemDate >= startOfMonth && itemDate <= endOfMonth;
+      const currentMonthPrefix = todayStr.slice(0, 7); // YYYY-MM
+      return itemLocalDateStr.startsWith(currentMonthPrefix);
     }
 
     if (periodMode === 'PERIODO' && customStart && customEnd) {
-      const startDate = new Date(`${customStart}T00:00:00`);
-      const endDate = new Date(`${customEnd}T23:59:59`);
-      return itemDate >= startDate && itemDate <= endDate;
+      return itemLocalDateStr >= customStart && itemLocalDateStr <= customEnd;
     }
 
     return true; // TODOS

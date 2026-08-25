@@ -6,6 +6,7 @@ import { calculateHoursBetween } from '../utils/financialCalculators';
 import { FullVehicleReportModal } from './FullVehicleReportModal';
 import { ShareReportModal } from './ShareReportModal';
 import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod } from './ReportPeriodFilter';
+import { formatToBrazilianDate } from '../utils/dateUtils';
 
 interface DailyReportViewProps {
   vehicle: Vehicle;
@@ -121,7 +122,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     activeEarnings.forEach((e) => {
       const tot = e.grossAmount + e.tipsAmount;
       const hCalc = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || "") : "");
-      csvContent += `${new Date(e.recordedAt).toLocaleDateString('pt-BR')};${e.platform};${e.driverName || 'Sem motorista'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
+      csvContent += `${formatToBrazilianDate(e.recordedAt)};${e.platform};${e.driverName || 'Sem motorista'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -384,7 +385,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                           R$ {total.toFixed(2)}
                         </p>
                         <p className="text-[9px] text-slate-400 font-mono">
-                          {new Date(e.recordedAt).toLocaleDateString('pt-BR')}
+                          {formatToBrazilianDate(e.recordedAt)}
                         </p>
                       </div>
 

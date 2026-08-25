@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, LineChart as LineIcon, PieChart as PieIcon, Car, TrendingUp, Sparkles, BarChart3 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Vehicle, Earning, Expense, ReserveBucket } from '../types';
+import { formatToBrazilianDate } from '../utils/dateUtils';
 
 interface AnalyticsChartsModalProps {
   isOpen: boolean;
@@ -29,7 +30,8 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
   
   (earnings || []).forEach((e) => {
     if (e.isDeleted) return;
-    const dStr = e.recordedAt ? new Date(e.recordedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : 'Hoje';
+    const fullDate = e.recordedAt ? formatToBrazilianDate(e.recordedAt) : 'Hoje';
+    const dStr = fullDate.length >= 5 ? fullDate.slice(0, 5) : fullDate; // DD/MM
     const cur = trendMap.get(dStr) || { date: dStr, receita: 0, despesas: 0, lucro: 0 };
     cur.receita += e.grossAmount + e.tipsAmount;
     cur.lucro = cur.receita - cur.despesas;
@@ -38,7 +40,8 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
 
   (expenses || []).forEach((exp) => {
     if (exp.isDeleted) return;
-    const dStr = exp.expenseDate ? new Date(exp.expenseDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : 'Hoje';
+    const fullDate = exp.expenseDate ? formatToBrazilianDate(exp.expenseDate) : 'Hoje';
+    const dStr = fullDate.length >= 5 ? fullDate.slice(0, 5) : fullDate; // DD/MM
     const cur = trendMap.get(dStr) || { date: dStr, receita: 0, despesas: 0, lucro: 0 };
     cur.despesas += exp.amount;
     cur.lucro = cur.receita - cur.despesas;

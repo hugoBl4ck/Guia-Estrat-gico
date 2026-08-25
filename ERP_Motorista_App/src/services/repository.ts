@@ -542,7 +542,7 @@ export class DataRepository implements IDataRepository {
             kwhAmount: d.kwh_carregados ? parseFloat(d.kwh_carregados) : undefined,
             tariffPerKwh: d.tarifa_kwh ? parseFloat(d.tarifa_kwh) : undefined,
             notes: notes || '',
-            expenseDate: d.expense_date,
+            expenseDate: d.expense_date || d.created_at || new Date().toISOString(),
             vehicleId: resolvedVehicleId,
             driverName: mappedDriver || undefined,
           };

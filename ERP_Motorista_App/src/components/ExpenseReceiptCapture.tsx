@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, FileCode, Upload, CheckCircle2, AlertTriangle, X, Image as ImageIcon, Sparkles, RefreshCw, User, Zap } from 'lucide-react';
 import { Expense, ExpenseCategory, Vehicle, Driver } from '../types';
 import { parseNfeXml } from '../services/nfeParser';
+import { getTodayLocalDateString } from '../utils/dateUtils';
 
 interface ExpenseReceiptCaptureProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>(vehicle.isElectric ? 'ELECTRIC_CHARGING' : 'FUEL');
   const [notes, setNotes] = useState('');
-  const [expenseDateInput, setExpenseDateInput] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [expenseDateInput, setExpenseDateInput] = useState<string>(getTodayLocalDateString());
   const [extractedSource, setExtractedSource] = useState<'ocr' | 'xml'>('ocr');
   const [nfeKey, setNfeKey] = useState<string | undefined>();
   const [cnpjIssuer, setCnpjIssuer] = useState<string | undefined>();
