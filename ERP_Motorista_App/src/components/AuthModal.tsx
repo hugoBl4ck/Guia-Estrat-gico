@@ -6,7 +6,7 @@ import { GiroCertoLogo } from './GiroCertoLogo';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAuthSuccess: (email: string) => void;
+  onAuthSuccess: (email: string, name?: string) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -15,6 +15,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onAuthSuccess,
 }) => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,12 +39,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
     setLoading(true);
 
+    const cleanName = fullName.trim() || undefined;
+
     try {
       if (!supabase) {
         // Fallback para login local offline
         setSuccessMsg(`Autenticado em modo local como ${email}`);
         setTimeout(() => {
-          onAuthSuccess(email);
+          onAuthSuccess(email, cleanName);
           onClose();
         }, 800);
         return;
@@ -53,12 +56,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const { data, error } = await supabase.auth.signUp({
           email,
           password: password || '12345678',
+          options: {
+            data: {
+              full_name: cleanName,
+              name: cleanName,
+            }
+          }
         });
         if (error) throw error;
 
         setSuccessMsg('Conta criada com sucesso! Você já está autenticado.');
         setTimeout(() => {
-          onAuthSuccess(email);
+          onAuthSuccess(email, cleanName);
           onClose();
         }, 1000);
       } else {
@@ -71,13 +80,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
             email,
             password: password || '12345678',
+            options: {
+              data: {
+                full_name: cleanName,
+                name: cleanName,
+              }
+            }
           });
           if (signUpErr) throw error;
         }
 
+        const userMeta = data?.user?.user_metadata;
+        const resolvedName = userMeta?.full_name || userMeta?.name || cleanName;
+
         setSuccessMsg(`Bem-vindo de volta, ${email}!`);
         setTimeout(() => {
-          onAuthSuccess(email);
+          onAuthSuccess(email, resolvedName);
           onClose();
         }, 800);
       }
@@ -86,7 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Caso de erro do Supabase, logar localmente com sucesso preservando a conta
       setSuccessMsg(`Autenticado como ${email}`);
       setTimeout(() => {
-        onAuthSuccess(email);
+        onAuthSuccess(email, cleanName);
         onClose();
       }, 800);
     } finally {
@@ -126,6 +144,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
+          {isSignUp && (
+            <div>
+              <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center gap-1">
+                Nome Completo (Como quer ser chamado)
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="ex: Hugo Vieira"
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-emerald-500"
+              />
+            </div>
+          )}
+
           <div>
             <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center gap-1">
               <Mail className="w-3.5 h-3.5 text-emerald-400" /> E-mail do Motorista

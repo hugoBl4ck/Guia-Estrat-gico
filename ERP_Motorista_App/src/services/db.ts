@@ -225,7 +225,7 @@ export const dbService = {
     }
   },
 
-  async loadDriversFromIndexedDB(userEmail?: string): Promise<Driver[]> {
+  async loadDriversFromIndexedDB(userEmail?: string, userName?: string): Promise<Driver[]> {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.DRIVERS;
       let stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, key);
@@ -233,15 +233,11 @@ export const dbService = {
         stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS);
       }
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
-        return getInitialDriversForUser(userEmail);
-      }
-      const hasAri = stored.some((d) => d.name.toLowerCase() === 'ari');
-      if (!hasAri) {
-        stored = [...stored, { id: 'drv-ari', name: 'Ari' }];
+        return getInitialDriversForUser(userEmail, userName);
       }
       return stored;
     } catch (error) {
-      return getInitialDriversForUser(userEmail);
+      return getInitialDriversForUser(userEmail, userName);
     }
   },
 
@@ -255,17 +251,17 @@ export const dbService = {
     }
   },
 
-  async loadCurrentDriverName(userEmail?: string): Promise<string> {
+  async loadCurrentDriverName(userEmail?: string, userName?: string): Promise<string> {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.CURRENT_DRIVER}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.CURRENT_DRIVER;
       let stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, key);
       if (!stored) {
         stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
       }
-      const defaultName = getInitialDriversForUser(userEmail)[0]?.name || 'Motorista';
+      const defaultName = getInitialDriversForUser(userEmail, userName)[0]?.name || 'Motorista';
       return stored || defaultName;
     } catch (error) {
-      return getInitialDriversForUser(userEmail)[0]?.name || 'Motorista';
+      return getInitialDriversForUser(userEmail, userName)[0]?.name || 'Motorista';
     }
   },
 

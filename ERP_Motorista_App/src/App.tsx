@@ -102,13 +102,16 @@ export function App() {
     const loadIndexedDBState = async () => {
       try {
         let storedEmail = await dbService.loadUserEmailFromIndexedDB();
+        let sessionUserName: string | undefined;
 
         // Se Supabase estiver configurado e houver uma sessão ativa de Auth, restaura a sessão
         if (isSupabaseConfigured() && supabase) {
           try {
             const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData?.session?.user?.email) {
-              storedEmail = sessionData.session.user.email;
+            const sessionUser = sessionData?.session?.user;
+            if (sessionUser?.email) {
+              storedEmail = sessionUser.email;
+              sessionUserName = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name;
               await dbService.saveUserEmail(storedEmail);
             }
           } catch (sessionErr) {
@@ -124,8 +127,8 @@ export function App() {
           repository.loadDataAsync(),
           repository.loadVehiclesAsync(),
           repository.loadCurrentVehicleAsync(),
-          dbService.loadDriversFromIndexedDB(storedEmail),
-          dbService.loadCurrentDriverName(storedEmail),
+          dbService.loadDriversFromIndexedDB(storedEmail, sessionUserName),
+          dbService.loadCurrentDriverName(storedEmail, sessionUserName),
           dbService.loadItemDriversFromIndexedDB(storedEmail),
           dbService.loadItemVehiclesFromIndexedDB(storedEmail)
         ]);
@@ -151,19 +154,19 @@ export function App() {
           setCurrentVehicle(dbCurrentVehicle);
         }
 
-        if (dbDrivers && dbDrivers.length > 0) {
-          const normalized = dbDrivers.map((d: Driver) => d.name === 'Hugovieira' ? { ...d, name: 'Hugo' } : d);
-          const hasAri = normalized.some((d: Driver) => d.name.toLowerCase() === 'ari');
-          if (!hasAri) {
-            normalized.push({ id: 'drv-ari', name: 'Ari' });
-          }
-          setDrivers(normalized);
-        } else if (storedEmail) {
-          setDrivers(getInitialDriversForUser(storedEmail));
-        }
+        const defaultPrimaryDriver = getInitialDriversForUser(storedEmail, sessionUserName)[0];
 
-        if (dbCurrentDriver) {
-          setCurrentDriverName(dbCurrentDriver === 'Hugovieira' ? 'Hugo' : dbCurrentDriver);
+        let resolvedDrivers: Driver[] = [];
+        if (dbDrivers && dbDrivers.length > 0) {
+          resolvedDrivers = dbDrivers.map((d: Driver) => {
+            const isGeneric = d.name.toLowerCase() === 'motorista principal' || d.name.toLowerCase() === 'motorista';
+            if (isGeneric && defaultPrimaryDriver && defaultPrimaryDriver.name !== 'Motorista') {
+              return { ...d, name: defaultPrimaryDriver.name };
+            }
+            return d;
+          });
+        } else {
+          resolvedDrivers = getInitialDriversForUser(storedEmail, sessionUserName);
         }
 
         // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
@@ -171,18 +174,41 @@ export function App() {
           try {
             const cloudData = await repository.fetchFromCloud(storedEmail);
             if (cloudData) {
+              // Descobre dinamicamente motoristas presentes nas transações da nuvem
+              const existingDriverNames = new Set(resolvedDrivers.map((d) => d.name.toLowerCase()));
+              const discoveredDrivers = new Set<string>();
+
+              (cloudData.earnings || []).forEach((e) => { if (e.driverName) discoveredDrivers.add(e.driverName); });
+              (cloudData.expenses || []).forEach((exp) => { if (exp.driverName) discoveredDrivers.add(exp.driverName); });
+              if (cloudData.activeShift?.driverName) discoveredDrivers.add(cloudData.activeShift.driverName);
+
+              discoveredDrivers.forEach((dName) => {
+                const clean = dName.trim();
+                if (clean && !existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+                  resolvedDrivers.push({
+                    id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+                    name: clean,
+                  });
+                  existingDriverNames.add(clean.toLowerCase());
+                }
+              });
+
               const mergedItemDrivers: Record<string, string> = { ...(localItemDrivers || {}) };
               const mergedItemVehicles: Record<string, string> = { ...(localItemVehicles || {}) };
 
               const expensesMap = new Map();
               (currentStateData.expenses || []).forEach((exp) => {
-                if (exp.driverName) mergedItemDrivers[exp.id] = exp.driverName;
+                const effectiveDriver = (exp.driverName?.toLowerCase() === 'motorista principal' ? defaultPrimaryDriver.name : exp.driverName);
+                if (effectiveDriver) mergedItemDrivers[exp.id] = effectiveDriver;
                 if (exp.vehicleId) mergedItemVehicles[exp.id] = exp.vehicleId;
-                expensesMap.set(exp.id, exp);
+                expensesMap.set(exp.id, { ...exp, driverName: effectiveDriver });
               });
               (cloudData.expenses || []).forEach((cloudExp) => {
                 const localExp = expensesMap.get(cloudExp.id);
-                const resolvedDriver = localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id];
+                let resolvedDriver = localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id];
+                if (resolvedDriver?.toLowerCase() === 'motorista principal') {
+                  resolvedDriver = defaultPrimaryDriver.name;
+                }
                 const resolvedVehicle = cloudExp.vehicleId || localExp?.vehicleId || mergedItemVehicles[cloudExp.id];
                 if (resolvedDriver) mergedItemDrivers[cloudExp.id] = resolvedDriver;
                 if (resolvedVehicle) mergedItemVehicles[cloudExp.id] = resolvedVehicle;
@@ -206,13 +232,17 @@ export function App() {
 
               const earningsMap = new Map();
               (currentStateData.earnings || []).forEach((e) => {
-                if (e.driverName) mergedItemDrivers[e.id] = e.driverName;
+                const effectiveDriver = (e.driverName?.toLowerCase() === 'motorista principal' ? defaultPrimaryDriver.name : e.driverName);
+                if (effectiveDriver) mergedItemDrivers[e.id] = effectiveDriver;
                 if (e.vehicleId) mergedItemVehicles[e.id] = e.vehicleId;
-                earningsMap.set(e.id, e);
+                earningsMap.set(e.id, { ...e, driverName: effectiveDriver });
               });
               (cloudData.earnings || []).forEach((cloudE) => {
                 const localE = earningsMap.get(cloudE.id);
-                const resolvedDriver = localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id];
+                let resolvedDriver = localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id];
+                if (resolvedDriver?.toLowerCase() === 'motorista principal') {
+                  resolvedDriver = defaultPrimaryDriver.name;
+                }
                 const resolvedVehicle = cloudE.vehicleId || localE?.vehicleId || mergedItemVehicles[cloudE.id];
                 if (resolvedDriver) mergedItemDrivers[cloudE.id] = resolvedDriver;
                 if (resolvedVehicle) mergedItemVehicles[cloudE.id] = resolvedVehicle;
@@ -242,9 +272,11 @@ export function App() {
 
               let mergedActiveShift = currentStateData.activeShift;
               if (cloudData.activeShift) {
+                let shiftDriver = currentStateData.activeShift?.driverName || cloudData.activeShift.driverName || defaultPrimaryDriver.name;
+                if (shiftDriver?.toLowerCase() === 'motorista principal') shiftDriver = defaultPrimaryDriver.name;
                 mergedActiveShift = {
                   ...cloudData.activeShift,
-                  driverName: currentStateData.activeShift?.driverName || cloudData.activeShift.driverName || 'Hugo',
+                  driverName: shiftDriver,
                   notes: cloudData.activeShift.notes !== undefined ? cloudData.activeShift.notes : currentStateData.activeShift?.notes,
                 };
               }
@@ -264,6 +296,14 @@ export function App() {
             console.warn('Falha na sincronização inicial Supabase:', cloudErr);
           }
         }
+
+        setDrivers(resolvedDrivers);
+
+        let resolvedCurrentDriver = dbCurrentDriver;
+        if (!resolvedCurrentDriver || resolvedCurrentDriver.toLowerCase() === 'motorista principal') {
+          resolvedCurrentDriver = resolvedDrivers[0]?.name || defaultPrimaryDriver.name;
+        }
+        setCurrentDriverName(resolvedCurrentDriver);
       } catch (err) {
         console.error('Erro na inicialização do aplicativo:', err);
       } finally {
@@ -304,6 +344,7 @@ export function App() {
 
   // Efeitos para persistência contínua de veículos
   useEffect(() => {
+    if (!isHydratedRef.current) return;
     const saveVehicles = async () => {
       try {
         await repository.saveVehicles(vehicles);
@@ -316,6 +357,7 @@ export function App() {
   }, [vehicles]);
 
   useEffect(() => {
+    if (!isHydratedRef.current) return;
     const saveCurrentVehicle = async () => {
       try {
         await repository.saveCurrentVehicle(currentVehicle);
@@ -328,6 +370,7 @@ export function App() {
   }, [currentVehicle]);
 
   useEffect(() => {
+    if (!isHydratedRef.current) return;
     const saveDrivers = async () => {
       try {
         await dbService.saveDrivers(drivers, userEmail);
@@ -410,9 +453,18 @@ export function App() {
   });
 
   // Manipuladores de Frota / Veículos
-  const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
+  const handleUpdateVehicle = async (updatedVehicle: Vehicle) => {
     setCurrentVehicle(updatedVehicle);
-    setVehicles((prev) => prev.map((v) => (v.id === updatedVehicle.id ? updatedVehicle : v)));
+    setVehicles((prev) => {
+      const nextList = prev.map((v) => (v.id === updatedVehicle.id ? updatedVehicle : v));
+      repository.saveVehicles(nextList).catch((err) => console.warn('Erro ao persistir lista de veículos:', err));
+      return nextList;
+    });
+    try {
+      await repository.saveCurrentVehicle(updatedVehicle);
+    } catch (e) {
+      console.warn('Erro ao persistir veículo atual:', e);
+    }
   };
 
   const handleAddVehicle = (newVehicle: Vehicle) => {
@@ -500,7 +552,7 @@ export function App() {
   };
 
   const handleStartShift = async (startKm: number, driverName?: string) => {
-    const selectedDriver = driverName || currentDriverName || 'Hugo';
+    const selectedDriver = driverName || currentDriverName || (drivers[0]?.name || 'Motorista');
     if (selectedDriver) {
       handleSelectDriver(selectedDriver);
     }
@@ -568,7 +620,7 @@ export function App() {
       .filter((e) => !e.isDeleted && e.recordedAt && getLocalDateString(e.recordedAt) === todayStr)
       .reduce((sum, e) => sum + e.totalTrips, 0);
 
-    const selectedDriver = earningData.driverName || currentDriverName || 'Hugo';
+    const selectedDriver = earningData.driverName || currentDriverName || (drivers[0]?.name || 'Motorista');
     const newEarning: Earning = {
       ...earningData,
       id: `earning-${Date.now()}`,
@@ -737,9 +789,12 @@ export function App() {
         <AuthModal
           isOpen={isAuthOpen}
           onClose={() => setIsAuthOpen(false)}
-          onAuthSuccess={async (email) => {
+          onAuthSuccess={async (email, name) => {
             await dbService.saveUserEmail(email);
             setUserEmail(email);
+            const initialDrvs = getInitialDriversForUser(email, name);
+            setDrivers(initialDrvs);
+            setCurrentDriverName(initialDrvs[0]?.name || 'Motorista');
             setIsAuthOpen(false);
           }}
         />
@@ -931,9 +986,12 @@ export function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onAuthSuccess={async (email) => {
+        onAuthSuccess={async (email, name) => {
           await dbService.saveUserEmail(email);
           setUserEmail(email);
+          const initialDrvs = getInitialDriversForUser(email, name);
+          setDrivers(initialDrvs);
+          setCurrentDriverName(initialDrvs[0]?.name || 'Motorista');
         }}
       />
 

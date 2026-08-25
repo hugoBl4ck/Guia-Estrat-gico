@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, X, Save, CheckCircle2, DollarSign, Zap, Shield, Car, Percent, Calculator, Sparkles, Wrench, Plus, Trash2 } from 'lucide-react';
 import { Vehicle, MaintenanceScheduleEntry } from '../types';
 
@@ -54,6 +54,30 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
       ? vehicle.maintenanceSchedule
       : vehicle.isElectric ? defaultScheduleEV : defaultScheduleCombustion
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setFinancingBank(vehicle.financingBank || (vehicle.monthlyFinancingCost ? 'Banco Santander' : 'Quitado'));
+      setFinancingCost(vehicle.monthlyFinancingCost?.toString() || '0');
+      setFinancingTotal(vehicle.financingTotalInstallments?.toString() || '48');
+      setFinancingPaid(vehicle.financingPaidInstallments?.toString() || '1');
+      setInsuranceCompany(vehicle.insuranceCompany || 'Aliro / HDI');
+      setInsuranceCost(vehicle.insuranceMonthlyCost !== undefined ? vehicle.insuranceMonthlyCost.toString() : '299.71');
+      setInsuranceTotal(vehicle.insuranceTotalInstallments?.toString() || '12');
+      setInsurancePaid(vehicle.insurancePaidInstallments?.toString() || '1');
+      setResidentialTariff(vehicle.residentialTariffPerKwh !== undefined ? vehicle.residentialTariffPerKwh.toString() : '1.21');
+      setFastChargerTariff(vehicle.fastChargerTariffPerKwh !== undefined ? vehicle.fastChargerTariffPerKwh.toString() : '1.69');
+      setUsageMode(vehicle.usageMode || 'DRIVER');
+      setWeeklyRentalIncome(vehicle.weeklyRentalIncome?.toString() || '550.00');
+      setTenantName(vehicle.tenantName || 'Motorista Locatário');
+      setOdometerKm(vehicle.currentOdometerKm !== undefined ? vehicle.currentOdometerKm.toString() : '0');
+      setSchedule(
+        vehicle.maintenanceSchedule && vehicle.maintenanceSchedule.length > 0
+          ? vehicle.maintenanceSchedule
+          : vehicle.isElectric ? defaultScheduleEV : defaultScheduleCombustion
+      );
+    }
+  }, [isOpen, vehicle]);
 
   const updateScheduleEntry = (index: number, field: keyof MaintenanceScheduleEntry, value: string | boolean | number) => {
     setSchedule((prev) => prev.map((entry, i) => i === index ? { ...entry, [field]: value } : entry));
