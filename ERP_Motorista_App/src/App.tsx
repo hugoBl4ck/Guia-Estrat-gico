@@ -154,20 +154,30 @@ export function App() {
           setCurrentVehicle(dbCurrentVehicle);
         }
 
-        const defaultPrimaryDriver = getInitialDriversForUser(storedEmail, sessionUserName)[0];
+        const initialDrivers = getInitialDriversForUser(storedEmail, sessionUserName);
+        const defaultPrimaryDriver = initialDrivers[0];
 
         let resolvedDrivers: Driver[] = [];
         if (dbDrivers && dbDrivers.length > 0) {
           resolvedDrivers = dbDrivers.map((d: Driver) => {
-            const isGeneric = d.name.toLowerCase() === 'motorista principal' || d.name.toLowerCase() === 'motorista';
-            if (isGeneric && defaultPrimaryDriver && defaultPrimaryDriver.name !== 'Motorista') {
+            const isGeneric = d.name.toLowerCase() === 'motorista principal' || d.name.toLowerCase() === 'motorista' || d.name.toLowerCase() === 'hugovieira';
+            if (isGeneric && defaultPrimaryDriver) {
               return { ...d, name: defaultPrimaryDriver.name };
             }
             return d;
           });
         } else {
-          resolvedDrivers = getInitialDriversForUser(storedEmail, sessionUserName);
+          resolvedDrivers = [...initialDrivers];
         }
+
+        // Garante que todos os motoristas de initialDrivers (ex: Ari) estejam presentes na lista
+        const driverNameSet = new Set(resolvedDrivers.map((d) => d.name.toLowerCase()));
+        initialDrivers.forEach((initD) => {
+          if (!driverNameSet.has(initD.name.toLowerCase())) {
+            resolvedDrivers.push(initD);
+            driverNameSet.add(initD.name.toLowerCase());
+          }
+        });
 
         // Se houver e-mail logado, sincronizar automaticamente com a Nuvem Supabase
         if (storedEmail) {
