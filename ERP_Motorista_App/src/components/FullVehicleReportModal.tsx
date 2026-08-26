@@ -772,6 +772,82 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
             </div>
           </div>
 
+          {/* QUADRO 5: LISTAGEM ANALÍTICA ITEM A ITEM DE TODAS AS CORRIDAS / TURNOS (CONFERÊNCIA) */}
+          <div className="border border-slate-800 bg-slate-950 p-4 rounded-2xl space-y-3 print-card">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <h3 className="font-extrabold text-xs text-emerald-400 uppercase tracking-wider font-mono">
+                5. CONFERÊNCIA ANALÍTICA DE CORRIDAS E FATURAMENTOS ({activeEarnings.length} LANÇAMENTOS)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-mono font-bold">
+                Total: R$ {totalRevenue.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto max-h-72 overflow-y-auto">
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-800 text-[10px]">
+                    <th className="py-1 px-2">Data</th>
+                    <th className="py-1 px-2">Motorista</th>
+                    <th className="py-1 px-2">Plataforma</th>
+                    <th className="py-1 px-2 text-center">Corridas</th>
+                    <th className="py-1 px-2 text-center">KM</th>
+                    <th className="py-1 px-2 text-right">Valor Bruto</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-850">
+                  {activeEarnings.map((e) => (
+                    <tr key={e.id} className="text-slate-300 hover:bg-slate-900/50">
+                      <td className="py-1 px-2 text-slate-400 text-[11px]">{e.recordedAt ? e.recordedAt.slice(0, 10).split('-').reverse().join('/') : '-'}</td>
+                      <td className="py-1 px-2 font-bold text-white text-[11px]">👤 {e.driverName || 'Hugo'}</td>
+                      <td className="py-1 px-2 text-emerald-400 font-semibold text-[11px]">{e.platform}</td>
+                      <td className="py-1 px-2 text-center text-[11px]">{e.totalTrips || 1}</td>
+                      <td className="py-1 px-2 text-center text-slate-400 text-[11px]">{(e.rideDistanceKm || 0).toFixed(1)} km</td>
+                      <td className="py-1 px-2 text-right font-bold text-white text-[11px]">R$ {(e.grossAmount + e.tipsAmount).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* QUADRO 6: LISTAGEM ANALÍTICA DE TODAS AS DESPESAS OPERACIONAIS (CONFERÊNCIA) */}
+          <div className="border border-slate-800 bg-slate-950 p-4 rounded-2xl space-y-3 print-card">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <h3 className="font-extrabold text-xs text-rose-400 uppercase tracking-wider font-mono">
+                6. CONFERÊNCIA ANALÍTICA DE DESPESAS E RECARGAS ({activeExpenses.length} LANÇAMENTOS)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-mono font-bold">
+                Total: -R$ {totalExpenses.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto max-h-72 overflow-y-auto">
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-800 text-[10px]">
+                    <th className="py-1 px-2">Data</th>
+                    <th className="py-1 px-2">Motorista</th>
+                    <th className="py-1 px-2">Categoria</th>
+                    <th className="py-1 px-2">Detalhes / Obs</th>
+                    <th className="py-1 px-2 text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-850">
+                  {activeExpenses.map((exp) => (
+                    <tr key={exp.id} className="text-slate-300 hover:bg-slate-900/50">
+                      <td className="py-1 px-2 text-slate-400 text-[11px]">{exp.expenseDate ? exp.expenseDate.slice(0, 10).split('-').reverse().join('/') : '-'}</td>
+                      <td className="py-1 px-2 font-bold text-white text-[11px]">👤 {exp.driverName || 'Hugo'}</td>
+                      <td className="py-1 px-2 text-amber-400 font-semibold text-[11px]">{exp.category}</td>
+                      <td className="py-1 px-2 text-slate-400 text-[11px] max-w-xs truncate">{exp.notes || (exp.kwhAmount ? `${exp.kwhAmount} kWh @ R$ ${exp.tariffPerKwh || '1,69'}/kWh` : '-')}</td>
+                      <td className="py-1 px-2 text-right font-bold text-rose-400 text-[11px]">-R$ {exp.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* RODAPÉ INSTITUCIONAL ERP */}
           <div className="border-t border-slate-800 pt-4 flex flex-wrap justify-between items-center text-[10px] text-slate-400 font-mono print-header">
             <div>

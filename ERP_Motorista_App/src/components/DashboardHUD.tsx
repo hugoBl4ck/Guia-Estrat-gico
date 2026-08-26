@@ -71,7 +71,13 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
 }) => {
   const [showAutoSyncModal, setShowAutoSyncModal] = useState(false);
   const [goalProfile, setGoalProfile] = useState<'LEVE' | 'MODERADA' | 'AGRESSIVA'>('MODERADA');
-  const [driverFilter, setDriverFilter] = useState<string>('ALL');
+  const [driverFilter, setDriverFilter] = useState<string>(currentDriverName || 'Hugo');
+
+  useEffect(() => {
+    if (currentDriverName) {
+      setDriverFilter(currentDriverName);
+    }
+  }, [currentDriverName]);
 
   const todayStr = getTodayLocalDateString();
 
