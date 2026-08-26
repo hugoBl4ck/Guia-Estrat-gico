@@ -157,34 +157,12 @@ export const INITIAL_SHIFT_BYD: Shift = {
   notes: 'BYD Dolphin Mini (Coelba R$ 1,21/kWh | Eletroposto R$ 1,69/kWh)'
 };
 
-export const INITIAL_EARNINGS_BYD: Earning[] = [
-  {
-    id: 'earning-byd-1',
-    shiftId: 'shift-byd-01',
-    platform: 'UBER',
-    grossAmount: 245.00,
-    tipsAmount: 15.00,
-    totalTrips: 11,
-    rideDistanceKm: 128.0,
-    driverName: 'Hugo',
-    vehicleId: 'veh-byd-dolphin-mini',
-    recordedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'earning-byd-2',
-    shiftId: 'shift-byd-01',
-    platform: 'NINETY_NINE',
-    grossAmount: 135.00,
-    tipsAmount: 5.00,
-    totalTrips: 6,
-    rideDistanceKm: 64.0,
-    driverName: 'Hugo',
-    vehicleId: 'veh-byd-dolphin-mini',
-    recordedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
-  }
-];
-
 import restoredExpensesRaw from '../data/restored_expenses.json';
+import restoredEarningsRaw from '../data/restored_earnings.json';
+
+export const INITIAL_EARNINGS_BYD: Earning[] = (restoredEarningsRaw as any[]).map((earn) => ({
+  ...earn,
+}));
 
 export const INITIAL_EXPENSES_BYD: Expense[] = (restoredExpensesRaw as any[]).map((exp) => ({
   ...exp,

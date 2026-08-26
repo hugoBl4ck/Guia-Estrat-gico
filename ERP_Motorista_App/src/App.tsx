@@ -133,6 +133,8 @@ export function App() {
           dbService.loadItemVehiclesFromIndexedDB(storedEmail)
         ]);
 
+        const isMockEarningsOnly = !dbData || !dbData.earnings || (dbData.earnings.length <= 3 && dbData.earnings.every((e: Earning) => e.id.startsWith('earning-byd-') || e.id.startsWith('earning-ford-') || e.id.startsWith('earning-today-') || e.id.startsWith('earning-yesterday-') || e.id.startsWith('earning-2days-')));
+
         let currentStateData = dbData || {
           earnings: INITIAL_EARNINGS_BYD,
           expenses: INITIAL_EXPENSES_BYD,
@@ -145,6 +147,7 @@ export function App() {
         if (dbData) {
           const mergedData = {
             ...dbData,
+            earnings: (isMockEarningsOnly || !dbData.earnings || dbData.earnings.length === 0) ? INITIAL_EARNINGS_BYD : dbData.earnings,
             expenses: (dbData.expenses && dbData.expenses.length > 0) ? dbData.expenses : INITIAL_EXPENSES_BYD,
           };
           currentStateData = mergedData;
@@ -161,56 +164,87 @@ export function App() {
           setCurrentVehicle(dbCurrentVehicle);
         }
 
-        const defaultPrimaryDriver = getInitialDriversForUser(storedEmail, sessionUserName)[0];
+        const normalizeDriver = (name?: string | null): string => {
+          if (!name) return 'Hugo';
+          const trimmed = name.trim();
+          const lower = trimmed.toLowerCase();
+          if (
+            lower === 'motorista principal' ||
+            lower === 'motorista locatário' ||
+            lower === 'motorista' ||
+            lower === 'hugo vieira' ||
+            lower.startsWith('hugo')
+          ) {
+            return 'Hugo';
+          }
+          if (lower === 'ari') {
+            return 'Ari';
+          }
+          return trimmed;
+        };
 
         let resolvedDrivers: Driver[] = [];
-        if (dbDrivers && dbDrivers.length > 0) {
-          resolvedDrivers = dbDrivers.map((d: Driver) => {
-            const isGeneric = d.name.toLowerCase() === 'motorista principal' || d.name.toLowerCase() === 'motorista';
-            if (isGeneric && defaultPrimaryDriver && defaultPrimaryDriver.name !== 'Motorista') {
-              return { ...d, name: defaultPrimaryDriver.name };
+        const seenNames = new Set<string>();
+        const sanitizedDrivers: Driver[] = [
+          { id: 'drv-hugo', name: 'Hugo', isDefault: true },
+          { id: 'drv-ari', name: 'Ari', isDefault: false }
+        ];
+        seenNames.add('hugo');
+        seenNames.add('ari');
+
+        if (dbDrivers && Array.isArray(dbDrivers)) {
+          dbDrivers.forEach((d: Driver) => {
+            const norm = normalizeDriver(d.name);
+            const lower = norm.toLowerCase();
+            if (!seenNames.has(lower)) {
+              seenNames.add(lower);
+              sanitizedDrivers.push({
+                id: d.id || `drv-${lower.replace(/[^a-z0-9]/g, '-')}`,
+                name: norm,
+                isDefault: false,
+              });
             }
-            return d;
           });
-        } else {
-          resolvedDrivers = getInitialDriversForUser(storedEmail, sessionUserName);
         }
 
-        const existingDriverNames = new Set(resolvedDrivers.map((d) => d.name.toLowerCase()));
+        resolvedDrivers = sanitizedDrivers;
 
-        // Descobre dinamicamente motoristas presentes nas transações locais do banco de dados
+        // Descobre dinamicamente novos motoristas reais presentes nas transações
         (currentStateData.earnings || []).forEach((e) => {
           if (e.driverName && e.driverName.trim()) {
-            const clean = e.driverName.trim();
-            if (!existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+            const norm = normalizeDriver(e.driverName);
+            const lower = norm.toLowerCase();
+            if (!seenNames.has(lower)) {
               resolvedDrivers.push({
-                id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-                name: clean,
+                id: `drv-${lower.replace(/[^a-z0-9]/g, '-')}`,
+                name: norm,
               });
-              existingDriverNames.add(clean.toLowerCase());
+              seenNames.add(lower);
             }
           }
         });
         (currentStateData.expenses || []).forEach((exp) => {
           if (exp.driverName && exp.driverName.trim()) {
-            const clean = exp.driverName.trim();
-            if (!existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+            const norm = normalizeDriver(exp.driverName);
+            const lower = norm.toLowerCase();
+            if (!seenNames.has(lower)) {
               resolvedDrivers.push({
-                id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-                name: clean,
+                id: `drv-${lower.replace(/[^a-z0-9]/g, '-')}`,
+                name: norm,
               });
-              existingDriverNames.add(clean.toLowerCase());
+              seenNames.add(lower);
             }
           }
         });
         if (currentStateData.activeShift?.driverName) {
-          const clean = currentStateData.activeShift.driverName.trim();
-          if (!existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+          const norm = normalizeDriver(currentStateData.activeShift.driverName);
+          const lower = norm.toLowerCase();
+          if (!seenNames.has(lower)) {
             resolvedDrivers.push({
-              id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-              name: clean,
+              id: `drv-${lower.replace(/[^a-z0-9]/g, '-')}`,
+              name: norm,
             });
-            existingDriverNames.add(clean.toLowerCase());
+            seenNames.add(lower);
           }
         }
 
@@ -222,18 +256,19 @@ export function App() {
               // Descobre dinamicamente motoristas presentes nas transações da nuvem
               const discoveredDrivers = new Set<string>();
 
-              (cloudData.earnings || []).forEach((e) => { if (e.driverName) discoveredDrivers.add(e.driverName); });
-              (cloudData.expenses || []).forEach((exp) => { if (exp.driverName) discoveredDrivers.add(exp.driverName); });
-              if (cloudData.activeShift?.driverName) discoveredDrivers.add(cloudData.activeShift.driverName);
+              (cloudData.earnings || []).forEach((e) => { if (e.driverName) discoveredDrivers.add(normalizeDriver(e.driverName)); });
+              (cloudData.expenses || []).forEach((exp) => { if (exp.driverName) discoveredDrivers.add(normalizeDriver(exp.driverName)); });
+              if (cloudData.activeShift?.driverName) discoveredDrivers.add(normalizeDriver(cloudData.activeShift.driverName));
 
               discoveredDrivers.forEach((dName) => {
-                const clean = dName.trim();
-                if (clean && !existingDriverNames.has(clean.toLowerCase()) && clean.toLowerCase() !== 'motorista principal') {
+                const norm = normalizeDriver(dName);
+                const lower = norm.toLowerCase();
+                if (!seenNames.has(lower)) {
                   resolvedDrivers.push({
-                    id: `drv-${clean.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-                    name: clean,
+                    id: `drv-${lower.replace(/[^a-z0-9]/g, '-')}`,
+                    name: norm,
                   });
-                  existingDriverNames.add(clean.toLowerCase());
+                  seenNames.add(lower);
                 }
               });
 
@@ -242,17 +277,14 @@ export function App() {
 
               const expensesMap = new Map();
               (currentStateData.expenses || []).forEach((exp) => {
-                const effectiveDriver = (exp.driverName?.toLowerCase() === 'motorista principal' ? defaultPrimaryDriver.name : exp.driverName);
+                const effectiveDriver = normalizeDriver(exp.driverName);
                 if (effectiveDriver) mergedItemDrivers[exp.id] = effectiveDriver;
                 if (exp.vehicleId) mergedItemVehicles[exp.id] = exp.vehicleId;
                 expensesMap.set(exp.id, { ...exp, driverName: effectiveDriver });
               });
               (cloudData.expenses || []).forEach((cloudExp) => {
                 const localExp = expensesMap.get(cloudExp.id);
-                let resolvedDriver = localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id];
-                if (resolvedDriver?.toLowerCase() === 'motorista principal') {
-                  resolvedDriver = defaultPrimaryDriver.name;
-                }
+                let resolvedDriver = normalizeDriver(localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id]);
                 const resolvedVehicle = cloudExp.vehicleId || localExp?.vehicleId || mergedItemVehicles[cloudExp.id];
                 if (resolvedDriver) mergedItemDrivers[cloudExp.id] = resolvedDriver;
                 if (resolvedVehicle) mergedItemVehicles[cloudExp.id] = resolvedVehicle;
@@ -276,17 +308,14 @@ export function App() {
 
               const earningsMap = new Map();
               (currentStateData.earnings || []).forEach((e) => {
-                const effectiveDriver = (e.driverName?.toLowerCase() === 'motorista principal' ? defaultPrimaryDriver.name : e.driverName);
+                const effectiveDriver = normalizeDriver(e.driverName);
                 if (effectiveDriver) mergedItemDrivers[e.id] = effectiveDriver;
                 if (e.vehicleId) mergedItemVehicles[e.id] = e.vehicleId;
                 earningsMap.set(e.id, { ...e, driverName: effectiveDriver });
               });
               (cloudData.earnings || []).forEach((cloudE) => {
                 const localE = earningsMap.get(cloudE.id);
-                let resolvedDriver = localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id];
-                if (resolvedDriver?.toLowerCase() === 'motorista principal') {
-                  resolvedDriver = defaultPrimaryDriver.name;
-                }
+                let resolvedDriver = normalizeDriver(localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id]);
                 const resolvedVehicle = cloudE.vehicleId || localE?.vehicleId || mergedItemVehicles[cloudE.id];
                 if (resolvedDriver) mergedItemDrivers[cloudE.id] = resolvedDriver;
                 if (resolvedVehicle) mergedItemVehicles[cloudE.id] = resolvedVehicle;
@@ -316,8 +345,7 @@ export function App() {
 
               let mergedActiveShift = currentStateData.activeShift;
               if (cloudData.activeShift) {
-                let shiftDriver = currentStateData.activeShift?.driverName || cloudData.activeShift.driverName || defaultPrimaryDriver.name;
-                if (shiftDriver?.toLowerCase() === 'motorista principal') shiftDriver = defaultPrimaryDriver.name;
+                const shiftDriver = normalizeDriver(currentStateData.activeShift?.driverName || cloudData.activeShift.driverName);
                 mergedActiveShift = {
                   ...cloudData.activeShift,
                   driverName: shiftDriver,
@@ -342,12 +370,14 @@ export function App() {
         }
 
         setDrivers(resolvedDrivers);
+        await dbService.saveDrivers(resolvedDrivers, storedEmail);
 
-        let resolvedCurrentDriver = dbCurrentDriver;
-        if (!resolvedCurrentDriver || resolvedCurrentDriver.toLowerCase() === 'motorista principal') {
-          resolvedCurrentDriver = resolvedDrivers[0]?.name || defaultPrimaryDriver.name;
+        let resolvedCurrentDriver = normalizeDriver(dbCurrentDriver);
+        if (!resolvedCurrentDriver || !seenNames.has(resolvedCurrentDriver.toLowerCase())) {
+          resolvedCurrentDriver = 'Hugo';
         }
         setCurrentDriverName(resolvedCurrentDriver);
+        await dbService.saveCurrentDriverName(resolvedCurrentDriver, storedEmail);
       } catch (err) {
         console.error('Erro na inicialização do aplicativo:', err);
       } finally {

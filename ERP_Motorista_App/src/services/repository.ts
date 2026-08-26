@@ -215,18 +215,12 @@ export class DataRepository implements IDataRepository {
           const payloadEarnings = activeGanhos.map((e) => ({
             id: e.id,
             platform: e.platform,
-            earning_type: e.earningType || 'RIDE',
             gross_amount: e.grossAmount,
             tips_amount: e.tipsAmount,
             total_trips: e.totalTrips,
             ride_distance_km: e.rideDistanceKm,
             recorded_at: e.recordedAt,
             notes: encodeDriverInNotes(e.notes, e.driverName),
-            driver_name: e.driverName || null,
-            start_time: e.startTime || null,
-            end_time: e.endTime || null,
-            worked_hours: e.workedHours || null,
-            vehicle_id: e.vehicleId || null,
             is_deleted: false,
             user_email: userEmail,
           }));
@@ -235,9 +229,9 @@ export class DataRepository implements IDataRepository {
             .from('ganhos')
             .upsert(payloadEarnings, { onConflict: 'id' });
 
-          // Se a tabela Supabase ainda não possuir colunas novas, fallback sem essas colunas
-          if (upsertError && (upsertError.message?.includes('driver_name') || upsertError.message?.includes('earning_type') || upsertError.message?.includes('notes') || upsertError.message?.includes('start_time') || upsertError.message?.includes('end_time') || upsertError.message?.includes('worked_hours') || upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
-            const fallbackPayload = payloadEarnings.map(({ driver_name, earning_type, notes, start_time, end_time, worked_hours, vehicle_id, ...rest }) => rest);
+          // Se a tabela Supabase ainda não possuir a coluna notes, fallback sem ela
+          if (upsertError && (upsertError.message?.includes('notes') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadEarnings.map(({ notes, ...rest }) => rest);
             const retry = await supabase
               .from('ganhos')
               .upsert(fallbackPayload, { onConflict: 'id' });
@@ -279,8 +273,7 @@ export class DataRepository implements IDataRepository {
             odometro_km: exp.odometerKm || null,
             observacao: encodeDriverInNotes(exp.notes, exp.driverName),
             expense_date: exp.expenseDate,
-            vehicle_id: exp.vehicleId || null,
-            driver_name: exp.driverName || null,
+            veiculo_id: exp.vehicleId || null,
             user_email: userEmail,
           }));
 
@@ -288,9 +281,9 @@ export class DataRepository implements IDataRepository {
             .from('despesas')
             .upsert(payloadExpenses, { onConflict: 'id' });
 
-          // Fallback caso a tabela despesas não tenha a coluna vehicle_id ou driver_name
-          if (upsertError && (upsertError.message?.includes('vehicle_id') || upsertError.message?.includes('driver_name') || upsertError.details?.includes('column'))) {
-            const fallbackPayload = payloadExpenses.map(({ vehicle_id, driver_name, ...rest }) => rest);
+          // Fallback caso a tabela despesas não tenha a coluna veiculo_id
+          if (upsertError && (upsertError.message?.includes('veiculo_id') || upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
+            const fallbackPayload = payloadExpenses.map(({ veiculo_id, ...rest }) => rest);
             const retry = await supabase
               .from('despesas')
               .upsert(fallbackPayload, { onConflict: 'id' });

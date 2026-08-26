@@ -32,12 +32,31 @@ async function runRestore() {
     driverName: d.observacao && d.observacao.includes('Ari') ? 'Ari' : 'Hugo',
   }));
 
-  const outPath = path.join(__dirname, '..', 'src', 'data', 'restored_expenses.json');
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, JSON.stringify(formattedExpenses, null, 2), 'utf8');
-  console.log(`Despesas salvas em: ${outPath}`);
+  // Salvar faturamentos/turnos formatados em um arquivo JSON estático para fallback no app
+  const formattedEarnings = ganhos.map((g) => ({
+    id: g.id,
+    shiftId: g.turno_id || undefined,
+    platform: g.platform || 'UBER',
+    earningType: g.earning_type || (g.notes && g.notes.toLowerCase().includes('indica') ? 'REFERRAL' : 'RIDE'),
+    grossAmount: parseFloat(g.gross_amount) || 0,
+    tipsAmount: parseFloat(g.tips_amount) || 0,
+    totalTrips: parseInt(g.total_trips, 10) || 0,
+    rideDistanceKm: parseFloat(g.ride_distance_km) || 0,
+    driverName: g.driver_name || (g.notes && g.notes.includes('Ari') ? 'Ari' : 'Hugo'),
+    vehicleId: g.veiculo_id || g.vehicle_id || 'veh-byd-dolphin-mini',
+    recordedAt: g.recorded_at,
+    notes: g.notes || '',
+    startTime: g.start_time || undefined,
+    endTime: g.end_time || undefined,
+    workedHours: g.worked_hours ? parseFloat(g.worked_hours) : undefined,
+    isDeleted: Boolean(g.is_deleted),
+  }));
 
-  return formattedExpenses;
+  const earningsOutPath = path.join(__dirname, '..', 'src', 'data', 'restored_earnings.json');
+  fs.writeFileSync(earningsOutPath, JSON.stringify(formattedEarnings, null, 2), 'utf8');
+  console.log(`Ganhos/Turnos salvos em: ${earningsOutPath}`);
+
+  return { formattedExpenses, formattedEarnings };
 }
 
 runRestore().catch(console.error);
