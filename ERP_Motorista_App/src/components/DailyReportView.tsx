@@ -7,6 +7,8 @@ import { FullVehicleReportModal } from './FullVehicleReportModal';
 import { ShareReportModal } from './ShareReportModal';
 import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod } from './ReportPeriodFilter';
 import { formatToBrazilianDate } from '../utils/dateUtils';
+import { exportWeeklyDriverShiftReport } from '../utils/excelExporter';
+import { aggregateExpensesByDriver } from '../utils/driverReports';
 
 interface DailyReportViewProps {
   vehicle: Vehicle;
@@ -80,6 +82,16 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     name,
     ...driverStatsMap[name],
   }));
+
+  // Gasto por motorista (destacando recarga eletrica/combustivel, conforme solicitado pelo motorista)
+  const driverExpensesList = aggregateExpensesByDriver(activeExpenses);
+  const driverExpensesMap = new Map(driverExpensesList.map((d) => [d.driverName, d]));
+  // Inclui motoristas que so lancaram despesas (ex: recarga) sem corrida registrada no periodo
+  driverExpensesList.forEach((d) => {
+    if (!driverStatsMap[d.driverName]) {
+      driverStatsList.push({ name: d.driverName, trips: 0, revenue: 0, km: 0, hours: 0 });
+    }
+  });
 
   // Exportar CSV com BOM \uFEFF para Excel no Windows
   const handleExportCSV = () => {
@@ -172,6 +184,14 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           >
             <Download className="w-4 h-4" />
             Excel
+          </button>
+          <button
+            onClick={() => exportWeeklyDriverShiftReport(vehicle, earnings, expenses, customStart || '2026-08-24', customEnd || '2026-08-30')}
+            className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
+            title="Baixar receitas separadas por motorista e turno da semana selecionada"
+          >
+            <Download className="w-4 h-4" />
+            Semana por motorista
           </button>
         </div>
       </div>
@@ -271,6 +291,8 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           {driverStatsList.map((d, idx) => {
             const colors = ['bg-emerald-400', 'bg-amber-400', 'bg-cyan-400', 'bg-indigo-400', 'bg-purple-400', 'bg-rose-400'];
             const colorClass = colors[idx % colors.length];
+            const driverExpenses = driverExpensesMap.get(d.name);
+            const chargingSpend = (driverExpenses?.chargingTotal || 0) + (driverExpenses?.fuelTotal || 0);
             return (
               <div key={d.name} className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
                 <div>
@@ -281,6 +303,11 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     {d.trips} corridas • {d.km.toFixed(1)} km rodados {d.hours > 0 ? `• ${d.hours.toFixed(1)}h (R$ ${(d.revenue / d.hours).toFixed(2)}/h)` : ''}
                   </p>
+                  {driverExpenses && driverExpenses.totalAmount > 0 && (
+                    <p className="text-[11px] text-rose-400 mt-0.5 font-semibold">
+                      ⚡ Recarga/Combustível: R$ {chargingSpend.toFixed(2)} • Despesas totais: R$ {driverExpenses.totalAmount.toFixed(2)}
+                    </p>
+                  )}
                 </div>
                 <span className="text-sm font-black text-emerald-400 font-mono">
                   R$ {d.revenue.toFixed(2)}

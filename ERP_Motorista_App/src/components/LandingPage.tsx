@@ -137,9 +137,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           {/* Coluna Esquerda: Título e Botões */}
           <div className="space-y-6">
             <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-white tracking-tighter uppercase leading-[0.9]">
-              CHEGOU O <br />
-              <span className="text-[#D4FF00] drop-shadow-[0_0_30px_rgba(212,255,0,0.2)]">MELHOR MOMENTO</span> <br />
-              DA SUA VIDA DE MOTORISTA.
+              SEU LUCRO REAL <br />
+              <span className="text-[#D4FF00] drop-shadow-[0_0_30px_rgba(212,255,0,0.2)]">SEM ACHISMO</span>. <br />
+              POR KM E POR HORA, TODO DIA.
             </h1>
 
             <p className="text-base sm:text-lg text-slate-400 font-medium max-w-xl leading-relaxed">

@@ -2,8 +2,12 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
-const url = 'https://xkcexrumssmyhxkfuyns.supabase.co';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY2V4cnVtc3NteWh4a2Z1eW5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjE3MzAsImV4cCI6MjEwMDc5NzczMH0.7nPAQCZzGxNWCbmzBad9wamN_8l-enjplKRFpj9mIbs';
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !key) {
+  throw new Error('Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY apenas no ambiente local de backup.');
+}
 
 const supabase = createClient(url, key);
 

@@ -6,6 +6,7 @@ import {
   getInitialDriversForUser
 } from '../utils/mockData';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
+import { canMigrateLegacyData, getUserStorageKey } from './localOwnership';
 
 const STORAGE_KEYS = {
   EARNINGS: 'girocerto_earnings_v1',
@@ -22,6 +23,31 @@ const STORAGE_KEYS = {
   DATA_CLEARED_FLAG: 'girocerto_is_cleared_v1',
   USER_EMAIL: 'erp_driver_user_email'
 };
+
+export type LocalUserContext = {
+  userId?: string;
+  email?: string;
+  legacyEmail?: string;
+};
+
+async function loadUserItem<T>(storeName: any, key: string, context?: LocalUserContext): Promise<T | null> {
+  if (!context?.userId) return migrateFromLocalStorage<T>(storeName, key);
+
+  const scopedKey = getUserStorageKey(key, context.userId);
+  const scopedValue = await migrateFromLocalStorage<T>(storeName, scopedKey);
+  if (scopedValue !== null) return scopedValue;
+
+  if (!canMigrateLegacyData(context.legacyEmail, context.email)) return null;
+  const legacyValue = await migrateFromLocalStorage<T>(storeName, key);
+  if (legacyValue !== null) {
+    await indexedDBService.setItem(storeName, scopedKey, legacyValue);
+  }
+  return legacyValue;
+}
+
+function userKey(key: string, context?: LocalUserContext): string {
+  return context?.userId ? getUserStorageKey(key, context.userId) : key;
+}
 
 /**
  * Migração única caso existam dados legados no LocalStorage
@@ -54,15 +80,15 @@ async function migrateFromLocalStorage<T>(storeName: any, key: string): Promise<
 
 export const dbService = {
   // Carregar todos os dados de forma assíncrona exclusivamente do IndexedDB
-  async loadInitialDataFromIndexedDB() {
+  async loadInitialDataFromIndexedDB(context?: LocalUserContext) {
     try {
       const [savedEarnings, savedExpenses, savedShift, savedBuckets, savedPersonalLogs, savedClearedFlag] = await Promise.all([
-        migrateFromLocalStorage<Earning[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EARNINGS),
-        migrateFromLocalStorage<Expense[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EXPENSES),
-        migrateFromLocalStorage<Shift | null>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.SHIFT),
-        migrateFromLocalStorage<ReserveBucket[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS),
-        migrateFromLocalStorage<PersonalUsageLog[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.PERSONAL_LOGS),
-        migrateFromLocalStorage<boolean>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DATA_CLEARED_FLAG)
+        loadUserItem<Earning[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EARNINGS, context),
+        loadUserItem<Expense[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EXPENSES, context),
+        loadUserItem<Shift | null>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.SHIFT, context),
+        loadUserItem<ReserveBucket[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS, context),
+        loadUserItem<PersonalUsageLog[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.PERSONAL_LOGS, context),
+        loadUserItem<boolean>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DATA_CLEARED_FLAG, context)
       ]);
 
       let parsedBuckets = savedBuckets ?? [];
@@ -79,7 +105,7 @@ export const dbService = {
             name: b.name,
           };
         });
-        await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS, parsedBuckets);
+        await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.BUCKETS, context), parsedBuckets);
       }
 
       const mockIdsToPurge = new Set([
@@ -116,9 +142,9 @@ export const dbService = {
     }
   },
 
-  async loadVehiclesFromIndexedDB(): Promise<Vehicle[]> {
+  async loadVehiclesFromIndexedDB(context?: LocalUserContext): Promise<Vehicle[]> {
     try {
-      const stored = await migrateFromLocalStorage<Vehicle[]>(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES);
+      const stored = await loadUserItem<Vehicle[]>(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES, context);
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
         return VEHICLES_LIST;
       }
@@ -131,9 +157,9 @@ export const dbService = {
     }
   },
 
-  async loadCurrentVehicleFromIndexedDB(): Promise<Vehicle> {
+  async loadCurrentVehicleFromIndexedDB(context?: LocalUserContext): Promise<Vehicle> {
     try {
-      const stored = await migrateFromLocalStorage<Vehicle>(IDB_STORE_NAMES.CURRENT_VEHICLE, STORAGE_KEYS.CURRENT_VEHICLE);
+      const stored = await loadUserItem<Vehicle>(IDB_STORE_NAMES.CURRENT_VEHICLE, STORAGE_KEYS.CURRENT_VEHICLE, context);
       return stored ?? VEHICLES_LIST[0];
     } catch (error) {
       return VEHICLES_LIST[0];
@@ -149,67 +175,75 @@ export const dbService = {
     }
   },
 
-  async saveVehicles(vehicles: Vehicle[]) {
+  async saveVehicles(vehicles: Vehicle[], context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES, vehicles);
+      await indexedDBService.setItem(IDB_STORE_NAMES.VEHICLES, userKey(STORAGE_KEYS.VEHICLES, context), vehicles);
     } catch (error) {
       console.error('Erro ao salvar veículos no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async saveCurrentVehicle(vehicle: Vehicle) {
+  async saveCurrentVehicle(vehicle: Vehicle, context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.CURRENT_VEHICLE, STORAGE_KEYS.CURRENT_VEHICLE, vehicle);
+      await indexedDBService.setItem(IDB_STORE_NAMES.CURRENT_VEHICLE, userKey(STORAGE_KEYS.CURRENT_VEHICLE, context), vehicle);
     } catch (error) {
       console.error('Erro ao salvar veículo ativo no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async saveEarnings(earnings: Earning[]) {
+  async saveEarnings(earnings: Earning[], context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EARNINGS, earnings);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.EARNINGS, context), earnings);
     } catch (error) {
       console.error('Erro ao salvar faturamentos no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async saveExpenses(expenses: Expense[]) {
+  async saveExpenses(expenses: Expense[], context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.EXPENSES, expenses);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.EXPENSES, context), expenses);
     } catch (error) {
       console.error('Erro ao salvar despesas no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async saveActiveShift(shift: Shift | null) {
+  async saveActiveShift(shift: Shift | null, context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.SHIFT, shift);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.SHIFT, context), shift);
     } catch (error) {
       console.error('Erro ao salvar turno no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async saveBuckets(buckets: ReserveBucket[]) {
+  async saveBuckets(buckets: ReserveBucket[], context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.BUCKETS, buckets);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.BUCKETS, context), buckets);
     } catch (error) {
       console.error('Erro ao salvar caixas no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async savePersonalLogs(logs: PersonalUsageLog[]) {
+  async savePersonalLogs(logs: PersonalUsageLog[], context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.PERSONAL_LOGS, logs);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.PERSONAL_LOGS, context), logs);
     } catch (error) {
       console.error('Erro ao salvar uso pessoal no IndexedDB:', error);
+      throw error;
     }
   },
 
-  async saveDataClearedFlag(isCleared: boolean) {
+  async saveDataClearedFlag(isCleared: boolean, context?: LocalUserContext) {
     try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DATA_CLEARED_FLAG, isCleared);
+      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, userKey(STORAGE_KEYS.DATA_CLEARED_FLAG, context), isCleared);
     } catch (error) {
       console.error('Erro ao salvar flag de limpeza no IndexedDB:', error);
+      throw error;
     }
   },
 
@@ -222,6 +256,7 @@ export const dbService = {
       }
     } catch (error) {
       console.error('Erro ao salvar email do usuário no IndexedDB:', error);
+      throw error;
     }
   },
 
@@ -230,7 +265,7 @@ export const dbService = {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.DRIVERS;
       let stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, key);
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
-        stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS);
+        if (!userEmail) stored = await migrateFromLocalStorage<Driver[]>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS);
       }
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
         return getInitialDriversForUser(userEmail, userName);
@@ -245,7 +280,6 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.DRIVERS;
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, drivers);
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.DRIVERS, drivers);
     } catch (error) {
       console.error('Erro ao salvar motoristas no IndexedDB:', error);
     }
@@ -255,7 +289,7 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.CURRENT_DRIVER}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.CURRENT_DRIVER;
       let stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, key);
-      if (!stored) {
+      if (!stored && !userEmail) {
         stored = await migrateFromLocalStorage<string>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER);
       }
       const defaultName = getInitialDriversForUser(userEmail, userName)[0]?.name || 'Motorista';
@@ -269,7 +303,6 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.CURRENT_DRIVER}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.CURRENT_DRIVER;
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, name);
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.CURRENT_DRIVER, name);
     } catch (error) {
       console.error('Erro ao salvar motorista ativo no IndexedDB:', error);
     }
@@ -279,7 +312,7 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_DRIVERS;
       let stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, key);
-      if (!stored) {
+      if (!stored && !userEmail) {
         stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_DRIVERS);
       }
       return stored || {};
@@ -292,7 +325,6 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_DRIVERS}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_DRIVERS;
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, mappings);
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_DRIVERS, mappings);
     } catch (error) {
       console.error('Erro ao salvar mapeamento de motoristas no IndexedDB:', error);
     }
@@ -302,7 +334,7 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_VEHICLES}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_VEHICLES;
       let stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, key);
-      if (!stored) {
+      if (!stored && !userEmail) {
         stored = await migrateFromLocalStorage<Record<string, string>>(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_VEHICLES);
       }
       return stored || {};
@@ -315,7 +347,6 @@ export const dbService = {
     try {
       const key = userEmail && userEmail.trim() !== '' ? `${STORAGE_KEYS.ITEM_VEHICLES}_${userEmail.trim().toLowerCase()}` : STORAGE_KEYS.ITEM_VEHICLES;
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, key, mappings);
-      await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, STORAGE_KEYS.ITEM_VEHICLES, mappings);
     } catch (error) {
       console.error('Erro ao salvar mapeamento de veículos no IndexedDB:', error);
     }

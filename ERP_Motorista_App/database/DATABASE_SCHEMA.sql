@@ -1,4 +1,12 @@
 -- =============================================================================
+-- AVISO: ESTE ARQUIVO E LEGADO E NAO REFLETE O BANCO REAL EM PRODUCAO.
+-- Copia identica de DATABASE_SCHEMA.sql (raiz). Nunca foi aplicado ao projeto
+-- Supabase atual. O schema real esta em:
+--   data/supabase_migration_v3.sql ate data/supabase_migration_v10_veiculos_full_sync.sql
+-- Nao execute este arquivo em producao. Mantido apenas como referencia historica.
+-- =============================================================================
+
+-- =============================================================================
 -- ERP DRIVER FINANCE - DATABASE SCHEMA (PostgreSQL 16)
 -- Conforme diretrizes da Skill postgres-patterns & precisão monetária DECIMAL(12,2)
 -- =============================================================================

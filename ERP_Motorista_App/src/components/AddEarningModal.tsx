@@ -183,11 +183,11 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-2 sm:p-4 cursor-pointer"
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl relative cursor-default text-left max-h-[92dvh] sm:max-h-[88dvh] flex flex-col"
+        className="mobile-modal-shell bg-pma-card border border-white/10 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl relative cursor-default text-left max-h-[92dvh] sm:max-h-[88dvh] flex flex-col"
       >
         {/* Cabeçalho Fixo */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
@@ -215,7 +215,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-3">
+          <div className="mobile-modal-body flex-1 overflow-y-auto overscroll-contain pr-1 py-3 space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs text-slate-400 font-semibold block">Tipo de Ganho / Receita</label>
               <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 rounded-2xl border border-slate-800">
@@ -495,7 +495,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
             )}
           </div>
 
-          <div className="flex gap-2 pt-3 border-t border-slate-800/80 shrink-0">
+          <div className="mobile-safe-bottom flex gap-2 pt-3 border-t border-slate-800/80 shrink-0">
             <button
               type="button"
               onClick={onClose}

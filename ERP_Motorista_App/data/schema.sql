@@ -1,4 +1,12 @@
 -- =============================================================================
+-- AVISO: VERSAO INICIAL SUPERADA (pre-RLS, sem auth.uid()).
+-- Substituida por data/supabase_migration_v3.sql em diante, que recria estas
+-- tabelas com user_id UUID + Row Level Security por auth.uid(). Nao reexecute
+-- este arquivo em um projeto que ja aplicou v3+; ele pode reintroduzir colunas
+-- sem isolamento por usuario. Mantido apenas como referencia historica.
+-- =============================================================================
+
+-- =============================================================================
 -- GIROCERTO ERP - ESTRUTURA DO BANCO DE DADOS RELACIONAL (POSTGRESQL / SUPABASE)
 -- ERP Financeiro e Fiscal para Motoristas de Aplicativo (EV & Combustão)
 -- =============================================================================

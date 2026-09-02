@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle, BarChart3 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, Car, Radio, Zap, ChevronDown, Smartphone, X, Trash2, RefreshCw, Square, Settings, User, LogOut, UploadCloud, AlertTriangle, BarChart3, Sun, Moon } from 'lucide-react';
 import { Vehicle, Shift, Driver } from '../types';
 import { VehicleSettingsModal } from './VehicleSettingsModal';
 import { GiroCertoLogo } from './GiroCertoLogo';
@@ -60,6 +60,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showMobileConnectModal, setShowMobileConnectModal] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return localStorage.getItem('girocerto-theme') === 'light' ? 'light' : 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('girocerto-theme', theme);
+  }, [theme]);
 
   const currentAppUrl = typeof window !== 'undefined' ? window.location.href : 'https://app-girocerto.vercel.app';
 
@@ -73,10 +82,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="bg-pma-dark border-b border-white/10 sticky top-0 z-40 px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg">
-      <div className="max-w-7xl mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 sm:gap-4">
         
         {/* Brand & Vehicle Selector Area */}
-        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        <div className="min-w-0 flex flex-1 flex-wrap items-center space-x-2 sm:space-x-3">
           <GiroCertoLogo variant="horizontal" size="sm" className="hidden sm:inline-flex" />
           <GiroCertoLogo variant="horizontal" size="sm" showBadge={false} className="sm:hidden" />
           
@@ -129,6 +138,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
+          <button
+            type="button"
+            onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500 transition-colors"
+            title={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+            aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
           {/* Botão de Análise Visual & Gráficos */}
           {onOpenAnalyticsCharts && (
             <button
@@ -175,7 +194,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Shift Live Indicator & Action Control Buttons */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2">
+        <div className="flex basis-full items-center justify-end space-x-1.5 sm:space-x-2 xl:basis-auto">
           {activeShift && activeShift.status === 'OPEN' ? (
             <div className="flex items-center space-x-1.5 bg-emerald-950/80 border border-emerald-800/80 px-2 py-1 rounded-xl">
               <Radio className="w-3.5 h-3.5 text-driver-profit animate-pulse shrink-0" />

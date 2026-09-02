@@ -28,11 +28,12 @@ import {
   UserCheck,
   User,
   Fuel,
-  Award
+  Award,
+  Receipt
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
-import { calculateCPK, calculateShiftSummary, calculateHoursBetween } from '../utils/financialCalculators';
+import { calculateCPK, calculateShiftSummary, calculateHoursBetween, calculateVehicleInstallmentsSummary } from '../utils/financialCalculators';
 import { runAnomalyAudit, AuditAnomaly } from '../services/anomalyDetector';
 import { getTodayLocalDateString, formatToLocalDateString, isDateToday } from '../utils/dateUtils';
 
@@ -84,7 +85,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   // Filtragem de Dados com base no Motorista Selecionado no HUD
   const isDriverMatch = (itemDriverName?: string | null) => {
     if (driverFilter === 'ALL') return true;
-    if (!itemDriverName) return false;
+    if (!itemDriverName || !itemDriverName.trim()) return true; // Lançamentos sem motorista explícito pertencem ao veículo/turno ativo
     return itemDriverName.trim().toLowerCase() === driverFilter.trim().toLowerCase();
   };
 
@@ -107,9 +108,16 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const todayKm = todayEarnings.reduce((sum, e) => sum + e.rideDistanceKm, 0);
   const todayTrips = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
 
-  const todayExpenses = filteredExpenses
-    .filter((e) => e.expenseDate && isDateToday(e.expenseDate))
+  // Despesas do dia (todas e operacionais)
+  const todayExpensesList = filteredExpenses.filter((e) => e.expenseDate && isDateToday(e.expenseDate));
+  const todayTotalExpenses = todayExpensesList.reduce((sum, exp) => sum + exp.amount, 0);
+  // Exclui parcelas contratuais mensais de seguro e financiamento do custo operacional variável do dia
+  const todayOperatingExpenses = todayExpensesList
+    .filter((e) => e.category !== 'FINANCING' && e.category !== 'INSURANCE')
     .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const todayExpenses = todayTotalExpenses;
+  const todayNetProfit = todayRevenue - todayTotalExpenses;
 
   // Estatísticas detalhadas por Motorista
   const driverStatsMap: {
@@ -155,16 +163,15 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     ].filter(Boolean))
   );
 
-  // Recálculo Dinâmico dos Custos Totais (Fixos + Despesas Lançadas)
+  // Recalculo Dinâmico dos Custos Totais (somente compromissos contratuais reais: financiamento + seguro)
+  // Custos variaveis (recarga, combustivel, manutencao etc.) ja entram separadamente via effectiveOperatingCost (gastos reais de hoje),
+  // por isso nao sao somados aqui de novo, o que antes inflava o alvo diario a cada despesa historica lancada.
   const monthlyFinancing = (vehicle.monthlyFinancingCost !== undefined && vehicle.monthlyFinancingCost !== null)
     ? vehicle.monthlyFinancingCost
     : (vehicle.isRented ? (vehicle.monthlyRentalCost || 0) : 0);
   const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
-  const monthlyAppFee = 80.00;
-  const monthlyCarWash = 120.00;
-  const monthlyLoggedExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
-  const totalMonthlyCommitments = monthlyFinancing + monthlyInsurance + monthlyAppFee + monthlyCarWash + monthlyLoggedExpenses;
+  const totalMonthlyCommitments = monthlyFinancing + monthlyInsurance;
   const dailyBaseCostTarget = Math.round((totalMonthlyCommitments / 30) * 100) / 100;
 
   // Cálculo de vencimento e saldo de financiamento
@@ -190,7 +197,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const remainingFinancingAmount = Math.max(0, targetFinancingTotal - currentFinancingBalance);
 
   // Definição dos 3 Perfis de Metas Diárias (Leve, Moderada, Agressiva)
-  const fixedCostsMonthly = monthlyFinancing + monthlyInsurance + monthlyAppFee + monthlyCarWash;
+  const fixedCostsMonthly = monthlyFinancing + monthlyInsurance;
   const dailyFixedCost = fixedCostsMonthly / 30;
 
   const effectiveDays = Math.max(1, daysRemainingToDue);
@@ -221,7 +228,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   }
 
   const effectiveRevenue = todayRevenue;
-  const effectiveOperatingCost = todayExpenses;
+  const effectiveOperatingCost = todayOperatingExpenses;
   const breakEvenTarget = dailyBaseCostTarget + effectiveOperatingCost;
   const breakEvenProgress = breakEvenTarget > 0 ? Math.min(100, Math.round((effectiveRevenue / breakEvenTarget) * 100)) : 0;
   const isBreakEvenPassed = breakEvenProgress >= 100 && breakEvenTarget > 0;
@@ -237,13 +244,14 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const monthlyTripsRemaining = Math.max(0, monthlyGoalTrips - monthlyTripsCompleted);
   const monthlyProgressPercent = Math.min(100, Math.round((monthlyTripsCompleted / monthlyGoalTrips) * 100));
 
-  // Dados de Parcelas
+  // Dados de Parcelas Dinâmicos calculados a partir das despesas reais registradas
+  const installmentsSummary = calculateVehicleInstallmentsSummary(vehicle, expenses);
   const finCost = monthlyFinancing;
-  const finTotal = vehicle.financingTotalInstallments || 48;
-  const finPaid = vehicle.financingPaidInstallments || 1;
+  const finTotal = installmentsSummary.finTotal;
+  const finPaid = installmentsSummary.finPaid;
   const insCost = vehicle.insuranceMonthlyCost || 299.71;
-  const insTotal = vehicle.insuranceTotalInstallments || 12;
-  const insPaid = vehicle.insurancePaidInstallments || 1;
+  const insTotal = installmentsSummary.insTotal;
+  const insPaid = installmentsSummary.insPaid;
 
   const requiredDailyNetProfitForFinancing = daysRemainingToDue > 0 ? (remainingFinancingAmount / daysRemainingToDue) : 0;
 
@@ -341,6 +349,33 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </div>
       </div>
 
+      {/* 1.5 AUDITOR DE ANOMALIAS: alertas reais de duplicidade e tarifas atípicas */}
+      {anomalies.length > 0 && (
+        <div className="bg-pma-card border border-amber-500/50 rounded-none p-4 shadow-xl space-y-2 text-left">
+          <div className="flex items-center gap-2 border-b border-amber-500/20 pb-2">
+            <ShieldAlert className="w-4 h-4 text-amber-400" />
+            <h2 className="font-mono font-black text-xs text-amber-400 uppercase tracking-wider">
+              Auditor de Anomalias ({anomalies.length})
+            </h2>
+          </div>
+          <div className="space-y-1.5">
+            {anomalies.map((a) => (
+              <div
+                key={a.id}
+                className={`p-2.5 text-[11px] font-mono border ${
+                  a.severity === 'WARNING'
+                    ? 'bg-amber-950/40 border-amber-800 text-amber-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-300'
+                }`}
+              >
+                <span className="font-bold block">{a.title}</span>
+                <span>{a.description}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 2. BOTÕES DE AÇÃO RÁPIDA NO TOPO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
@@ -384,11 +419,14 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           <div className="flex items-baseline space-x-1">
             <span className="text-2xl font-bold text-driver-profit">R$</span>
             <span className="text-5xl font-black text-white tracking-tight">
-              {summary.netRealProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {todayNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Faturamento Bruto (R$ {summary.grossRevenue.toFixed(2)}) menos despesas operacionais registradas (-R$ {summary.totalOperatingCost.toFixed(2)}).
+            Hoje: Faturamento Bruto (R$ {todayRevenue.toFixed(2)}) menos despesas do dia (-R$ {todayTotalExpenses.toFixed(2)}).
+            <span className="text-slate-500 block mt-0.5">
+              Acumulado do Período: R$ {summary.netRealProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de Lucro Líquido Real
+            </span>
           </p>
         </div>
 
@@ -403,11 +441,11 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </div>
 
           <div className="bg-slate-900/80 p-2.5 rounded-none border border-slate-800">
-            <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">Custos Operacionais</p>
+            <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">Custos Hoje</p>
             <p className="text-base font-black text-rose-400 font-mono mt-0.5">
-              -R$ {summary.totalOperatingCost.toFixed(2)}
+              -R$ {todayTotalExpenses.toFixed(2)}
             </p>
-            <span className="text-[9px] text-slate-500 font-mono block">Recarga / Combustível + Manut.</span>
+            <span className="text-[9px] text-slate-500 font-mono block">Acumulado: -R$ {summary.totalOperatingCost.toFixed(2)}</span>
           </div>
 
           <div className="bg-slate-900/80 p-2.5 rounded-none border border-slate-800">
@@ -680,9 +718,14 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-none space-y-1.5">
             <span className="text-slate-400 font-mono font-semibold block text-[10px] uppercase">{bankName}</span>
             <p className="font-mono font-black text-amber-400 text-sm">R$ {finCost.toFixed(2)}/mês</p>
-            <div className="flex justify-between text-[11px] font-mono text-slate-300 pt-1 border-t border-slate-800">
+            <div className="flex justify-between items-center text-[11px] font-mono text-slate-300 pt-1 border-t border-slate-800">
               <span>Parcela / Contrato:</span>
-              <span className="font-bold text-white">{finPaid} / {finTotal}x</span>
+              <div className="text-right">
+                <span className="font-bold text-white">{finPaid} / {finTotal}x</span>
+                {installmentsSummary.hasAmortizedLastInstallment && (
+                  <span className="block text-[10px] text-emerald-400 font-bold">1ª + 48ª amortizada</span>
+                )}
+              </div>
             </div>
             <p className="text-[10px] text-emerald-400 pt-0.5 font-mono">
               💡 <b>Dica de Amortização</b>: Pague a 1ª + última parcela com desconto significativo de juros.
@@ -693,7 +736,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-none space-y-1.5">
             <span className="text-slate-400 font-mono font-semibold block text-[10px] uppercase">{vehicle.insuranceCompany || 'Seguro Auto'}</span>
             <p className="font-mono font-black text-blue-400 text-sm">R$ {insCost.toFixed(2)}/mês</p>
-            <div className="flex justify-between text-[11px] font-mono text-slate-300 pt-1 border-t border-slate-800">
+            <div className="flex justify-between items-center text-[11px] font-mono text-slate-300 pt-1 border-t border-slate-800">
               <span>Plano / Parcelas:</span>
               <span className="font-bold text-white">{insPaid} / {insTotal}x</span>
             </div>
@@ -922,77 +965,122 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </button>
       </div>
 
-      {/* 11. GANHOS POR PLATAFORMA (HOJE / CONTEXTO) */}
-      <div className="bg-pma-card border border-white/10 rounded-none p-5 shadow-xl text-left">
-        <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2.5">
-          <h2 className="font-mono font-black text-sm text-white flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-pma-acid" />
-            Ganhos por Plataforma ({driverFilter !== 'ALL' ? driverFilter : 'Hoje'})
-          </h2>
-          <button onClick={() => onNavigateToTab('shifts')} className="text-xs text-pma-acid font-mono font-bold hover:underline flex items-center">
-            Ver todas <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
-          </button>
-        </div>
+      {/* 11. LANÇAMENTOS DO DIA (CORRIDAS & DESPESAS REGISTRADAS HOJE) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Ganhos por Plataforma */}
+        <div className="bg-pma-card border border-white/10 rounded-none p-5 shadow-xl text-left">
+          <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2.5">
+            <h2 className="font-mono font-black text-sm text-white flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-pma-acid" />
+              Ganhos de Hoje ({driverFilter !== 'ALL' ? driverFilter : 'Geral'})
+            </h2>
+            <button onClick={() => onNavigateToTab('shifts')} className="text-xs text-pma-acid font-mono font-bold hover:underline flex items-center">
+              Ver todas <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+          </div>
 
-        <div className="space-y-2.5">
-          {todayEarnings.length === 0 ? (
-            <p className="text-xs font-mono text-slate-400 p-4 text-center bg-slate-900/60 border border-slate-800">
-              Nenhum lançamento hoje ainda para este filtro. Clique em "➕ Lançar Corridas do Dia".
-            </p>
-          ) : (
-            todayEarnings.map((e) => (
-              <div key={e.id} className="flex items-center justify-between p-3 bg-slate-900/90 border border-slate-800 font-mono">
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`w-9 h-9 flex items-center justify-center font-black text-xs ${
-                      e.platform === 'UBER'
-                        ? 'bg-white text-black'
-                        : e.platform === 'NINETY_NINE'
-                        ? 'bg-orange-500 text-white'
-                        : e.platform === 'PRIVATE'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-emerald-600 text-white'
-                    }`}
-                  >
-                    {e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : e.platform === 'PRIVATE' ? 'PART' : 'IND'}
+          <div className="space-y-2.5">
+            {todayEarnings.length === 0 ? (
+              <p className="text-xs font-mono text-slate-400 p-4 text-center bg-slate-900/60 border border-slate-800">
+                Nenhum ganho hoje ainda para este filtro. Clique em "➕ Lançar Corridas do Dia".
+              </p>
+            ) : (
+              todayEarnings.map((e) => (
+                <div key={e.id} className="flex items-center justify-between p-3 bg-slate-900/90 border border-slate-800 font-mono">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-9 h-9 flex items-center justify-center font-black text-xs ${
+                        e.platform === 'UBER'
+                          ? 'bg-white text-black'
+                          : e.platform === 'NINETY_NINE'
+                          ? 'bg-orange-500 text-white'
+                          : e.platform === 'PRIVATE'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-emerald-600 text-white'
+                      }`}
+                    >
+                      {e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : e.platform === 'PRIVATE' ? 'PART' : 'IND'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-white">
+                          {e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}
+                        </p>
+                        {e.driverName && (
+                          <span className="text-[9px] bg-white/10 text-slate-300 px-1.5 py-0.2 border border-white/10">
+                            {e.driverName}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400">{e.totalTrips} corridas ({e.rideDistanceKm} km)</p>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-white">
-                        {e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <p className="text-sm font-black text-white">
+                        R$ {(e.grossAmount + e.tipsAmount).toFixed(2)}
                       </p>
-                      {e.driverName && (
-                        <span className="text-[9px] bg-white/10 text-slate-300 px-1.5 py-0.2 border border-white/10">
-                          {e.driverName}
-                        </span>
+                      {e.tipsAmount > 0 && (
+                        <p className="text-[10px] text-emerald-400">+R$ {e.tipsAmount.toFixed(2)} gorjeta</p>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400">{e.totalTrips} corridas ({e.rideDistanceKm} km)</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="text-right">
-                    <p className="text-sm font-black text-white">
-                      R$ {(e.grossAmount + e.tipsAmount).toFixed(2)}
-                    </p>
-                    {e.tipsAmount > 0 && (
-                      <p className="text-[10px] text-emerald-400">+R$ {e.tipsAmount.toFixed(2)} gorjeta</p>
+                    {onEditEarningClick && (
+                      <button
+                        onClick={() => onEditEarningClick(e)}
+                        className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 font-extrabold text-[11px] px-2.5 py-1 flex items-center gap-1 transition-all active:scale-95 shadow-sm ml-1"
+                        title="Editar este lançamento"
+                      >
+                        <Pencil className="w-3 h-3 stroke-[2.5]" />
+                        Editar
+                      </button>
                     )}
                   </div>
-                  {onEditEarningClick && (
-                    <button
-                      onClick={() => onEditEarningClick(e)}
-                      className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 font-extrabold text-[11px] px-2.5 py-1 flex items-center gap-1 transition-all active:scale-95 shadow-sm ml-1"
-                      title="Editar este lançamento"
-                    >
-                      <Pencil className="w-3 h-3 stroke-[2.5]" />
-                      Editar
-                    </button>
-                  )}
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Despesas Registradas Hoje */}
+        <div className="bg-pma-card border border-white/10 rounded-none p-5 shadow-xl text-left">
+          <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2.5">
+            <h2 className="font-mono font-black text-sm text-white flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-rose-400" />
+              Despesas Registradas Hoje ({todayExpensesList.length})
+            </h2>
+            <button onClick={() => onNavigateToTab('expenses')} className="text-xs text-rose-400 font-mono font-bold hover:underline flex items-center">
+              Ver todas <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+          </div>
+
+          <div className="space-y-2.5">
+            {todayExpensesList.length === 0 ? (
+              <p className="text-xs font-mono text-slate-400 p-4 text-center bg-slate-900/60 border border-slate-800">
+                Nenhuma despesa lançada hoje ainda.
+              </p>
+            ) : (
+              todayExpensesList.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between p-3 bg-slate-900/90 border border-slate-800 font-mono">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-9 h-9 flex items-center justify-center font-black text-xs bg-rose-950/80 border border-rose-800 text-rose-400">
+                      {exp.category === 'FINANCING' ? 'FIN' : exp.category === 'INSURANCE' ? 'SEG' : exp.category === 'ELECTRIC_CHARGING' ? 'EV' : 'EXP'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {exp.category === 'FINANCING' ? 'Financiamento' : exp.category === 'INSURANCE' ? 'Seguro Auto' : exp.category === 'ELECTRIC_CHARGING' ? 'Recarga Elétrica' : exp.category}
+                      </p>
+                      <p className="text-[11px] text-slate-400">{exp.notes || 'Sem observações'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-rose-400">
+                      -R$ {exp.amount.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 

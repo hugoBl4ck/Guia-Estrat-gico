@@ -24,7 +24,7 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
   monthlyRentalCost: 0,
   monthlyFinancingCost: 3086.58, // Banco Santander 48x R$ 3.086,58 (Contrato Santander PAGO)
   financingTotalInstallments: 48,
-  financingPaidInstallments: 1,
+  financingPaidInstallments: 2, // 2 parcelas pagas (1ª e 48ª última amortizada)
   financingBank: 'Banco Santander',
   financingDueDay: 16, // Vencimento 16/08/2026
   fipeValue: 119990, // Valor da Nota Fiscal DANFE nº 000.005.582 (16/07/2026)

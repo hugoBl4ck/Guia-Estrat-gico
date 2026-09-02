@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, LineChart as LineIcon, PieChart as PieIcon, Car, TrendingUp, Sparkles, BarChart3 } from 'lucide-react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { X, LineChart as LineIcon, PieChart as PieIcon, Car, TrendingUp, Sparkles, BarChart3, User } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { Vehicle, Earning, Expense, ReserveBucket } from '../types';
 import { formatToBrazilianDate } from '../utils/dateUtils';
+import { aggregateExpensesByDriver, getDailyEarningsSeries } from '../utils/driverReports';
 
 interface AnalyticsChartsModalProps {
   isOpen: boolean;
@@ -21,7 +22,8 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
   expenses,
   buckets = [],
 }) => {
-  const [activeTab, setActiveTab] = useState<'trend' | 'buckets' | 'expenses' | 'fipe'>('trend');
+  const [activeTab, setActiveTab] = useState<'trend' | 'buckets' | 'expenses' | 'fipe' | 'driver'>('trend');
+  const [selectedDriver, setSelectedDriver] = useState<string>('ALL');
 
   if (!isOpen) return null;
 
@@ -79,6 +81,19 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
       valorVeiculo: Math.max(residual, fipe - loss),
     };
   });
+
+  // 5. Relatorio por Motorista: grafico de ganhos diarios (estilo Uber) + gasto com recarga/combustivel
+  const distinctDriverNames = Array.from(
+    new Set((earnings || []).map((e) => e.driverName).filter((n): n is string => Boolean(n)))
+  );
+  const dailyEarningsBarData = getDailyEarningsSeries(earnings, selectedDriver === 'ALL' ? undefined : selectedDriver);
+  const driverExpenseSummary = aggregateExpensesByDriver(expenses).find(
+    (d) => selectedDriver !== 'ALL' && d.driverName === selectedDriver
+  );
+  const driverEarnings = (earnings || []).filter((e) => !e.isDeleted && (selectedDriver === 'ALL' || e.driverName === selectedDriver));
+  const driverTotalRevenue = driverEarnings.reduce((s, e) => s + e.grossAmount + e.tipsAmount, 0);
+  const driverTotalTrips = driverEarnings.reduce((s, e) => s + (e.totalTrips || 1), 0);
+  const driverTotalKm = driverEarnings.reduce((s, e) => s + (e.rideDistanceKm || 0), 0);
 
   return (
     <div
@@ -155,6 +170,18 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
           >
             <Car className="w-4 h-4" />
             🚗 Depreciação FIPE
+          </button>
+
+          <button
+            onClick={() => setActiveTab('driver')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+              activeTab === 'driver'
+                ? 'bg-cyan-400 text-black shadow-lg font-extrabold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            👤 Por Motorista
           </button>
         </div>
 
@@ -376,6 +403,89 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: RELATÓRIO POR MOTORISTA (BARCHART ESTILO UBER + GASTO COM RECARGA) */}
+          {activeTab === 'driver' && (
+            <div className="space-y-4">
+              {distinctDriverNames.length > 1 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setSelectedDriver('ALL')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      selectedDriver === 'ALL' ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {distinctDriverNames.map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => setSelectedDriver(name)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        selectedDriver === name ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Faturamento</p>
+                  <p className="text-sm font-black text-emerald-400 font-mono">R$ {driverTotalRevenue.toFixed(2)}</p>
+                </div>
+                <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Corridas</p>
+                  <p className="text-sm font-black text-white font-mono">{driverTotalTrips}</p>
+                </div>
+                <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">KM Rodados</p>
+                  <p className="text-sm font-black text-white font-mono">{driverTotalKm.toFixed(1)}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Ganhos Diários (Bruto + Gorjetas)</span>
+                <span className="text-[10px] text-cyan-400 font-mono">Padrão usado por Uber/99 no painel do motorista</span>
+              </div>
+
+              {dailyEarningsBarData.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs">Sem faturamento lançado no período selecionado.</div>
+              ) : (
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyEarningsBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                      <XAxis dataKey="date" stroke="#64748B" fontSize={11} />
+                      <YAxis stroke="#64748B" fontSize={11} tickFormatter={(val) => `R$${val}`} />
+                      <RechartsTooltip
+                        formatter={(val: number) => [`R$ ${val.toFixed(2)}`, 'Ganhos do dia']}
+                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                      />
+                      <Bar dataKey="total" fill="#22D3EE" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {selectedDriver !== 'ALL' && (
+                <div className="p-3.5 bg-slate-900 border border-rose-800/60 rounded-2xl space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Gasto de {selectedDriver} com Recarga/Combustível</span>
+                  <p className="text-lg font-black text-rose-400 font-mono">
+                    R$ {((driverExpenseSummary?.chargingTotal || 0) + (driverExpenseSummary?.fuelTotal || 0)).toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Manutenção: R$ {(driverExpenseSummary?.maintenanceTotal || 0).toFixed(2)} • Seguro: R$ {(driverExpenseSummary?.insuranceTotal || 0).toFixed(2)} • Outros: R$ {(driverExpenseSummary?.otherTotal || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-white font-bold pt-1 border-t border-slate-800 mt-1">
+                    Despesas totais: R$ {(driverExpenseSummary?.totalAmount || 0).toFixed(2)}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

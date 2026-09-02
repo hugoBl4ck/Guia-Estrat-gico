@@ -1,21 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
-
-const url = 'https://xkcexrumssmyhxkfuyns.supabase.co';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY2V4cnVtc3NteWh4a2Z1eW5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjE3MzAsImV4cCI6MjEwMDc5NzczMH0.7nPAQCZzGxNWCbmzBad9wamN_8l-enjplKRFpj9mIbs';
-const supabase = createClient(url, key);
-
 async function runRestore() {
-  const filePath = path.join(__dirname, '..', 'backup_supabase_2026-08-21_15-46-59.json');
+  const filePath = process.env.BACKUP_FILE || path.join(__dirname, '..', 'backup_supabase_2026-08-21_15-46-59.json');
   let rawContent = fs.readFileSync(filePath, 'utf8');
   if (rawContent.charCodeAt(0) === 0xFEFF) {
     rawContent = rawContent.slice(1);
   }
 
   const backup = JSON.parse(rawContent);
-  const despesas = backup.despesas?.value || [];
-  const ganhos = backup.ganhos?.value || [];
+  const despesas = backup.tables?.despesas?.rows || backup.despesas?.value || [];
+  const ganhos = backup.tables?.ganhos?.rows || backup.ganhos?.value || [];
 
   console.log(`Encontradas ${despesas.length} despesas e ${ganhos.length} ganhos no backup.`);
 
@@ -53,8 +47,11 @@ async function runRestore() {
   }));
 
   const earningsOutPath = path.join(__dirname, '..', 'src', 'data', 'restored_earnings.json');
+  const expensesOutPath = path.join(__dirname, '..', 'src', 'data', 'restored_expenses.json');
   fs.writeFileSync(earningsOutPath, JSON.stringify(formattedEarnings, null, 2), 'utf8');
+  fs.writeFileSync(expensesOutPath, JSON.stringify(formattedExpenses, null, 2), 'utf8');
   console.log(`Ganhos/Turnos salvos em: ${earningsOutPath}`);
+  console.log(`Despesas salvas em: ${expensesOutPath}`);
 
   return { formattedExpenses, formattedEarnings };
 }

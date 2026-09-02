@@ -27,6 +27,10 @@ import { repository } from './services/repository';
 import { dbService } from './services/db';
 import { financeReducer } from './services/financeReducer';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
+import { consumeSupabaseAuthHash } from './services/authRedirect';
+import { getUpdatedOdometerKm, mergeVehicleOdometer } from './services/vehicleOdometer';
+import { mergeCloudVehicles } from './services/vehicleCloudSync';
+import { calculateVehicleInstallmentsSummary } from './utils/financialCalculators';
 
 import {
   VEHICLES_LIST,
@@ -46,6 +50,7 @@ import { Vehicle, Earning, Expense, Shift, PersonalUsageLog, Driver } from './ty
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('hud');
   const [userEmail, setUserEmail] = useState<string>('');
+    const [userId, setUserId] = useState<string>('');
   const [isLoadingUserEmail, setIsLoadingUserEmail] = useState<boolean>(true);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVehicleOnboardingOpen, setIsVehicleOnboardingOpen] = useState(false);
@@ -80,14 +85,23 @@ export function App() {
   const [lastSyncStatus, setLastSyncStatus] = useState('Nenhuma sincronização ainda');
   const [syncErrorMessage, setSyncErrorMessage] = useState<string>('');
 
+  useEffect(() => {
+    const restoreAuthFromHash = async () => {
+      if (!isSupabaseConfigured() || !supabase) return;
+      await consumeSupabaseAuthHash(supabase);
+    };
+
+    restoreAuthFromHash();
+  }, []);
+
   // Efeito para salvar o estado financeiro no IndexedDB APENAS APÓS A HIDRATAÇÃO INICIAL
   useEffect(() => {
-    if (!isHydratedRef.current) return;
+    if (!isHydratedRef.current || !userEmail || !userId) return;
     const saveState = async () => {
       try {
-        await repository.saveData(state, userEmail);
+        await repository.saveData(state, userEmail, userId ? { userId, email: userEmail } : undefined);
         if (userEmail) {
-          const count = await repository.getPendingSyncCount(userEmail);
+          const count = await repository.getPendingSyncCount(userEmail, userId);
           setPendingSyncCount(count);
         }
       } catch (e) {
@@ -96,13 +110,16 @@ export function App() {
     };
 
     saveState();
-  }, [state, userEmail]);
+  }, [state, userEmail, userId]);
 
   useEffect(() => {
     const loadIndexedDBState = async () => {
       try {
-        let storedEmail = await dbService.loadUserEmailFromIndexedDB();
+        const legacyEmail = await dbService.loadUserEmailFromIndexedDB();
+        let storedEmail = legacyEmail;
         let sessionUserName: string | undefined;
+        let sessionUserId: string | undefined;
+        let hasAuthenticatedSession = !isSupabaseConfigured();
 
         // Se Supabase estiver configurado e houver uma sessão ativa de Auth, restaura a sessão
         if (isSupabaseConfigured() && supabase) {
@@ -110,23 +127,34 @@ export function App() {
             const { data: sessionData } = await supabase.auth.getSession();
             const sessionUser = sessionData?.session?.user;
             if (sessionUser?.email) {
+                            sessionUserId = sessionUser.id;
+              hasAuthenticatedSession = true;
               storedEmail = sessionUser.email;
               sessionUserName = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name;
               await dbService.saveUserEmail(storedEmail);
+            } else {
+              storedEmail = '';
+              await dbService.saveUserEmail('');
             }
           } catch (sessionErr) {
             console.warn('Erro ao checar sessão do Supabase:', sessionErr);
+            storedEmail = '';
+            await dbService.saveUserEmail('');
           }
         }
 
-        if (storedEmail) {
+        if (storedEmail && hasAuthenticatedSession) {
           setUserEmail(storedEmail);
+          setUserId(sessionUserId || '');
         }
 
+        const localContext = sessionUserId
+          ? { userId: sessionUserId, email: storedEmail, legacyEmail }
+          : (isSupabaseConfigured() ? { userId: 'unauthenticated', email: '', legacyEmail: '' } : undefined);
         const [dbData, dbVehicles, dbCurrentVehicle, dbDrivers, dbCurrentDriver, localItemDrivers, localItemVehicles] = await Promise.all([
-          repository.loadDataAsync(),
-          repository.loadVehiclesAsync(),
-          repository.loadCurrentVehicleAsync(),
+          repository.loadDataAsync(localContext),
+          repository.loadVehiclesAsync(localContext),
+          repository.loadCurrentVehicleAsync(localContext),
           dbService.loadDriversFromIndexedDB(storedEmail, sessionUserName),
           dbService.loadCurrentDriverName(storedEmail, sessionUserName),
           dbService.loadItemDriversFromIndexedDB(storedEmail),
@@ -147,8 +175,8 @@ export function App() {
         if (dbData) {
           const mergedData = {
             ...dbData,
-            earnings: (isMockEarningsOnly || !dbData.earnings || dbData.earnings.length === 0) ? INITIAL_EARNINGS_BYD : dbData.earnings,
-            expenses: (dbData.expenses && dbData.expenses.length > 0) ? dbData.expenses : INITIAL_EXPENSES_BYD,
+            earnings: storedEmail && !isMockEarningsOnly ? (dbData.earnings || []) : (isMockEarningsOnly ? INITIAL_EARNINGS_BYD : (dbData.earnings || [])),
+            expenses: storedEmail && !isMockEarningsOnly ? (dbData.expenses || []) : (dbData.expenses || INITIAL_EXPENSES_BYD),
           };
           currentStateData = mergedData;
           dispatch({ type: 'SET_ALL', payload: mergedData });
@@ -156,12 +184,30 @@ export function App() {
           dispatch({ type: 'SET_ALL', payload: currentStateData });
         }
 
-        if (dbVehicles && dbVehicles.length > 0) {
-          setVehicles(dbVehicles);
+        let resolvedVehicles = dbVehicles && dbVehicles.length > 0 ? dbVehicles : VEHICLES_LIST;
+        let resolvedCurrentVehicle = dbCurrentVehicle;
+
+        if (isSupabaseConfigured() && sessionUserId) {
+          try {
+            const cloudVehicles = await repository.fetchVehiclesFromCloud(sessionUserId);
+            if (cloudVehicles.length > 0) {
+              resolvedVehicles = mergeCloudVehicles(resolvedVehicles, cloudVehicles);
+              const matchedCurrent = resolvedVehicles.find((v) => v.id === resolvedCurrentVehicle?.id);
+              resolvedCurrentVehicle = matchedCurrent || resolvedVehicles[0];
+              await repository.saveVehicles(resolvedVehicles, localContext);
+              if (resolvedCurrentVehicle) {
+                await repository.saveCurrentVehicle(resolvedCurrentVehicle, localContext);
+              }
+            }
+          } catch (vehSyncErr) {
+            console.warn('Falha ao sincronizar frota com o Supabase:', vehSyncErr);
+          }
         }
 
-        if (dbCurrentVehicle) {
-          setCurrentVehicle(dbCurrentVehicle);
+        setVehicles(resolvedVehicles);
+
+        if (resolvedCurrentVehicle) {
+          setCurrentVehicle(resolvedCurrentVehicle);
         }
 
         const normalizeDriver = (name?: string | null): string => {
@@ -277,14 +323,15 @@ export function App() {
 
               const expensesMap = new Map();
               (currentStateData.expenses || []).forEach((exp) => {
-                const effectiveDriver = normalizeDriver(exp.driverName);
+                const effectiveDriver = exp.driverName ? normalizeDriver(exp.driverName) : undefined;
                 if (effectiveDriver) mergedItemDrivers[exp.id] = effectiveDriver;
                 if (exp.vehicleId) mergedItemVehicles[exp.id] = exp.vehicleId;
                 expensesMap.set(exp.id, { ...exp, driverName: effectiveDriver });
               });
               (cloudData.expenses || []).forEach((cloudExp) => {
                 const localExp = expensesMap.get(cloudExp.id);
-                let resolvedDriver = normalizeDriver(localExp?.driverName || cloudExp.driverName || mergedItemDrivers[cloudExp.id]);
+                let resolvedDriver = cloudExp.driverName || localExp?.driverName || mergedItemDrivers[cloudExp.id];
+                resolvedDriver = resolvedDriver ? normalizeDriver(resolvedDriver) : undefined;
                 const resolvedVehicle = cloudExp.vehicleId || localExp?.vehicleId || mergedItemVehicles[cloudExp.id];
                 if (resolvedDriver) mergedItemDrivers[cloudExp.id] = resolvedDriver;
                 if (resolvedVehicle) mergedItemVehicles[cloudExp.id] = resolvedVehicle;
@@ -308,14 +355,15 @@ export function App() {
 
               const earningsMap = new Map();
               (currentStateData.earnings || []).forEach((e) => {
-                const effectiveDriver = normalizeDriver(e.driverName);
+                const effectiveDriver = e.driverName ? normalizeDriver(e.driverName) : undefined;
                 if (effectiveDriver) mergedItemDrivers[e.id] = effectiveDriver;
                 if (e.vehicleId) mergedItemVehicles[e.id] = e.vehicleId;
                 earningsMap.set(e.id, { ...e, driverName: effectiveDriver });
               });
               (cloudData.earnings || []).forEach((cloudE) => {
                 const localE = earningsMap.get(cloudE.id);
-                let resolvedDriver = normalizeDriver(localE?.driverName || cloudE.driverName || mergedItemDrivers[cloudE.id]);
+                let resolvedDriver = cloudE.driverName || localE?.driverName || mergedItemDrivers[cloudE.id];
+                resolvedDriver = resolvedDriver ? normalizeDriver(resolvedDriver) : undefined;
                 const resolvedVehicle = cloudE.vehicleId || localE?.vehicleId || mergedItemVehicles[cloudE.id];
                 if (resolvedDriver) mergedItemDrivers[cloudE.id] = resolvedDriver;
                 if (resolvedVehicle) mergedItemVehicles[cloudE.id] = resolvedVehicle;
@@ -345,7 +393,9 @@ export function App() {
 
               let mergedActiveShift = currentStateData.activeShift;
               if (cloudData.activeShift) {
-                const shiftDriver = normalizeDriver(currentStateData.activeShift?.driverName || cloudData.activeShift.driverName);
+                const shiftDriver = currentStateData.activeShift?.driverName || cloudData.activeShift.driverName
+                  ? normalizeDriver(currentStateData.activeShift?.driverName || cloudData.activeShift.driverName)
+                  : undefined;
                 mergedActiveShift = {
                   ...cloudData.activeShift,
                   driverName: shiftDriver,
@@ -362,7 +412,7 @@ export function App() {
               };
 
               dispatch({ type: 'SET_ALL', payload: mergedState });
-              await repository.saveData(mergedState, storedEmail);
+              await repository.saveData(mergedState, storedEmail, localContext);
             }
           } catch (cloudErr) {
             console.warn('Falha na sincronização inicial Supabase:', cloudErr);
@@ -406,45 +456,45 @@ export function App() {
     const flushQueue = async () => {
       if (!userEmail || !isOnline) return;
       setIsSyncing(true);
-      const result = await repository.flushSyncQueue(userEmail);
+      const result = await repository.flushSyncQueue(userEmail, userId);
       setIsSyncing(false);
-      const count = await repository.getPendingSyncCount(userEmail);
+      const count = await repository.getPendingSyncCount(userEmail, userId);
       setPendingSyncCount(count);
       setLastSyncStatus(result.success ? 'Sincronizado com sucesso' : (result.errorMessage || 'Aguardando próximo envio'));
       setSyncErrorMessage(result.success ? '' : result.errorMessage || 'Falha na sincronização');
     };
     flushQueue();
-  }, [userEmail, isOnline]);
+  }, [userEmail, userId, isOnline]);
 
   // Efeitos para persistência contínua de veículos
   useEffect(() => {
-    if (!isHydratedRef.current) return;
+    if (!isHydratedRef.current || !userEmail || !userId) return;
     const saveVehicles = async () => {
       try {
-        await repository.saveVehicles(vehicles);
+        await repository.saveVehicles(vehicles, { userId, email: userEmail });
       } catch (e) {
         console.warn('Erro ao salvar veículos:', e);
       }
     };
 
     saveVehicles();
-  }, [vehicles]);
+  }, [vehicles, userEmail, userId]);
 
   useEffect(() => {
-    if (!isHydratedRef.current) return;
+    if (!isHydratedRef.current || !userEmail || !userId) return;
     const saveCurrentVehicle = async () => {
       try {
-        await repository.saveCurrentVehicle(currentVehicle);
+        await repository.saveCurrentVehicle(currentVehicle, { userId, email: userEmail });
       } catch (e) {
         console.warn('Erro ao salvar veículo ativo:', e);
       }
     };
 
     saveCurrentVehicle();
-  }, [currentVehicle]);
+  }, [currentVehicle, userEmail, userId]);
 
   useEffect(() => {
-    if (!isHydratedRef.current) return;
+    if (!isHydratedRef.current || !userEmail || !userId) return;
     const saveDrivers = async () => {
       try {
         await dbService.saveDrivers(drivers, userEmail);
@@ -458,7 +508,7 @@ export function App() {
 
   // Salvar motorista ativo no IndexedDB sempre que for alterado
   useEffect(() => {
-    if (!currentDriverName || !isHydratedRef.current) return;
+    if (!currentDriverName || !isHydratedRef.current || !userEmail || !userId) return;
     const saveCurrentDriver = async () => {
       try {
         await dbService.saveCurrentDriverName(currentDriverName, userEmail);
@@ -524,14 +574,19 @@ export function App() {
 
   // Manipuladores de Frota / Veículos
   const handleUpdateVehicle = async (updatedVehicle: Vehicle) => {
-    setCurrentVehicle(updatedVehicle);
+    const candidateVehicle = mergeVehicleOdometer(
+      updatedVehicle,
+      updatedVehicle.currentOdometerKm
+    );
+
+    setCurrentVehicle(candidateVehicle);
     setVehicles((prev) => {
-      const nextList = prev.map((v) => (v.id === updatedVehicle.id ? updatedVehicle : v));
-      repository.saveVehicles(nextList).catch((err) => console.warn('Erro ao persistir lista de veículos:', err));
+      const nextList = prev.map((v) => (v.id === candidateVehicle.id ? candidateVehicle : v));
+      repository.saveVehicles(nextList, { userId, email: userEmail }).catch((err) => console.warn('Erro ao persistir lista de veículos:', err));
       return nextList;
     });
     try {
-      await repository.saveCurrentVehicle(updatedVehicle);
+      await repository.saveCurrentVehicle(candidateVehicle, { userId, email: userEmail });
     } catch (e) {
       console.warn('Erro ao persistir veículo atual:', e);
     }
@@ -589,10 +644,36 @@ export function App() {
 
   const handleDeleteExpense = (id: string) => {
     dispatch({ type: 'SOFT_DELETE_EXPENSE', payload: id });
+    const remainingExpenses = (state.expenses || []).filter((e) => e.id !== id);
+    const summary = calculateVehicleInstallmentsSummary(currentVehicle, remainingExpenses);
+    if (
+      summary.finPaid !== currentVehicle.financingPaidInstallments ||
+      summary.insPaid !== currentVehicle.insurancePaidInstallments
+    ) {
+      handleUpdateVehicle({
+        ...currentVehicle,
+        financingPaidInstallments: summary.finPaid,
+        insurancePaidInstallments: summary.insPaid,
+      });
+    }
   };
 
   const handleEditExpense = async (updatedExpense: Expense) => {
     dispatch({ type: 'EDIT_EXPENSE', payload: updatedExpense });
+    if (updatedExpense.category === 'FINANCING' || updatedExpense.category === 'INSURANCE') {
+      const allExpenses = (state.expenses || []).map((exp) => (exp.id === updatedExpense.id ? updatedExpense : exp));
+      const summary = calculateVehicleInstallmentsSummary(currentVehicle, allExpenses);
+      if (
+        summary.finPaid !== currentVehicle.financingPaidInstallments ||
+        summary.insPaid !== currentVehicle.insurancePaidInstallments
+      ) {
+        handleUpdateVehicle({
+          ...currentVehicle,
+          financingPaidInstallments: summary.finPaid,
+          insurancePaidInstallments: summary.insPaid,
+        });
+      }
+    }
     if (updatedExpense.driverName) {
       try {
         const stored = await dbService.loadItemDriversFromIndexedDB(userEmail);
@@ -637,7 +718,7 @@ export function App() {
     dispatch({ type: 'START_SHIFT', payload: newShift });
 
     if (startKm > 0) {
-      const updatedVeh = { ...currentVehicle, currentOdometerKm: startKm };
+      const updatedVeh = mergeVehicleOdometer(currentVehicle, startKm);
       await handleUpdateVehicle(updatedVeh);
     }
   };
@@ -652,7 +733,7 @@ export function App() {
       };
       dispatch({ type: 'START_SHIFT', payload: closedShift });
 
-      const updatedVeh = { ...currentVehicle, currentOdometerKm: endKm };
+      const updatedVeh = mergeVehicleOdometer(currentVehicle, endKm);
       await handleUpdateVehicle(updatedVeh);
     }
     dispatch({ type: 'END_SHIFT' });
@@ -797,6 +878,21 @@ export function App() {
         console.warn('Erro ao salvar mapeamento de veículo da nova despesa:', e);
       }
     }
+
+    if (newExpense.category === 'FINANCING' || newExpense.category === 'INSURANCE') {
+      const allExpenses = [...(state.expenses || []), newExpense];
+      const summary = calculateVehicleInstallmentsSummary(currentVehicle, allExpenses);
+      if (
+        summary.finPaid !== currentVehicle.financingPaidInstallments ||
+        summary.insPaid !== currentVehicle.insurancePaidInstallments
+      ) {
+        handleUpdateVehicle({
+          ...currentVehicle,
+          financingPaidInstallments: summary.finPaid,
+          insurancePaidInstallments: summary.insPaid,
+        });
+      }
+    }
   };
 
   const handleAddPersonalLog = (logData: Omit<PersonalUsageLog, 'id' | 'date'>) => {
@@ -827,9 +923,9 @@ export function App() {
   const handleSyncCloud = async () => {
     if (!userEmail) return;
     setIsSyncing(true);
-    const result = await repository.flushSyncQueue(userEmail);
+    const result = await repository.flushSyncQueue(userEmail, userId);
     setIsSyncing(false);
-    const count = await repository.getPendingSyncCount(userEmail);
+    const count = await repository.getPendingSyncCount(userEmail, userId);
     setPendingSyncCount(count);
     setLastSyncStatus(result.success ? 'Sincronização manual concluída' : (result.errorMessage || 'Falha na sincronização manual'));
     setSyncErrorMessage(result.success ? '' : (result.errorMessage || 'Falha na sincronização manual'));
@@ -841,9 +937,77 @@ export function App() {
     }
   };
 
+  const handleAuthSuccess = async (email: string, name?: string, authenticatedUserId?: string) => {
+    if (!authenticatedUserId) return;
+    await dbService.saveUserEmail(email);
+    const localContext = { userId: authenticatedUserId, email, legacyEmail: '' };
+    const [localData, localVehicles, localCurrentVehicle] = await Promise.all([
+      repository.loadDataAsync(localContext),
+      repository.loadVehiclesAsync(localContext),
+      repository.loadCurrentVehicleAsync(localContext),
+    ]);
+    const cloudData = await repository.fetchFromCloud(email);
+
+    let resolvedVehicles = localVehicles.length > 0 ? localVehicles : [VEHICLES_LIST[0]];
+    let resolvedCurrentVehicle = localCurrentVehicle;
+    try {
+      const cloudVehicles = await repository.fetchVehiclesFromCloud(authenticatedUserId);
+      if (cloudVehicles.length > 0) {
+        resolvedVehicles = mergeCloudVehicles(resolvedVehicles, cloudVehicles);
+        resolvedCurrentVehicle = resolvedVehicles.find((v) => v.id === resolvedCurrentVehicle?.id) || resolvedVehicles[0];
+        await repository.saveVehicles(resolvedVehicles, localContext);
+        if (resolvedCurrentVehicle) {
+          await repository.saveCurrentVehicle(resolvedCurrentVehicle, localContext);
+        }
+      }
+    } catch (vehSyncErr) {
+      console.warn('Falha ao sincronizar frota apos login:', vehSyncErr);
+    }
+
+    const nextState = {
+      earnings: cloudData?.earnings || localData?.earnings || [],
+      expenses: cloudData?.expenses || localData?.expenses || [],
+      activeShift: cloudData?.activeShift || localData?.activeShift || null,
+      buckets: cloudData?.buckets || localData?.buckets || INITIAL_BUCKETS.map((bucket) => ({ ...bucket, currentBalance: 0 })),
+      personalLogs: localData?.personalLogs || [],
+      isDataCleared: localData?.isDataCleared ?? true,
+    };
+    setUserEmail(email);
+    setUserId(authenticatedUserId);
+    dispatch({ type: 'SET_ALL', payload: nextState });
+    setVehicles(resolvedVehicles);
+    setCurrentVehicle(resolvedCurrentVehicle);
+    const initialDrvs = getInitialDriversForUser(email, name);
+    setDrivers(initialDrvs);
+    setCurrentDriverName(initialDrvs[0]?.name || 'Motorista');
+    setIsAuthOpen(false);
+  };
+
   const handleLogout = async () => {
-    await dbService.saveUserEmail('');
-    setUserEmail('');
+    try {
+      if (isSupabaseConfigured() && supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (error) {
+      console.warn('Falha ao encerrar a sessão no Supabase.');
+    } finally {
+      await dbService.saveUserEmail('');
+      setUserEmail('');
+      setUserId('');
+      dispatch({
+        type: 'SET_ALL',
+        payload: {
+          earnings: [],
+          expenses: [],
+          activeShift: null,
+          buckets: INITIAL_BUCKETS.map((bucket) => ({ ...bucket, currentBalance: 0 })),
+          personalLogs: [],
+          isDataCleared: true,
+        },
+      });
+      setVehicles([VEHICLES_LIST[0]]);
+      setCurrentVehicle(VEHICLES_LIST[0]);
+    }
   };
 
   if (isLoadingUserEmail) {
@@ -859,14 +1023,7 @@ export function App() {
         <AuthModal
           isOpen={isAuthOpen}
           onClose={() => setIsAuthOpen(false)}
-          onAuthSuccess={async (email, name) => {
-            await dbService.saveUserEmail(email);
-            setUserEmail(email);
-            const initialDrvs = getInitialDriversForUser(email, name);
-            setDrivers(initialDrvs);
-            setCurrentDriverName(initialDrvs[0]?.name || 'Motorista');
-            setIsAuthOpen(false);
-          }}
+          onAuthSuccess={handleAuthSuccess}
         />
       </>
     );
@@ -961,7 +1118,7 @@ export function App() {
           <ExpensesTracker
             vehicle={currentVehicle}
             vehicles={vehicles}
-            expenses={(state.expenses || []).filter((e) => !e.isDeleted)}
+            expenses={activeExpenses}
             buckets={calculatedBuckets}
             drivers={drivers}
             currentDriverName={currentDriverName}
@@ -1056,13 +1213,7 @@ export function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onAuthSuccess={async (email, name) => {
-          await dbService.saveUserEmail(email);
-          setUserEmail(email);
-          const initialDrvs = getInitialDriversForUser(email, name);
-          setDrivers(initialDrvs);
-          setCurrentDriverName(initialDrvs[0]?.name || 'Motorista');
-        }}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       {/* Modal Onboarding de Veículo Real para Novos Motoristas */}

@@ -1,4 +1,13 @@
 -- =============================================================================
+-- AVISO: ESTE ARQUIVO E LEGADO E NAO REFLETE O BANCO REAL EM PRODUCAO.
+-- Ele nunca foi aplicado ao projeto Supabase atual e usa um modelo de auth
+-- proprio (drivers.password_hash) incompativel com o Supabase Auth usado pelo app.
+-- O schema real, aplicado e sincronizado pelo frontend, esta em:
+--   data/supabase_migration_v3.sql ate data/supabase_migration_v10_veiculos_full_sync.sql
+-- Nao execute este arquivo em producao. Mantido apenas como referencia historica.
+-- =============================================================================
+
+-- =============================================================================
 -- ERP DRIVER FINANCE - DATABASE SCHEMA (PostgreSQL 16)
 -- Conforme diretrizes da Skill postgres-patterns & precisão monetária DECIMAL(12,2)
 -- =============================================================================

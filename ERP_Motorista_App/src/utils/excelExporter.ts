@@ -1,5 +1,6 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket } from '../types';
 import { calculateCPK, calculateShiftSummary, calculateHoursBetween } from './financialCalculators';
+import { formatToLocalDateString } from './dateUtils';
 
 /**
  * Função utilitária para gerar e baixar um arquivo CSV/Excel formatado em UTF-8 BOM
@@ -14,6 +15,100 @@ export function downloadExcelCsv(filename: string, csvContent: string) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value: string | number | null | undefined): string {
+  const text = String(value ?? '');
+  return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function localDateOnly(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toLocaleDateString('pt-BR');
+}
+
+/** Exporta receitas de um intervalo, detalhadas por motorista e turno. */
+export function exportWeeklyDriverShiftReport(
+  vehicle: Vehicle,
+  earnings: Earning[],
+  expenses: Expense[],
+  startDate: string,
+  endDate: string
+) {
+  const filteredEarnings = earnings.filter((earning) => {
+    if (earning.isDeleted || !earning.recordedAt) return false;
+    const date = formatToLocalDateString(earning.recordedAt);
+    return date >= startDate && date <= endDate;
+  });
+  const filteredExpenses = expenses.filter((expense) => {
+    if (expense.isDeleted || !expense.expenseDate) return false;
+    const date = formatToLocalDateString(expense.expenseDate);
+    return date >= startDate && date <= endDate;
+  });
+
+  type DriverShiftSummary = { driver: string; shift: string; trips: number; km: number; gross: number; tips: number };
+  const summary = new Map<string, DriverShiftSummary>();
+  filteredEarnings.forEach((earning) => {
+    const driver = earning.driverName || 'Não especificado';
+    const shift = earning.shiftId || `Sem turno (${formatToLocalDateString(earning.recordedAt)})`;
+    const key = `${driver}\u0000${shift}`;
+    const current = summary.get(key) || { driver, shift, trips: 0, km: 0, gross: 0, tips: 0 };
+    current.trips += earning.totalTrips || 1;
+    current.km += earning.rideDistanceKm || 0;
+    current.gross += earning.grossAmount || 0;
+    current.tips += earning.tipsAmount || 0;
+    summary.set(key, current);
+  });
+
+  const totalRevenue = filteredEarnings.reduce((sum, earning) => sum + earning.grossAmount + earning.tipsAmount, 0);
+  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const lines: string[] = ['RELATÓRIO SEMANAL DE RECEITAS POR MOTORISTA E TURNO - GIROCERTO ERP'];
+  lines.push(`Veículo;${csvCell(`${vehicle.model} (${vehicle.licensePlate})`)}`);
+  lines.push(`Período;${localDateOnly(`${startDate}T12:00:00`)} a ${localDateOnly(`${endDate}T12:00:00`)}`);
+  lines.push(`Lançamentos de receitas;${filteredEarnings.length}`);
+  lines.push(`Receita total;${totalRevenue.toFixed(2)}`);
+  lines.push(`Despesas no período;${totalExpenses.toFixed(2)}`);
+  lines.push(`Resultado após despesas;${(totalRevenue - totalExpenses).toFixed(2)}`);
+  lines.push('');
+  lines.push('RESUMO POR MOTORISTA E TURNO');
+  lines.push('Motorista;Turno/Identificador;Corridas;KM;Valor Bruto;Gorjetas;Total');
+  [...summary.values()].sort((a, b) => a.driver.localeCompare(b.driver) || a.shift.localeCompare(b.shift)).forEach((item) => {
+    lines.push([item.driver, item.shift, item.trips, item.km.toFixed(2), item.gross.toFixed(2), item.tips.toFixed(2), (item.gross + item.tips).toFixed(2)].map(csvCell).join(';'));
+  });
+  lines.push('');
+  lines.push('DETALHAMENTO DAS RECEITAS');
+  lines.push('Data;Motorista;Turno/Identificador;Plataforma;Corridas;KM;Valor Bruto;Gorjetas;Total;Observações');
+  filteredEarnings.sort((a, b) => a.recordedAt.localeCompare(b.recordedAt)).forEach((earning) => {
+    lines.push([
+      localDateOnly(earning.recordedAt),
+      earning.driverName || 'Não especificado',
+      earning.shiftId || `Sem turno (${formatToLocalDateString(earning.recordedAt)})`,
+      earning.platform,
+      earning.totalTrips || 1,
+      (earning.rideDistanceKm || 0).toFixed(2),
+      (earning.grossAmount || 0).toFixed(2),
+      (earning.tipsAmount || 0).toFixed(2),
+      (earning.grossAmount + earning.tipsAmount).toFixed(2),
+      earning.notes || '',
+    ].map(csvCell).join(';'));
+  });
+  lines.push('');
+  lines.push('DESPESAS DO PERÍODO');
+  lines.push('Data;Motorista;Categoria;Valor;Observações');
+  filteredExpenses.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate)).forEach((expense) => {
+    lines.push([
+      localDateOnly(expense.expenseDate),
+      expense.driverName || 'Não especificado',
+      expense.category,
+      (expense.amount || 0).toFixed(2),
+      expense.notes || '',
+    ].map(csvCell).join(';'));
+  });
+
+  downloadExcelCsv(`receitas_por_motorista_turno_${startDate}_a_${endDate}.csv`, lines.join('\n'));
 }
 
 /**

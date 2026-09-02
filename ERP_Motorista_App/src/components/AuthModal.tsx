@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { LogIn, UserPlus, Mail, Lock, X, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { GiroCertoLogo } from './GiroCertoLogo';
+import { validateAuthCredentials } from '../services/authValidation';
+import { getAuthRedirectUrl } from '../services/authRedirect';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAuthSuccess: (email: string, name?: string) => void;
+  onAuthSuccess: (email: string, name?: string, userId?: string) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -40,23 +42,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     const cleanName = fullName.trim() || undefined;
+    const emailRedirectTo = getAuthRedirectUrl();
 
     try {
-      if (!supabase) {
-        // Fallback para login local offline
-        setSuccessMsg(`Autenticado em modo local como ${email}`);
-        setTimeout(() => {
-          onAuthSuccess(email, cleanName);
-          onClose();
-        }, 800);
+      const validationError = validateAuthCredentials(password, isSignUp ? 'signup' : 'login');
+      if (validationError) {
+        setErrorMsg(validationError);
         return;
+      }
+
+      if (!supabase) {
+        throw new Error('Supabase não está configurado neste ambiente.');
       }
 
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
           email,
-          password: password || '12345678',
+          password,
           options: {
+            emailRedirectTo,
             data: {
               full_name: cleanName,
               name: cleanName,
@@ -65,48 +69,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         });
         if (error) throw error;
 
+        if (!data.session || !data.user) {
+          setSuccessMsg('Conta criada. Confirme seu e-mail para concluir o acesso.');
+          return;
+        }
+
         setSuccessMsg('Conta criada com sucesso! Você já está autenticado.');
         setTimeout(() => {
-          onAuthSuccess(email, cleanName);
+          onAuthSuccess(email, cleanName, data.user.id);
           onClose();
         }, 1000);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password: password || '12345678',
+          password,
         });
-        if (error) {
-          // Se for erro de login no supabase (ou conta inexistente), permite criar/entrar
-          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-            email,
-            password: password || '12345678',
-            options: {
-              data: {
-                full_name: cleanName,
-                name: cleanName,
-              }
-            }
-          });
-          if (signUpErr) throw error;
-        }
+        if (error) throw error;
+        if (!data.session || !data.user) throw new Error('O Supabase não criou uma sessão válida.');
 
         const userMeta = data?.user?.user_metadata;
         const resolvedName = userMeta?.full_name || userMeta?.name || cleanName;
 
         setSuccessMsg(`Bem-vindo de volta, ${email}!`);
         setTimeout(() => {
-          onAuthSuccess(email, resolvedName);
+          onAuthSuccess(email, resolvedName, data.user.id);
           onClose();
         }, 800);
       }
     } catch (err: any) {
       console.warn('Auth Error:', err);
-      // Caso de erro do Supabase, logar localmente com sucesso preservando a conta
-      setSuccessMsg(`Autenticado como ${email}`);
-      setTimeout(() => {
-        onAuthSuccess(email, cleanName);
-        onClose();
-      }, 800);
+      setErrorMsg(err?.message || 'Não foi possível autenticar. Verifique seus dados e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -167,7 +159,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ex: hugovieira.eng@gmail.com"
+                placeholder="ex: motorista@exemplo.com"
               required
               className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-emerald-500"
             />
@@ -182,6 +174,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Sua senha de acesso"
+              required
+              minLength={isSignUp ? 8 : undefined}
               className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white outline-none focus:border-emerald-500"
             />
           </div>

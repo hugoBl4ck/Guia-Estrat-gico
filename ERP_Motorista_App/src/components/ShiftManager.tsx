@@ -359,8 +359,8 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                   const total = e.grossAmount + e.tipsAmount;
                   const driver = e.driverName;
                   return (
-                    <div key={e.id} className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 transition-colors">
-                      <div className="flex items-center space-x-3">
+                    <div key={e.id} className="flex flex-col gap-3 p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 transition-colors sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start space-x-3">
                         <div
                           className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${
                             e.earningType === 'REFERRAL'
@@ -378,9 +378,9 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                         >
                           {e.earningType === 'REFERRAL' ? '🎁' : e.earningType === 'BONUS' ? '🏆' : e.platform === 'UBER' ? 'UBER' : e.platform === 'NINETY_NINE' ? '99' : e.platform === 'PRIVATE' ? 'PART' : 'IND'}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-bold text-white">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-xs font-bold text-white">
                               {e.earningType === 'REFERRAL' ? 'Indicação (Bônus)' : e.earningType === 'BONUS' ? 'Missão / Bônus' : e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}
                             </p>
                             {e.earningType === 'REFERRAL' && (
@@ -419,8 +419,8 @@ export const ShiftManager: React.FC<ShiftManagerProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-3">
-                        <div className="text-right">
+                      <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 pt-2 sm:border-t-0 sm:pt-0">
+                        <div className="text-left sm:text-right">
                           <p className="text-sm font-extrabold text-driver-profit">
                             R$ {total.toFixed(2)}
                           </p>

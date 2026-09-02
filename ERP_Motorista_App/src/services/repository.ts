@@ -1,9 +1,11 @@
-import { dbService } from './db';
+import { dbService, LocalUserContext } from './db';
 import { FinanceState } from './financeReducer';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { Vehicle, Shift } from '../types';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { syncErrorService } from './syncErrorState';
+import { getRetryDelayMs, isSyncJobOwnedByUser, isSyncJobReady, replaceUserSyncJob } from './syncQueue';
+import { mapVehicleToCloudRow, mapCloudRowToVehicle } from './vehicleCloudSync';
 
 type SyncQueueJob = {
   id: string;
@@ -11,24 +13,41 @@ type SyncQueueJob = {
   payload: {
     state: FinanceState;
     userEmail: string;
+    userId?: string;
     timestamp: string;
   };
   status: 'pending' | 'completed' | 'failed';
   errorMessage?: string;
+  retryCount?: number;
+  nextRetryAt?: string;
 };
 
 const SYNC_QUEUE_KEY = 'girocerto_sync_queue_v1';
+let syncQueueLock: Promise<void> = Promise.resolve();
+
+async function withSyncQueueLock<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = syncQueueLock;
+  let release!: () => void;
+  syncQueueLock = new Promise<void>((resolve) => { release = resolve; });
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
+}
 
 export interface IDataRepository {
-  loadDataAsync(): Promise<FinanceState | null>;
-  saveData(state: FinanceState, userEmail?: string): Promise<void>;
-  loadVehiclesAsync(): Promise<Vehicle[]>;
-  loadCurrentVehicleAsync(): Promise<Vehicle>;
-  saveVehicles(vehicles: Vehicle[]): Promise<void>;
-  saveCurrentVehicle(vehicle: Vehicle): Promise<void>;
-  queueSyncState(state: FinanceState, userEmail: string): Promise<void>;
-  flushSyncQueue(userEmail: string): Promise<{ success: boolean; errorMessage?: string }>;
-  getPendingSyncCount(userEmail: string): Promise<number>;
+  loadDataAsync(context?: LocalUserContext): Promise<FinanceState | null>;
+  saveData(state: FinanceState, userEmail?: string, context?: LocalUserContext): Promise<void>;
+  loadVehiclesAsync(context?: LocalUserContext): Promise<Vehicle[]>;
+  loadCurrentVehicleAsync(context?: LocalUserContext): Promise<Vehicle>;
+  saveVehicles(vehicles: Vehicle[], context?: LocalUserContext): Promise<void>;
+  saveCurrentVehicle(vehicle: Vehicle, context?: LocalUserContext): Promise<void>;
+  fetchVehiclesFromCloud(userId: string): Promise<Vehicle[]>;
+  queueSyncState(state: FinanceState, userEmail: string, userId?: string): Promise<void>;
+  flushSyncQueue(userEmail: string, userId?: string): Promise<{ success: boolean; errorMessage?: string }>;
+  getPendingSyncCount(userEmail: string, userId?: string): Promise<number>;
   syncWithCloud(state: FinanceState, userEmail: string): Promise<{ success: boolean; errorMessage?: string }>;
 }
 
@@ -67,29 +86,65 @@ export function decodeDriverAndNotes(rawNotes?: string | null, rawDriverName?: s
 }
 
 export class DataRepository implements IDataRepository {
-  public async loadVehiclesAsync(): Promise<Vehicle[]> {
-    return await dbService.loadVehiclesFromIndexedDB();
+  private async getAuthenticatedUserId(): Promise<string | null> {
+    if (!isSupabaseConfigured() || !supabase) return null;
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return null;
+    return data.user.id;
   }
 
-  public async loadCurrentVehicleAsync(): Promise<Vehicle> {
-    return await dbService.loadCurrentVehicleFromIndexedDB();
+  public async loadVehiclesAsync(context?: LocalUserContext): Promise<Vehicle[]> {
+    return await dbService.loadVehiclesFromIndexedDB(context);
   }
 
-  public async loadDataAsync(): Promise<FinanceState | null> {
-    return await dbService.loadInitialDataFromIndexedDB();
+  public async loadCurrentVehicleAsync(context?: LocalUserContext): Promise<Vehicle> {
+    return await dbService.loadCurrentVehicleFromIndexedDB(context);
   }
 
-  public async saveVehicles(vehicles: Vehicle[]): Promise<void> {
+  public async loadDataAsync(context?: LocalUserContext): Promise<FinanceState | null> {
+    return await dbService.loadInitialDataFromIndexedDB(context);
+  }
+
+  public async saveVehicles(vehicles: Vehicle[], context?: LocalUserContext): Promise<void> {
     try {
-      await dbService.saveVehicles(vehicles);
+      await dbService.saveVehicles(vehicles, context);
     } catch (error) {
       console.warn('Erro ao salvar veículos no IndexedDB:', error);
     }
+
+    if (context?.userId && context.userId !== 'unauthenticated' && isSupabaseConfigured() && supabase) {
+      try {
+        const payload = vehicles.map((v) => mapVehicleToCloudRow(v, context.userId as string));
+        const { error } = await supabase.from('veiculos').upsert(payload, { onConflict: 'id' });
+        if (error) {
+          console.warn('Erro ao sincronizar veículos com o Supabase:', error);
+        }
+      } catch (error) {
+        console.warn('Falha ao sincronizar veículos com o Supabase:', error);
+      }
+    }
   }
 
-  public async saveCurrentVehicle(vehicle: Vehicle): Promise<void> {
+  public async fetchVehiclesFromCloud(userId: string): Promise<Vehicle[]> {
+    if (!userId || !isSupabaseConfigured() || !supabase) return [];
+
     try {
-      await dbService.saveCurrentVehicle(vehicle);
+      const { data, error } = await supabase.from('veiculos').select('*').eq('user_id', userId);
+      if (error || !Array.isArray(data)) {
+        if (error) console.warn('Erro ao buscar veículos do Supabase:', error);
+        return [];
+      }
+      return data.map(mapCloudRowToVehicle);
+    } catch (error) {
+      console.warn('Falha ao buscar veículos do Supabase:', error);
+      return [];
+    }
+  }
+
+  public async saveCurrentVehicle(vehicle: Vehicle, context?: LocalUserContext): Promise<void> {
+    try {
+      await dbService.saveCurrentVehicle(vehicle, context);
     } catch (error) {
       console.warn('Erro ao salvar veículo ativo no IndexedDB:', error);
     }
@@ -107,44 +162,36 @@ export class DataRepository implements IDataRepository {
   }
 
   private async persistSyncQueue(queue: SyncQueueJob[]): Promise<void> {
-    try {
-      await indexedDBService.setItem(IDB_STORE_NAMES.SYNC_QUEUE, SYNC_QUEUE_KEY, queue);
-    } catch (err) {
-      console.warn('Falha ao salvar fila de sincronização no IndexedDB:', err);
-    }
+    await indexedDBService.setItem(IDB_STORE_NAMES.SYNC_QUEUE, SYNC_QUEUE_KEY, queue);
   }
 
-  public async getPendingSyncCount(userEmail: string): Promise<number> {
+  public async getPendingSyncCount(userEmail: string, userId?: string): Promise<number> {
     const queue = await this.loadSyncQueue();
-    return queue.filter((job) => job.payload.userEmail === userEmail && job.status === 'pending').length;
+    return queue.filter((job) => isSyncJobOwnedByUser(job, userEmail, userId) && (job.status === 'pending' || isSyncJobReady(job))).length;
   }
 
-  public async queueSyncState(state: FinanceState, userEmail: string): Promise<void> {
+  public async queueSyncState(state: FinanceState, userEmail: string, userId?: string): Promise<void> {
     if (!userEmail || userEmail.trim() === '') return;
-
-    const queue = (await this.loadSyncQueue()).filter((job) => job.type !== 'SYNC_STATE' || job.payload.userEmail !== userEmail);
-    queue.push({
-      id: `sync-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      type: 'SYNC_STATE',
-      payload: {
-        state,
-        userEmail,
-        timestamp: new Date().toISOString(),
-      },
-      status: 'pending',
+    await withSyncQueueLock(async () => {
+      const job: SyncQueueJob = {
+        id: `sync-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        type: 'SYNC_STATE',
+        payload: { state, userEmail, userId, timestamp: new Date().toISOString() },
+        status: 'pending',
+      };
+      await this.persistSyncQueue(replaceUserSyncJob(await this.loadSyncQueue(), job));
     });
-
-    await this.persistSyncQueue(queue);
   }
 
-  public async flushSyncQueue(userEmail: string): Promise<{ success: boolean; errorMessage?: string }> {
+  public async flushSyncQueue(userEmail: string, userId?: string): Promise<{ success: boolean; errorMessage?: string }> {
     if (!userEmail || userEmail.trim() === '' || !isSupabaseConfigured() || !supabase) {
       return { success: false, errorMessage: 'Supabase não configurado ou usuário não logado' };
     }
 
-    const queue = await this.loadSyncQueue();
-    const pendingJobs = queue.filter((job) => job.payload.userEmail === userEmail && job.status === 'pending');
-    if (pendingJobs.length === 0) return { success: true };
+    return withSyncQueueLock(async () => {
+      const queue = await this.loadSyncQueue();
+      const pendingJobs = queue.filter((job) => isSyncJobOwnedByUser(job, userEmail, userId) && isSyncJobReady(job));
+      if (pendingJobs.length === 0) return { success: true };
 
     let allSuccessful = true;
     const updatedQueue = [...queue];
@@ -157,10 +204,17 @@ export class DataRepository implements IDataRepository {
         if (queueIndex === -1) continue;
 
         if (syncResult.success) {
-          updatedQueue[queueIndex] = { ...job, status: 'completed' };
+          updatedQueue[queueIndex] = { ...job, status: 'completed', retryCount: 0, nextRetryAt: undefined };
         } else {
           const errorMessage = syncResult.errorMessage || job.errorMessage || 'Falha ao sincronizar com o Supabase';
-          updatedQueue[queueIndex] = { ...job, status: 'failed', errorMessage };
+          const retryCount = (job.retryCount || 0) + 1;
+          updatedQueue[queueIndex] = {
+            ...job,
+            status: 'failed',
+            errorMessage,
+            retryCount,
+            nextRetryAt: new Date(Date.now() + getRetryDelayMs(retryCount - 1)).toISOString(),
+          };
           failureMessage = errorMessage;
           allSuccessful = false;
           await syncErrorService.saveError({
@@ -175,28 +229,30 @@ export class DataRepository implements IDataRepository {
 
     const finalQueue = updatedQueue.filter((job) => job.status !== 'completed');
     await this.persistSyncQueue(finalQueue);
-    return { success: allSuccessful, errorMessage: failureMessage };
+      return { success: allSuccessful, errorMessage: failureMessage };
+    });
   }
 
-  public async saveData(state: FinanceState, userEmail?: string): Promise<void> {
+  public async saveData(state: FinanceState, userEmail?: string, context?: LocalUserContext): Promise<void> {
     try {
       const savePromises: Promise<void>[] = [];
-      if (state.earnings) savePromises.push(dbService.saveEarnings(state.earnings));
-      if (state.expenses) savePromises.push(dbService.saveExpenses(state.expenses));
-      savePromises.push(dbService.saveActiveShift(state.activeShift));
-      if (state.buckets) savePromises.push(dbService.saveBuckets(state.buckets));
-      if (state.personalLogs) savePromises.push(dbService.savePersonalLogs(state.personalLogs));
-      savePromises.push(dbService.saveDataClearedFlag(state.isDataCleared));
+      if (state.earnings) savePromises.push(dbService.saveEarnings(state.earnings, context));
+      if (state.expenses) savePromises.push(dbService.saveExpenses(state.expenses, context));
+      savePromises.push(dbService.saveActiveShift(state.activeShift, context));
+      if (state.buckets) savePromises.push(dbService.saveBuckets(state.buckets, context));
+      if (state.personalLogs) savePromises.push(dbService.savePersonalLogs(state.personalLogs, context));
+      savePromises.push(dbService.saveDataClearedFlag(state.isDataCleared, context));
 
       await Promise.all(savePromises);
     } catch (error) {
       console.warn('Erro ao salvar dados localmente:', error);
+      throw error;
     }
 
     if (userEmail && userEmail.trim() !== '' && isSupabaseConfigured()) {
-      await this.queueSyncState(state, userEmail);
+      await this.queueSyncState(state, userEmail, context?.userId);
       // Disparar sincronização imediata em segundo plano sem bloquear a aplicação
-      this.flushSyncQueue(userEmail).catch((err) => {
+      this.flushSyncQueue(userEmail, context?.userId).catch((err) => {
         console.warn('Auto-sync em background falhou:', err);
       });
     }
@@ -207,21 +263,34 @@ export class DataRepository implements IDataRepository {
       return { success: false, errorMessage: 'Supabase não configurado ou usuário não logado' };
     }
 
+    const userId = await this.getAuthenticatedUserId();
+    if (!userId) {
+      return { success: false, errorMessage: 'Sessão Supabase inválida ou expirada' };
+    }
+
     try {
       // 1. Sincronizar Faturamentos no Supabase
       if (state.earnings) {
-        const activeGanhos = state.earnings.filter((e) => !e.isDeleted);
-        if (activeGanhos.length > 0) {
-          const payloadEarnings = activeGanhos.map((e) => ({
+        const allGanhos = state.earnings;
+        if (allGanhos.length > 0) {
+          const payloadEarnings = allGanhos.map((e) => ({
             id: e.id,
+            shift_id: e.shiftId || null,
+            vehicle_id: e.vehicleId || null,
             platform: e.platform,
+            earning_type: e.earningType || 'RIDE',
             gross_amount: e.grossAmount,
             tips_amount: e.tipsAmount,
             total_trips: e.totalTrips,
             ride_distance_km: e.rideDistanceKm,
+            start_time: e.startTime || null,
+            end_time: e.endTime || null,
+            worked_hours: e.workedHours || null,
+            driver_name: e.driverName || null,
             recorded_at: e.recordedAt,
             notes: encodeDriverInNotes(e.notes, e.driverName),
-            is_deleted: false,
+            is_deleted: Boolean(e.isDeleted),
+            user_id: userId,
             user_email: userEmail,
           }));
           
@@ -244,36 +313,31 @@ export class DataRepository implements IDataRepository {
           }
         }
 
-        // Deletar do Supabase qualquer ganho excluído no app
-        const activeEarningIds = new Set(activeGanhos.map((e) => e.id));
-        const { data: cloudGanhos, error: fetchGanhosError } = await supabase
-          .from('ganhos')
-          .select('id')
-          .eq('user_email', userEmail);
-
-        if (!fetchGanhosError && Array.isArray(cloudGanhos)) {
-          const earningIdsToDelete = cloudGanhos.map((g) => g.id).filter((id) => !activeEarningIds.has(id));
-          if (earningIdsToDelete.length > 0) {
-            await supabase.from('ganhos').delete().in('id', earningIdsToDelete);
-          }
-        }
       }
 
       // 2. Sincronizar Despesas no Supabase
       if (state.expenses) {
-        const activeExpenses = state.expenses.filter((exp) => !exp.isDeleted);
-        if (activeExpenses.length > 0) {
-          const payloadExpenses = activeExpenses.map((exp) => ({
+        const allExpenses = state.expenses;
+        if (allExpenses.length > 0) {
+          const payloadExpenses = allExpenses.map((exp) => ({
             id: exp.id,
+            shift_id: exp.shiftId || null,
             categoria: exp.category,
+            category: exp.category,
             valor: exp.amount,
+            amount: exp.amount,
             kwh_carregados: exp.kwhAmount || null,
             tarifa_kwh: exp.tariffPerKwh || null,
             tipo_recarga: exp.chargingType || null,
             odometro_km: exp.odometerKm || null,
             observacao: encodeDriverInNotes(exp.notes, exp.driverName),
+            notes: encodeDriverInNotes(exp.notes, exp.driverName),
             expense_date: exp.expenseDate,
             veiculo_id: exp.vehicleId || null,
+            vehicle_id: exp.vehicleId || null,
+            driver_name: exp.driverName || null,
+            is_deleted: Boolean(exp.isDeleted),
+            user_id: userId,
             user_email: userEmail,
           }));
 
@@ -296,19 +360,6 @@ export class DataRepository implements IDataRepository {
           }
         }
 
-        // Deletar do Supabase qualquer despesa excluída no app
-        const activeExpenseIds = new Set(activeExpenses.map((exp) => exp.id));
-        const { data: cloudDespesas, error: fetchDespesasError } = await supabase
-          .from('despesas')
-          .select('id')
-          .eq('user_email', userEmail);
-
-        if (!fetchDespesasError && Array.isArray(cloudDespesas)) {
-          const expenseIdsToDelete = cloudDespesas.map((d) => d.id).filter((id) => !activeExpenseIds.has(id));
-          if (expenseIdsToDelete.length > 0) {
-            await supabase.from('despesas').delete().in('id', expenseIdsToDelete);
-          }
-        }
       }
 
       // 3. Sincronizar Caixas de Reserva no Supabase (sanitizando campos para respeitar o schema VARCHAR(50))
@@ -321,6 +372,7 @@ export class DataRepository implements IDataRepository {
           saldo_atual: typeof b.currentBalance === 'number' ? b.currentBalance : (parseFloat(b.currentBalance as any) || 0),
           saldo_alvo: typeof b.targetBalance === 'number' ? b.targetBalance : (parseFloat(b.targetBalance as any) || 0),
           percentual_alocacao: typeof b.percentageAllocated === 'number' ? b.percentageAllocated : (parseFloat(b.percentageAllocated as any) || 0),
+          user_id: userId,
           user_email: userEmail,
         }));
 
@@ -354,6 +406,7 @@ export class DataRepository implements IDataRepository {
             start_odometer_km: 0,
             status: 'SYSTEM',
             notes: JSON.stringify({ drivers: itemDriversMap, vehicles: itemVehiclesMap }),
+            user_id: userId,
             user_email: userEmail,
           }, { onConflict: 'id' });
         } catch (mapErr) {
@@ -373,6 +426,7 @@ export class DataRepository implements IDataRepository {
           end_odometer_km: state.activeShift.endOdometerKm || null,
           status: state.activeShift.status || 'OPEN',
           notes: encodeDriverInNotes(state.activeShift.notes, state.activeShift.driverName),
+          user_id: userId,
           user_email: userEmail,
         };
 
@@ -406,6 +460,9 @@ export class DataRepository implements IDataRepository {
       return null;
     }
 
+    const userId = await this.getAuthenticatedUserId();
+    if (!userId) return null;
+
     try {
       // 1. Carregar mapeamento de motoristas e veículos da tabela turnos (TEXT ilimitado)
       let cloudDriverMap: Record<string, string> = {};
@@ -415,7 +472,7 @@ export class DataRepository implements IDataRepository {
           .from('turnos')
           .select('id, notes')
           .in('id', ['shift-system-metadata', 'shift-system-driver-map'])
-          .eq('user_email', userEmail);
+          .eq('user_id', userId);
 
         if (Array.isArray(systemTurnos) && systemTurnos.length > 0) {
           const metaTurno = systemTurnos.find((t) => t.id === 'shift-system-metadata') || systemTurnos[0];
@@ -437,7 +494,7 @@ export class DataRepository implements IDataRepository {
       const { data: cloudBuckets } = await supabase
         .from('caixas_buckets')
         .select('*')
-        .eq('user_email', userEmail);
+        .eq('user_id', userId);
 
       let bucketsList: any[] = [];
       if (Array.isArray(cloudBuckets) && cloudBuckets.length > 0) {
@@ -457,13 +514,13 @@ export class DataRepository implements IDataRepository {
       const { data: cloudGanhos } = await supabase
         .from('ganhos')
         .select('*')
-        .eq('user_email', userEmail)
+        .eq('user_id', userId)
         .eq('is_deleted', false);
 
       const { data: cloudFaturamentos } = await supabase
         .from('faturamentos')
         .select('*')
-        .eq('user_email', userEmail);
+        .eq('user_id', userId);
 
       let earningsList: any[] = [];
       if (Array.isArray(cloudGanhos) && cloudGanhos.length > 0) {
@@ -516,11 +573,11 @@ export class DataRepository implements IDataRepository {
       const { data: cloudDespesas } = await supabase
         .from('despesas')
         .select('*')
-        .eq('user_email', userEmail);
+        .eq('user_id', userId);
 
       let expensesList: any[] = [];
       if (Array.isArray(cloudDespesas) && cloudDespesas.length > 0) {
-        expensesList = cloudDespesas.map((d) => {
+        expensesList = cloudDespesas.filter((d) => !d.is_deleted).map((d) => {
           const obsLower = (d.observacao || d.notes || '').toLowerCase();
           const cat = (d.categoria || d.category || '').toUpperCase();
           const { driverName: extractedDriver, notes } = decodeDriverAndNotes(d.observacao || d.notes, d.driver_name || d.driverName);
@@ -548,7 +605,7 @@ export class DataRepository implements IDataRepository {
         const { data: cloudTurnos } = await supabase
           .from('turnos')
           .select('*')
-          .eq('user_email', userEmail)
+          .eq('user_id', userId)
           .eq('status', 'OPEN')
           .order('start_time', { ascending: false })
           .limit(1);

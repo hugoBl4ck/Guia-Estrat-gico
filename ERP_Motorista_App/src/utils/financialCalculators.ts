@@ -184,3 +184,81 @@ export function calculateShiftSummary(
     profitMarginPercent,
   };
 }
+
+export interface VehicleInstallmentsSummary {
+  finPaid: number;
+  finTotal: number;
+  insPaid: number;
+  insTotal: number;
+  finPaidInstallmentsList: number[];
+  insPaidInstallmentsList: number[];
+  hasAmortizedLastInstallment: boolean;
+}
+
+/**
+ * Cálculo dinâmico das parcelas quitadas de Financiamento e Seguro com base nas despesas reais registradas.
+ * Zero hardcode: reage automaticamente a qualquer novo lançamento, edição ou exclusão de despesa.
+ */
+export function calculateVehicleInstallmentsSummary(
+  vehicle: Vehicle,
+  expenses: Expense[]
+): VehicleInstallmentsSummary {
+  const finTotal = vehicle.financingTotalInstallments || 48;
+  const insTotal = vehicle.insuranceTotalInstallments || 12;
+
+  const vehicleExpenses = (expenses || []).filter(
+    (exp) => !exp.isDeleted && (!exp.vehicleId || exp.vehicleId === vehicle.id)
+  );
+
+  const finInstallmentSet = new Set<number>();
+  const insInstallmentSet = new Set<number>();
+  let finCount = 0;
+  let insCount = 0;
+
+  vehicleExpenses.forEach((exp) => {
+    const isFin = exp.category === 'FINANCING' || (exp.notes && /financiamento|santander|prestação/i.test(exp.notes));
+    const isIns = exp.category === 'INSURANCE' || (exp.notes && /seguro|aliro|hdi/i.test(exp.notes));
+
+    if (isFin) {
+      finCount++;
+      if (exp.installmentNumber) {
+        finInstallmentSet.add(exp.installmentNumber);
+      } else if (exp.notes) {
+        const match = exp.notes.match(/parcela\s*(\d+)/i);
+        if (match) finInstallmentSet.add(parseInt(match[1], 10));
+      }
+    }
+
+    if (isIns) {
+      insCount++;
+      if (exp.installmentNumber) {
+        insInstallmentSet.add(exp.installmentNumber);
+      } else if (exp.notes) {
+        const match = exp.notes.match(/parcela\s*(\d+)/i);
+        if (match) insInstallmentSet.add(parseInt(match[1], 10));
+      }
+    }
+  });
+
+  const baseFinPaid = vehicle.financingPaidInstallments || 0;
+  const baseInsPaid = vehicle.insurancePaidInstallments || 0;
+
+  const finPaid = Math.max(baseFinPaid, finInstallmentSet.size, finCount);
+  const insPaid = Math.max(baseInsPaid, insInstallmentSet.size, insCount);
+
+  const finPaidInstallmentsList = Array.from(finInstallmentSet).sort((a, b) => a - b);
+  const insPaidInstallmentsList = Array.from(insInstallmentSet).sort((a, b) => a - b);
+
+  const hasAmortizedLastInstallment = finInstallmentSet.has(finTotal) || (finPaid >= 2 && finPaidInstallmentsList.includes(finTotal));
+
+  return {
+    finPaid,
+    finTotal,
+    insPaid,
+    insTotal,
+    finPaidInstallmentsList,
+    insPaidInstallmentsList,
+    hasAmortizedLastInstallment,
+  };
+}
+

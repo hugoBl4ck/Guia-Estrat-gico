@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Camera, FileCode, Upload, CheckCircle2, AlertTriangle, X, Image as ImageIcon, Sparkles, RefreshCw, User, Zap } from 'lucide-react';
 import { Expense, ExpenseCategory, Vehicle, Driver } from '../types';
 import { parseNfeXml } from '../services/nfeParser';
+import { recognizeReceiptText } from '../services/receiptOcrService';
+import { parseReceiptText } from '../utils/receiptTextParser';
 import { getTodayLocalDateString } from '../utils/dateUtils';
 
 interface ExpenseReceiptCaptureProps {
@@ -43,7 +45,7 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
 
   if (!isOpen) return null;
 
-  // Processar Foto do Recibo via Canvas & OCR Client-side
+  // Processar Foto do Recibo via Canvas & OCR Client-side (Tesseract.js, reconhecimento real)
   const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -65,21 +67,30 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
         canvas.height = img.height * scaleSize;
 
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const compressedUrl = canvas.toDataURL('image/jpeg', 0.65);
-          setSelectedImage(compressedUrl);
-        } else {
-          setSelectedImage(imgDataUrl);
-        }
+        const compressedUrl = ctx ? (ctx.drawImage(img, 0, 0, canvas.width, canvas.height), canvas.toDataURL('image/jpeg', 0.65)) : imgDataUrl;
+        setSelectedImage(compressedUrl);
 
-        // Leitura simulada de OCR local para recibos de borracharia/posto/comprovante
-        setAmount('35.00');
-        setCategory('MAINTENANCE');
-        setNotes('Recibo Foto: Conserto de Pneu / Borracharia');
-        setExtractedSource('ocr');
-        setShowPreview(true);
-        setIsProcessing(false);
+        recognizeReceiptText(imgDataUrl)
+          .then((rawText) => {
+            const parsed = parseReceiptText(rawText, vehicle.isElectric);
+            if (parsed.amount !== null) {
+              setAmount(parsed.amount.toFixed(2));
+              setNotes(parsed.notes);
+            } else {
+              setAmount('');
+              setNotes('Não foi possível identificar o valor automaticamente. Confira a foto e preencha manualmente.');
+            }
+            setCategory(parsed.category);
+            setExtractedSource('ocr');
+            setShowPreview(true);
+          })
+          .catch((err) => {
+            console.warn('Falha no OCR do recibo:', err);
+            setAmount('');
+            setNotes('Não foi possível ler o recibo automaticamente. Preencha os dados manualmente.');
+            setShowPreview(true);
+          })
+          .finally(() => setIsProcessing(false));
       };
       img.src = imgDataUrl;
     };
@@ -234,27 +245,43 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
         {/* Modo 1: Foto do Recibo */}
         {activeTab === 'PHOTO' && !showPreview && (
           <div className="space-y-3 text-center py-4 border-2 border-dashed border-slate-800 rounded-3xl p-6 bg-slate-900/50">
-            <div className="w-16 h-16 rounded-full bg-rose-950 text-rose-400 border border-rose-800 flex items-center justify-center mx-auto">
-              <Camera className="w-8 h-8" />
-            </div>
-            <div>
-              <p className="font-extrabold text-sm text-white">Fotografar Comprovante / Recibo</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Acesse a câmera do celular para fotografar cupons de borracharia, lava-jato ou autopeças.
-              </p>
-            </div>
+            {isProcessing ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-rose-950 text-rose-400 border border-rose-800 flex items-center justify-center mx-auto">
+                  <RefreshCw className="w-8 h-8 animate-spin" />
+                </div>
+                <div>
+                  <p className="font-extrabold text-sm text-white">Lendo o recibo...</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Reconhecendo o texto da foto (OCR). Isso pode levar alguns segundos.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-rose-950 text-rose-400 border border-rose-800 flex items-center justify-center mx-auto">
+                  <Camera className="w-8 h-8" />
+                </div>
+                <div>
+                  <p className="font-extrabold text-sm text-white">Fotografar Comprovante / Recibo</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Acesse a câmera do celular para fotografar cupons de borracharia, lava-jato ou autopeças.
+                  </p>
+                </div>
 
-            <label className="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-5 py-3 rounded-2xl text-xs shadow-lg shadow-rose-600/20 cursor-pointer active:scale-95 transition-all">
-              <Camera className="w-4 h-4" />
-              <span>Abrir Câmera do Celular</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageCapture}
-                className="hidden"
-              />
-            </label>
+                <label className="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-5 py-3 rounded-2xl text-xs shadow-lg shadow-rose-600/20 cursor-pointer active:scale-95 transition-all">
+                  <Camera className="w-4 h-4" />
+                  <span>Abrir Câmera do Celular</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageCapture}
+                    className="hidden"
+                  />
+                </label>
+              </>
+            )}
           </div>
         )}
 

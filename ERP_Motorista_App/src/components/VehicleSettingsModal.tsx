@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, X, Save, CheckCircle2, DollarSign, Zap, Shield, Car, Percent, Calculator, Sparkles, Wrench, Plus, Trash2 } from 'lucide-react';
 import { Vehicle, MaintenanceScheduleEntry } from '../types';
+import { getUpdatedOdometerKm } from '../services/vehicleOdometer';
 
 interface VehicleSettingsModalProps {
   isOpen: boolean;
@@ -100,9 +101,10 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const odometerValue = parseFloat(odometerKm) || 0;
     const updatedVehicle: Vehicle = {
       ...vehicle,
-      currentOdometerKm: parseFloat(odometerKm) || 0,
+      currentOdometerKm: getUpdatedOdometerKm(vehicle.currentOdometerKm, odometerValue),
       monthlyFinancingCost: parseFloat(financingCost) || 0,
       financingBank: financingBank || 'Financiadora / Banco',
       financingTotalInstallments: parseInt(financingTotal, 10) || 48,

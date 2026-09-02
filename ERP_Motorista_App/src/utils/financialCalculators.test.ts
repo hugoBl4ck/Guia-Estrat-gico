@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roundCurrency, calculateCPK, calculateShiftSummary, calculateHoursBetween } from './financialCalculators';
+import { roundCurrency, calculateCPK, calculateShiftSummary, calculateHoursBetween, calculateVehicleInstallmentsSummary } from './financialCalculators';
 import { VEHICLE_BYD_DOLPHIN } from './mockData';
 
 describe('financialCalculators', () => {
@@ -150,4 +150,59 @@ describe('financialCalculators', () => {
     expect(summary.totalOperatingCost).toBe(60.0);
     expect(summary.netRealProfit).toBe(240.0);
   });
+
+  it('calculateVehicleInstallmentsSummary deve calcular parcelas pagas dinamicamente a partir das despesas reais', () => {
+    const expenses = [
+      {
+        id: 'exp-fin-1',
+        category: 'FINANCING' as const,
+        amount: 3086.58,
+        expenseDate: '2026-08-16T12:00:00Z',
+        installmentNumber: 1,
+        installmentsCount: 48,
+        notes: 'Prestação Financiamento (Parcela 1/48)',
+        vehicleId: VEHICLE_BYD_DOLPHIN.id,
+      },
+      {
+        id: 'exp-fin-48',
+        category: 'FINANCING' as const,
+        amount: 1200.0,
+        expenseDate: '2026-08-20T12:00:00Z',
+        installmentNumber: 48,
+        installmentsCount: 48,
+        notes: 'Amortização última parcela (Parcela 48/48)',
+        vehicleId: VEHICLE_BYD_DOLPHIN.id,
+      },
+      {
+        id: 'exp-ins-1',
+        category: 'INSURANCE' as const,
+        amount: 299.71,
+        expenseDate: '2026-07-31T12:00:00Z',
+        installmentNumber: 1,
+        installmentsCount: 12,
+        notes: 'Seguro Auto (Parcela 1/12)',
+        vehicleId: VEHICLE_BYD_DOLPHIN.id,
+      },
+      {
+        id: 'exp-ins-2',
+        category: 'INSURANCE' as const,
+        amount: 299.71,
+        expenseDate: '2026-09-02T12:00:00Z',
+        installmentNumber: 2,
+        installmentsCount: 12,
+        notes: 'Seguro Auto (Parcela 2/12)',
+        vehicleId: VEHICLE_BYD_DOLPHIN.id,
+      },
+    ];
+
+    const result = calculateVehicleInstallmentsSummary(VEHICLE_BYD_DOLPHIN, expenses);
+    expect(result.finPaid).toBe(2);
+    expect(result.finTotal).toBe(48);
+    expect(result.insPaid).toBe(2);
+    expect(result.insTotal).toBe(12);
+    expect(result.hasAmortizedLastInstallment).toBe(true);
+    expect(result.finPaidInstallmentsList).toEqual([1, 48]);
+    expect(result.insPaidInstallmentsList).toEqual([1, 2]);
+  });
 });
+

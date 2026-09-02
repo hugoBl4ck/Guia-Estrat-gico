@@ -83,6 +83,7 @@ export const indexedDBService = {
       await transact<void>(storeName, 'readwrite', (store) => store.put(value, key));
     } catch (err) {
       console.warn('Erro IndexedDB setItem:', err);
+      throw err;
     }
   },
 
@@ -91,6 +92,7 @@ export const indexedDBService = {
       await transact<void>(storeName, 'readwrite', (store) => store.delete(key));
     } catch (err) {
       console.warn('Erro IndexedDB deleteItem:', err);
+      throw err;
     }
   },
 
