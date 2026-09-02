@@ -203,13 +203,30 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     ].filter(Boolean))
   );
 
-  // Recalculo Dinâmico dos Custos Totais (somente compromissos contratuais reais: financiamento + seguro)
-  // Custos variaveis (recarga, combustivel, manutencao etc.) ja entram separadamente via effectiveOperatingCost (gastos reais de hoje),
-  // por isso nao sao somados aqui de novo, o que antes inflava o alvo diario a cada despesa historica lancada.
-  const monthlyFinancing = (vehicle.monthlyFinancingCost !== undefined && vehicle.monthlyFinancingCost !== null)
+  // Parcelas calculadas dinamicamente com base nas despesas reais registradas
+  const installmentsSummary = calculateVehicleInstallmentsSummary(vehicle, filteredExpenses);
+
+  // Busca valores reais dinamicamente dos lançamentos de despesas caso o cadastro venha com 0.00
+  const regularFinancingExpense = filteredExpenses
+    .filter((e) => e.category === 'FINANCING' && !/amortiza/i.test(e.notes || ''))
+    .sort((a, b) => new Date(b.expenseDate || '').getTime() - new Date(a.expenseDate || '').getTime())[0];
+
+  const monthlyFinancing = (vehicle.monthlyFinancingCost !== undefined && vehicle.monthlyFinancingCost !== null && vehicle.monthlyFinancingCost > 0)
     ? vehicle.monthlyFinancingCost
-    : (vehicle.isRented ? (vehicle.monthlyRentalCost || 0) : 0);
-  const monthlyInsurance = vehicle.insuranceMonthlyCost || 0;
+    : (regularFinancingExpense ? regularFinancingExpense.amount : (vehicle.isRented ? (vehicle.monthlyRentalCost || 0) : 0));
+
+  const regularInsuranceExpense = filteredExpenses
+    .filter((e) => e.category === 'INSURANCE')
+    .sort((a, b) => new Date(b.expenseDate || '').getTime() - new Date(a.expenseDate || '').getTime())[0];
+
+  const monthlyInsurance = (vehicle.insuranceMonthlyCost !== undefined && vehicle.insuranceMonthlyCost !== null && vehicle.insuranceMonthlyCost > 0)
+    ? vehicle.insuranceMonthlyCost
+    : (regularInsuranceExpense ? regularInsuranceExpense.amount : 0);
+
+  const bankName = vehicle.financingBank || (regularFinancingExpense ? 'Banco Financiador' : (vehicle.isRented ? 'Aluguel' : 'Financiamento'));
+
+  const isVehicleFinanced = monthlyFinancing > 0 || installmentsSummary.finTotal > 0 || filteredExpenses.some((e) => e.category === 'FINANCING');
+  const isFinancingFullyPaid = installmentsSummary.finTotal > 0 && installmentsSummary.finPaid >= installmentsSummary.finTotal;
 
   const totalMonthlyCommitments = monthlyFinancing + monthlyInsurance;
   const dailyBaseCostTarget = Math.round((totalMonthlyCommitments / 30) * 100) / 100;
@@ -251,7 +268,6 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   let targetDailyRevenue = dailyFixedCost;
   let targetTrips = dailyGoalTrips;
   let goalDescription = '';
-  const bankName = vehicle.financingBank || (vehicle.isRented ? 'Aluguel' : 'Financiamento');
 
   if (goalProfile === 'LEVE') {
     targetDailyRevenue = targetDailyRevenue_LEVE;
@@ -289,11 +305,10 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   const monthlyProgressPercent = Math.min(100, Math.round((monthlyTripsCompleted / monthlyGoalTrips) * 100));
 
   // Dados de Parcelas Dinâmicos calculados a partir das despesas reais registradas
-  const installmentsSummary = calculateVehicleInstallmentsSummary(vehicle, expenses);
   const finCost = monthlyFinancing;
   const finTotal = installmentsSummary.finTotal;
   const finPaid = installmentsSummary.finPaid;
-  const insCost = vehicle.insuranceMonthlyCost || 299.71;
+  const insCost = monthlyInsurance;
   const insTotal = installmentsSummary.insTotal;
   const insPaid = installmentsSummary.insPaid;
 
@@ -689,7 +704,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
       )}
 
       {/* 6. MONITORAMENTO INTELIGENTE DA PARCELA DO FINANCIAMENTO & SEGURO */}
-      {targetFinancingTotal > 0 ? (
+      {isVehicleFinanced && !isFinancingFullyPaid ? (
         <div className="bg-pma-card border border-amber-500/60 rounded-none p-5 shadow-2xl space-y-4 relative overflow-hidden text-left">
           <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
             <div className="flex items-center gap-2">
@@ -706,7 +721,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           {/* Resumo em Números Reais */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-black/60 border border-white/10 p-3">
-              <span className="text-[10px] font-mono text-slate-400 uppercase block">Valor Total da Parcela</span>
+              <span className="text-[10px] font-mono text-slate-400 uppercase block">Valor da Parcela Base</span>
               <p className="text-lg font-black text-white font-mono">R$ {targetFinancingTotal.toFixed(2)}</p>
               <span className="text-[10px] text-slate-500 font-mono">Contrato {bankName}</span>
             </div>
@@ -778,21 +793,38 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
             </div>
           )}
         </div>
-      ) : (
+      ) : isFinancingFullyPaid ? (
         <div className="bg-pma-card border border-emerald-500/60 rounded-none p-4 shadow-2xl flex items-center justify-between text-left">
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></span>
             <div>
               <h2 className="font-mono font-black text-sm text-emerald-400 uppercase tracking-wider">
-                🟢 VEÍCULO QUITADO ({vehicle.model.toUpperCase()})
+                🎉 FINANCIAMENTO 100% QUITADO ({vehicle.model.toUpperCase()})
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Isento de parcela de financiamento. 100% da receita líquida destinada ao lucro disponível e reservas.
+                Todas as {installmentsSummary.finTotal} parcelas foram quitadas! 100% da receita líquida livre para lucro e reservas.
               </p>
             </div>
           </div>
           <span className="text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 uppercase">
-            QUITADO (R$ 0,00)
+            QUITADO ({installmentsSummary.finPaid}/{installmentsSummary.finTotal}x)
+          </span>
+        </div>
+      ) : (
+        <div className="bg-pma-card border border-slate-700/60 rounded-none p-4 shadow-2xl flex items-center justify-between text-left">
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 bg-slate-400 rounded-full"></span>
+            <div>
+              <h2 className="font-mono font-black text-sm text-white uppercase tracking-wider">
+                VEÍCULO SEM FINANCIAMENTO ({vehicle.model.toUpperCase()})
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Sem parcelas ativas de financiamento registradas.
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1 uppercase">
+            ISENTO (R$ 0,00)
           </span>
         </div>
       )}
