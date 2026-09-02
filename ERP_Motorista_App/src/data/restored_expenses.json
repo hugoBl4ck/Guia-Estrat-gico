@@ -1,5 +1,41 @@
 [
   {
+    "id": "exp-seguro-aliro-parcela-2",
+    "category": "INSURANCE",
+    "amount": 306.10,
+    "notes": "Seguro Aliro Auto - Parcela 2/12 (paga com atraso)",
+    "expenseDate": "2026-09-01T12:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-santander-amortizacao-48",
+    "category": "FINANCING",
+    "amount": 1201.97,
+    "notes": "Amortização última parcela Santander (Parcela 48/48 com desconto)",
+    "expenseDate": "2026-08-18T12:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-seguro-aliro-parcela-1",
+    "category": "INSURANCE",
+    "amount": 299.71,
+    "notes": "Seguro Aliro Auto - Parcela 1/12",
+    "expenseDate": "2026-07-30T12:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
+    "id": "exp-santander-parcela-1",
+    "category": "FINANCING",
+    "amount": 3086.58,
+    "notes": "Financiamento Santander - Parcela 1/48",
+    "expenseDate": "2026-07-16T12:00:00+00:00",
+    "vehicleId": "veh-byd-dolphin-mini",
+    "driverName": "Hugo"
+  },
+  {
     "id": "exp-1787153906271",
     "category": "ELECTRIC_CHARGING",
     "amount": 48.36,
