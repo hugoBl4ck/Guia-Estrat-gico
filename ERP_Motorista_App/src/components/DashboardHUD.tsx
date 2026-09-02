@@ -29,13 +29,14 @@ import {
   User,
   Fuel,
   Award,
-  Receipt
+  Receipt,
+  Calendar
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 import { calculateCPK, calculateShiftSummary, calculateHoursBetween, calculateVehicleInstallmentsSummary } from '../utils/financialCalculators';
 import { runAnomalyAudit, AuditAnomaly } from '../services/anomalyDetector';
-import { getTodayLocalDateString, formatToLocalDateString, isDateToday } from '../utils/dateUtils';
+import { getTodayLocalDateString, formatToLocalDateString, formatToBrazilianDate, isDateToday } from '../utils/dateUtils';
 
 interface DashboardHUDProps {
   vehicle: Vehicle;
@@ -80,7 +81,38 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     }
   }, [currentDriverName]);
 
+  // Seletor de Data de Referência do HUD (Ontem por padrão, com alternância rápida para Hoje ou Escolha de Dia)
+  const [selectedDateMode, setSelectedDateMode] = useState<'YESTERDAY' | 'TODAY' | 'CUSTOM'>('YESTERDAY');
+  const [customDate, setCustomDate] = useState<string>(getTodayLocalDateString());
+
+  const getYesterdayLocalDateString = (): string => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const todayStr = getTodayLocalDateString();
+  const yesterdayStr = getYesterdayLocalDateString();
+
+  const activeDateStr = selectedDateMode === 'YESTERDAY' 
+    ? yesterdayStr 
+    : selectedDateMode === 'TODAY' 
+    ? todayStr 
+    : customDate;
+
+  const dateLabel = selectedDateMode === 'YESTERDAY' 
+    ? 'Ontem' 
+    : selectedDateMode === 'TODAY' 
+    ? 'Hoje' 
+    : formatToBrazilianDate(activeDateStr);
+
+  const isItemForActiveDate = (d?: Date | string | null): boolean => {
+    if (!d) return false;
+    return formatToLocalDateString(d) === activeDateStr;
+  };
 
   // Filtragem de Dados com base no Motorista Selecionado no HUD
   const isDriverMatch = (itemDriverName?: string | null) => {
@@ -98,26 +130,34 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   // Execucao do Agente Auditor Interno de Detecção de Anomalias
   const anomalies: AuditAnomaly[] = runAnomalyAudit(filteredEarnings, filteredExpenses);
 
-  // Ganhos e Corridas do Dia (Hoje)
-  const todayEarnings = filteredEarnings.filter((e) => {
-    if (!e.recordedAt) return true;
-    return isDateToday(e.recordedAt);
+  // Ganhos e Corridas da data selecionada (Ontem / Hoje / Escolhida)
+  const selectedDateEarnings = filteredEarnings.filter((e) => {
+    if (!e.recordedAt) return false;
+    return isItemForActiveDate(e.recordedAt);
   });
 
-  const todayRevenue = todayEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
-  const todayKm = todayEarnings.reduce((sum, e) => sum + e.rideDistanceKm, 0);
-  const todayTrips = todayEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
+  const selectedDateRevenue = selectedDateEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const selectedDateKm = selectedDateEarnings.reduce((sum, e) => sum + e.rideDistanceKm, 0);
+  const selectedDateTrips = selectedDateEarnings.reduce((sum, e) => sum + e.totalTrips, 0);
 
-  // Despesas do dia (todas e operacionais)
-  const todayExpensesList = filteredExpenses.filter((e) => e.expenseDate && isDateToday(e.expenseDate));
-  const todayTotalExpenses = todayExpensesList.reduce((sum, exp) => sum + exp.amount, 0);
+  // Despesas da data selecionada (todas e operacionais)
+  const selectedDateExpensesList = filteredExpenses.filter((e) => e.expenseDate && isItemForActiveDate(e.expenseDate));
+  const selectedDateTotalExpenses = selectedDateExpensesList.reduce((sum, exp) => sum + exp.amount, 0);
   // Exclui parcelas contratuais mensais de seguro e financiamento do custo operacional variável do dia
-  const todayOperatingExpenses = todayExpensesList
+  const selectedDateOperatingExpenses = selectedDateExpensesList
     .filter((e) => e.category !== 'FINANCING' && e.category !== 'INSURANCE')
     .reduce((sum, exp) => sum + exp.amount, 0);
 
-  const todayExpenses = todayTotalExpenses;
-  const todayNetProfit = todayRevenue - todayTotalExpenses;
+  const selectedDateNetProfit = selectedDateRevenue - selectedDateTotalExpenses;
+
+  // Variáveis de compatibilidade
+  const todayRevenue = selectedDateRevenue;
+  const todayKm = selectedDateKm;
+  const todayTrips = selectedDateTrips;
+  const todayExpensesList = selectedDateExpensesList;
+  const todayTotalExpenses = selectedDateTotalExpenses;
+  const todayOperatingExpenses = selectedDateOperatingExpenses;
+  const todayNetProfit = selectedDateNetProfit;
 
   // Estatísticas detalhadas por Motorista
   const driverStatsMap: {
@@ -227,16 +267,20 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
     goalDescription = `🚀 Meta Agressiva: Cobre custos fixos + antecipação de parcelas (R$ ${financingRemaining.toFixed(2)} em ${daysRemainingToDue} dias) + R$ 275,00 de Lucro Líquido.`;
   }
 
-  const effectiveRevenue = todayRevenue;
-  const effectiveOperatingCost = todayOperatingExpenses;
+  const effectiveRevenue = selectedDateRevenue;
+  const effectiveOperatingCost = selectedDateOperatingExpenses;
   const breakEvenTarget = dailyBaseCostTarget + effectiveOperatingCost;
   const breakEvenProgress = breakEvenTarget > 0 ? Math.min(100, Math.round((effectiveRevenue / breakEvenTarget) * 100)) : 0;
   const isBreakEvenPassed = breakEvenProgress >= 100 && breakEvenTarget > 0;
   const remainingForBreakEven = Math.max(0, breakEvenTarget - effectiveRevenue);
 
-  const tripsCompletedToday = todayTrips;
-  const tripsRemainingToday = Math.max(0, targetTrips - tripsCompletedToday);
-  const targetProgressToday = Math.min(100, Math.round((tripsCompletedToday / targetTrips) * 100));
+  const tripsCompletedInDate = selectedDateTrips;
+  const tripsRemainingInDate = Math.max(0, targetTrips - tripsCompletedInDate);
+  const targetProgressInDate = Math.min(100, Math.round((tripsCompletedInDate / targetTrips) * 100));
+
+  const tripsCompletedToday = selectedDateTrips;
+  const tripsRemainingToday = tripsRemainingInDate;
+  const targetProgressToday = targetProgressInDate;
 
   // Metas Acumuladas do Mês (30 dias)
   const monthlyGoalTrips = targetTrips * 30;
@@ -395,14 +439,66 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </button>
       </div>
 
-      {/* 3. CARD PRINCIPAL DE LUCRO REAL LÍQUIDO (HOJE / CONTEXTO) */}
+      {/* SELETOR DE DATA DE REFERÊNCIA DO HUD (ONTEM / HOJE / ESCOLHER DIA) */}
+      <div className="bg-pma-card border border-white/10 p-3 sm:p-4 rounded-none shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Calendar className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+            Referência do HUD:
+          </span>
+          <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5">
+            {dateLabel} ({formatToBrazilianDate(activeDateStr)})
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setSelectedDateMode('YESTERDAY')}
+            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all flex items-center gap-1 ${
+              selectedDateMode === 'YESTERDAY'
+                ? 'bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.3)]'
+                : 'bg-pma-dark text-slate-400 border border-white/10 hover:text-white'
+            }`}
+          >
+            🌙 Ontem
+          </button>
+
+          <button
+            onClick={() => setSelectedDateMode('TODAY')}
+            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all flex items-center gap-1 ${
+              selectedDateMode === 'TODAY'
+                ? 'bg-pma-acid text-black shadow-[0_0_12px_rgba(212,255,0,0.3)]'
+                : 'bg-pma-dark text-slate-400 border border-white/10 hover:text-white'
+            }`}
+          >
+            ☀️ Hoje
+          </button>
+
+          <div className="flex items-center gap-1 bg-pma-dark border border-white/10 px-2 py-1">
+            <span className="text-[11px] font-mono text-slate-400">📅 Outro dia:</span>
+            <input
+              type="date"
+              value={activeDateStr}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setCustomDate(e.target.value);
+                  setSelectedDateMode('CUSTOM');
+                }
+              }}
+              className="bg-transparent text-xs font-mono text-white font-bold outline-none cursor-pointer [color-scheme:dark]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. CARD PRINCIPAL DE LUCRO REAL LÍQUIDO */}
       <div className="bg-pma-card border border-white/10 rounded-none p-6 shadow-2xl relative overflow-hidden text-left">
         <div className="absolute top-0 right-0 w-48 h-48 bg-pma-acid/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex items-center justify-between mb-4">
           <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-pma-acid flex items-center gap-1.5 bg-pma-acid/10 border border-pma-acid/30 px-3 py-1">
             <span className="w-2 h-2 rounded-full bg-pma-acid animate-pulse"></span>
-            LUCRO REAL LÍQUIDO {driverFilter !== 'ALL' ? `(${driverFilter.toUpperCase()})` : '(HOJE)'}
+            LUCRO REAL LÍQUIDO ({dateLabel.toUpperCase()}) {driverFilter !== 'ALL' ? `• ${driverFilter.toUpperCase()}` : ''}
           </span>
 
           <button
@@ -419,11 +515,11 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           <div className="flex items-baseline space-x-1">
             <span className="text-2xl font-bold text-driver-profit">R$</span>
             <span className="text-5xl font-black text-white tracking-tight">
-              {todayNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {selectedDateNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Hoje: Faturamento Bruto (R$ {todayRevenue.toFixed(2)}) menos despesas do dia (-R$ {todayTotalExpenses.toFixed(2)}).
+            {dateLabel}: Faturamento Bruto (R$ {selectedDateRevenue.toFixed(2)}) menos custos de {dateLabel.toLowerCase()} (-R$ {selectedDateTotalExpenses.toFixed(2)}).
             <span className="text-slate-500 block mt-0.5">
               Acumulado do Período: R$ {summary.netRealProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de Lucro Líquido Real
             </span>
@@ -433,17 +529,17 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         {/* Financial Metrics Strip */}
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800/80">
           <div className="bg-slate-900/80 p-2.5 rounded-none border border-slate-800">
-            <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">Bruto Hoje</p>
+            <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">Bruto {dateLabel}</p>
             <p className="text-base font-black text-emerald-400 font-mono mt-0.5">
-              R$ {todayRevenue.toFixed(2)}
+              R$ {selectedDateRevenue.toFixed(2)}
             </p>
             <span className="text-[9px] text-slate-500 font-mono block">Acumulado: R$ {summary.grossRevenue.toFixed(2)}</span>
           </div>
 
           <div className="bg-slate-900/80 p-2.5 rounded-none border border-slate-800">
-            <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">Custos Hoje</p>
+            <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">Custos {dateLabel}</p>
             <p className="text-base font-black text-rose-400 font-mono mt-0.5">
-              -R$ {todayTotalExpenses.toFixed(2)}
+              -R$ {selectedDateTotalExpenses.toFixed(2)}
             </p>
             <span className="text-[9px] text-slate-500 font-mono block">Acumulado: -R$ {summary.totalOperatingCost.toFixed(2)}</span>
           </div>
@@ -451,7 +547,7 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           <div className="bg-slate-900/80 p-2.5 rounded-none border border-slate-800">
             <p className="text-[10px] text-slate-400 font-mono font-semibold uppercase">KM Rodado</p>
             <p className="text-base font-black text-amber-400 font-mono mt-0.5">
-              {todayKm > 0 ? todayKm.toFixed(1) : summary.kmDriven.toFixed(1)} km
+              {selectedDateKm > 0 ? selectedDateKm.toFixed(1) : (selectedDateMode === 'TODAY' ? summary.kmDriven.toFixed(1) : '0.0')} km
             </p>
             <span className="text-[9px] text-slate-500 font-mono block">Acumulado: {summary.kmDriven.toFixed(1)} km</span>
           </div>
@@ -817,25 +913,25 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         {/* Progresso do Dia */}
         <div className="space-y-1.5">
           <div className="flex justify-between items-center text-xs font-mono font-bold text-white">
-            <span>Progresso do Dia (Hoje):</span>
-            <span className="text-driver-profit text-sm">{tripsCompletedToday} / {targetTrips} corridas</span>
+            <span>Progresso do Dia ({dateLabel}):</span>
+            <span className="text-driver-profit text-sm">{tripsCompletedInDate} / {targetTrips} corridas</span>
           </div>
 
           <div className="w-full bg-slate-900 h-2.5 p-0.5 border border-slate-800">
             <div
               className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
-              style={{ width: `${targetProgressToday}%` }}
+              style={{ width: `${targetProgressInDate}%` }}
             ></div>
           </div>
 
           <div className="p-2.5 bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs font-mono">
-            {tripsRemainingToday === 0 ? (
+            {tripsRemainingInDate === 0 ? (
               <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4" /> Meta do dia de {targetTrips} corridas concluída!
+                <CheckCircle2 className="w-4 h-4" /> Meta de {targetTrips} corridas concluída em {dateLabel}!
               </span>
             ) : (
               <span className="text-slate-300">
-                Faltam <strong className="text-driver-profit">{tripsRemainingToday} corridas</strong> para bater a meta de hoje ({targetTrips}/dia).
+                Faltam <strong className="text-driver-profit">{tripsRemainingInDate} corridas</strong> para a meta em {dateLabel} ({targetTrips}/dia).
               </span>
             )}
           </div>
@@ -965,14 +1061,14 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
         </button>
       </div>
 
-      {/* 11. LANÇAMENTOS DO DIA (CORRIDAS & DESPESAS REGISTRADAS HOJE) */}
+      {/* 11. LANÇAMENTOS DO DIA (CORRIDAS & DESPESAS REGISTRADAS NA DATA) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Ganhos por Plataforma */}
         <div className="bg-pma-card border border-white/10 rounded-none p-5 shadow-xl text-left">
           <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2.5">
             <h2 className="font-mono font-black text-sm text-white flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-pma-acid" />
-              Ganhos de Hoje ({driverFilter !== 'ALL' ? driverFilter : 'Geral'})
+              Ganhos de {dateLabel} ({driverFilter !== 'ALL' ? driverFilter : 'Geral'})
             </h2>
             <button onClick={() => onNavigateToTab('shifts')} className="text-xs text-pma-acid font-mono font-bold hover:underline flex items-center">
               Ver todas <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
@@ -980,12 +1076,12 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </div>
 
           <div className="space-y-2.5">
-            {todayEarnings.length === 0 ? (
+            {selectedDateEarnings.length === 0 ? (
               <p className="text-xs font-mono text-slate-400 p-4 text-center bg-slate-900/60 border border-slate-800">
-                Nenhum ganho hoje ainda para este filtro. Clique em "➕ Lançar Corridas do Dia".
+                Nenhum ganho registrado em {dateLabel.toLowerCase()} para este filtro.
               </p>
             ) : (
-              todayEarnings.map((e) => (
+              selectedDateEarnings.map((e) => (
                 <div key={e.id} className="flex items-center justify-between p-3 bg-slate-900/90 border border-slate-800 font-mono">
                   <div className="flex items-center space-x-3">
                     <div
@@ -1041,12 +1137,12 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </div>
         </div>
 
-        {/* Despesas Registradas Hoje */}
+        {/* Despesas Registradas */}
         <div className="bg-pma-card border border-white/10 rounded-none p-5 shadow-xl text-left">
           <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2.5">
             <h2 className="font-mono font-black text-sm text-white flex items-center gap-2">
               <Receipt className="w-4 h-4 text-rose-400" />
-              Despesas Registradas Hoje ({todayExpensesList.length})
+              Despesas de {dateLabel} ({selectedDateExpensesList.length})
             </h2>
             <button onClick={() => onNavigateToTab('expenses')} className="text-xs text-rose-400 font-mono font-bold hover:underline flex items-center">
               Ver todas <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
@@ -1054,12 +1150,12 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
           </div>
 
           <div className="space-y-2.5">
-            {todayExpensesList.length === 0 ? (
+            {selectedDateExpensesList.length === 0 ? (
               <p className="text-xs font-mono text-slate-400 p-4 text-center bg-slate-900/60 border border-slate-800">
-                Nenhuma despesa lançada hoje ainda.
+                Nenhuma despesa lançada em {dateLabel.toLowerCase()}.
               </p>
             ) : (
-              todayExpensesList.map((exp) => (
+              selectedDateExpensesList.map((exp) => (
                 <div key={exp.id} className="flex items-center justify-between p-3 bg-slate-900/90 border border-slate-800 font-mono">
                   <div className="flex items-center space-x-3">
                     <div className="w-9 h-9 flex items-center justify-center font-black text-xs bg-rose-950/80 border border-rose-800 text-rose-400">
