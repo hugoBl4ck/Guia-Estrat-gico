@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd ERP_Motorista_App && npm install && npm run build",
+  "outputDirectory": "ERP_Motorista_App/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

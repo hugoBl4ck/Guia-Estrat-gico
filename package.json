@@ -1,0 +1,7 @@
+{
+  "name": "guia-estrategico-root",
+  "private": true,
+  "scripts": {
+    "build": "cd ERP_Motorista_App && npm install && npm run build"
+  }
+}
