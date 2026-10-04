@@ -47,7 +47,7 @@ export const ReportPeriodFilter: React.FC<ReportPeriodFilterProps> = ({
   // Controle de Mês e Ano Selecionado
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
-  const [isComparing, setIsComparing] = useState<boolean>(false);
+  const [isComparing, setIsComparing] = useState<boolean>(true);
 
   const [customStart, setCustomStart] = useState<string>(() => {
     const d = new Date();
@@ -138,7 +138,7 @@ export const ReportPeriodFilter: React.FC<ReportPeriodFilterProps> = ({
         savedEnd || customEnd,
         initialYear,
         initialMonth,
-        false
+        true
       );
     }
   }, []);
