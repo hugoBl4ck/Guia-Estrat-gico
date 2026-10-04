@@ -1,14 +1,38 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, Calendar, Download, PieChart as PieIcon, Sparkles, Zap, Fuel, ArrowUpRight, Shield, Share2, Pencil, Trash2, LineChart as LineIcon, FileSpreadsheet, Clock } from 'lucide-react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Calendar,
+  Download,
+  PieChart as PieIcon,
+  Sparkles,
+  Zap,
+  Fuel,
+  ArrowUpRight,
+  Shield,
+  Share2,
+  Pencil,
+  Trash2,
+  LineChart as LineIcon,
+  FileSpreadsheet,
+  Clock,
+  ArrowLeftRight,
+  Receipt,
+  Wrench,
+  Layers,
+} from 'lucide-react';
 import { Vehicle, Earning, Expense } from '../types';
 import { calculateHoursBetween } from '../utils/financialCalculators';
 import { FullVehicleReportModal } from './FullVehicleReportModal';
 import { ShareReportModal } from './ShareReportModal';
-import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod } from './ReportPeriodFilter';
+import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod, PeriodComparisonData } from './ReportPeriodFilter';
+import { MonthlyComparisonDashboard } from './MonthlyComparisonDashboard';
 import { formatToBrazilianDate } from '../utils/dateUtils';
 import { exportWeeklyDriverShiftReport } from '../utils/excelExporter';
 import { aggregateExpensesByDriver } from '../utils/driverReports';
+import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
 
 interface DailyReportViewProps {
   vehicle: Vehicle;
@@ -30,9 +54,33 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   const [periodMode, setPeriodMode] = useState<ReportPeriodMode>('MENSAL');
   const [customStart, setCustomStart] = useState<string | undefined>();
   const [customEnd, setCustomEnd] = useState<string | undefined>();
+  const [comparisonData, setComparisonData] = useState<PeriodComparisonData | null>(null);
 
-  const activeEarnings = filterItemsByPeriod(earnings, periodMode, customStart, customEnd);
-  const activeExpenses = filterItemsByPeriod(expenses, periodMode, customStart, customEnd);
+  // Período Principal
+  const activeEarnings = filterItemsByPeriod(
+    earnings,
+    periodMode,
+    customStart,
+    customEnd,
+    comparisonData?.selectedMonthYear
+  );
+  const activeExpenses = filterItemsByPeriod(
+    expenses,
+    periodMode,
+    customStart,
+    customEnd,
+    comparisonData?.selectedMonthYear
+  );
+
+  // Período Anterior de Comparação (se ativado)
+  const compareEarnings =
+    comparisonData?.isComparing && comparisonData.compareStart && comparisonData.compareEnd
+      ? filterItemsByPeriod(earnings, 'PERIODO', comparisonData.compareStart, comparisonData.compareEnd)
+      : [];
+  const compareExpenses =
+    comparisonData?.isComparing && comparisonData.compareStart && comparisonData.compareEnd
+      ? filterItemsByPeriod(expenses, 'PERIODO', comparisonData.compareStart, comparisonData.compareEnd)
+      : [];
 
   const totalRevenue = activeEarnings.reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
   const totalExpenses = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -49,20 +97,38 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     return sum;
   }, 0);
 
-  const grossPerHour = totalWorkedHours > 0 ? (totalRevenue / totalWorkedHours) : 0;
-  const netPerHour = totalWorkedHours > 0 ? (netProfit / totalWorkedHours) : 0;
+  const grossPerHour = totalWorkedHours > 0 ? totalRevenue / totalWorkedHours : 0;
+  const netPerHour = totalWorkedHours > 0 ? netProfit / totalWorkedHours : 0;
 
   // Agrupar ganhos por plataforma
-  const uberRevenue = activeEarnings.filter(e => e.platform === 'UBER').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
-  const ninetyNineRevenue = activeEarnings.filter(e => e.platform === 'NINETY_NINE').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
-  const inDriveRevenue = activeEarnings.filter(e => e.platform === 'INDRIVE').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
-  const privateRevenue = activeEarnings.filter(e => e.platform === 'PRIVATE').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const uberRevenue = activeEarnings.filter((e) => e.platform === 'UBER').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const ninetyNineRevenue = activeEarnings.filter((e) => e.platform === 'NINETY_NINE').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const inDriveRevenue = activeEarnings.filter((e) => e.platform === 'INDRIVE').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
+  const privateRevenue = activeEarnings.filter((e) => e.platform === 'PRIVATE').reduce((sum, e) => sum + e.grossAmount + e.tipsAmount, 0);
 
   // Agrupar despesas por categoria
-  const chargingExpenses = activeExpenses.filter(exp => exp.category === 'ELECTRIC_CHARGING').reduce((sum, exp) => sum + exp.amount, 0);
-  const maintenanceExpenses = activeExpenses.filter(exp => exp.category === 'MAINTENANCE' || exp.category === 'OIL_CHANGE' || exp.category === 'BRAKES').reduce((sum, exp) => sum + exp.amount, 0);
-  const insuranceExpenses = activeExpenses.filter(exp => exp.category === 'INSURANCE').reduce((sum, exp) => sum + exp.amount, 0);
-  const otherExpenses = activeExpenses.filter(exp => !['ELECTRIC_CHARGING', 'MAINTENANCE', 'OIL_CHANGE', 'BRAKES', 'INSURANCE'].includes(exp.category)).reduce((sum, exp) => sum + exp.amount, 0);
+  const chargingExpenses = activeExpenses
+    .filter((exp) => exp.category === 'ELECTRIC_CHARGING' || exp.category === 'FUEL')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const maintenanceExpenses = activeExpenses
+    .filter((exp) =>
+      ['MAINTENANCE', 'OIL_CHANGE', 'BRAKES', 'WORKSHOP_MAINTENANCE', 'SPARK_PLUGS_BELT'].includes(exp.category)
+    )
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const insuranceExpenses = activeExpenses
+    .filter((exp) => ['INSURANCE', 'WASH', 'PARKING', 'TOLL'].includes(exp.category))
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const otherExpenses = activeExpenses
+    .filter(
+      (exp) =>
+        !['ELECTRIC_CHARGING', 'FUEL', 'MAINTENANCE', 'OIL_CHANGE', 'BRAKES', 'WORKSHOP_MAINTENANCE', 'SPARK_PLUGS_BELT', 'INSURANCE', 'WASH', 'PARKING', 'TOLL'].includes(
+          exp.category
+        )
+    )
+    .reduce((sum, exp) => sum + exp.amount, 0);
 
   // Agrupar estatísticas e corridas por motorista
   const driverStatsMap: { [name: string]: { trips: number; revenue: number; km: number; hours: number } } = {};
@@ -71,7 +137,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     if (!driverStatsMap[dName]) {
       driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
     }
-    const itemHours = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || 0) : 0);
+    const itemHours = e.workedHours || (e.startTime && e.endTime ? calculateHoursBetween(e.startTime, e.endTime) || 0 : 0);
     driverStatsMap[dName].trips += e.totalTrips || 1;
     driverStatsMap[dName].revenue += e.grossAmount + e.tipsAmount;
     driverStatsMap[dName].km += e.rideDistanceKm || 0;
@@ -83,10 +149,8 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     ...driverStatsMap[name],
   }));
 
-  // Gasto por motorista (destacando recarga eletrica/combustivel, conforme solicitado pelo motorista)
   const driverExpensesList = aggregateExpensesByDriver(activeExpenses);
   const driverExpensesMap = new Map(driverExpensesList.map((d) => [d.driverName, d]));
-  // Inclui motoristas que so lancaram despesas (ex: recarga) sem corrida registrada no periodo
   driverExpensesList.forEach((d) => {
     if (!driverStatsMap[d.driverName]) {
       driverStatsList.push({ name: d.driverName, trips: 0, revenue: 0, km: 0, hours: 0 });
@@ -95,12 +159,12 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
 
   // Exportar CSV com BOM \uFEFF para Excel no Windows
   const handleExportCSV = () => {
-    let csvContent = "\uFEFF"; // Byte Order Mark UTF-8 para Excel
-    csvContent += "RELATÓRIO DIÁRIO DE RECEITAS E DESPESAS - GIROCERTO ERP\n";
+    let csvContent = '\uFEFF';
+    csvContent += 'RELATÓRIO DIÁRIO DE RECEITAS E DESPESAS - GIROCERTO ERP\n';
     csvContent += `Veículo:;${vehicle.model} (${vehicle.licensePlate})\n`;
     csvContent += `Data:;${new Date().toLocaleDateString('pt-BR')}\n\n`;
 
-    csvContent += "RESUMO EXECUTIVO DIÁRIO\n";
+    csvContent += 'RESUMO EXECUTIVO DO PERÍODO\n';
     csvContent += `Faturamento Bruto Total;R$ ${totalRevenue.toFixed(2)}\n`;
     csvContent += `Despesas Operacionais Totais;-R$ ${totalExpenses.toFixed(2)}\n`;
     csvContent += `Lucro Real Líquido;R$ ${netProfit.toFixed(2)}\n`;
@@ -109,39 +173,47 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     csvContent += `R$ por Hora (Bruto);R$ ${grossPerHour.toFixed(2)}/h\n`;
     csvContent += `R$ por Hora (Líquido);R$ ${netPerHour.toFixed(2)}/h\n\n`;
 
-    csvContent += "DESEMPENHO E CORRIDAS POR MOTORISTA\n";
-    csvContent += "Motorista;Nº Corridas;Faturamento Total (R$);KM Rodados;Horas Trabalhadas;R$/Hora (Bruto)\n";
+    csvContent += 'DESEMPENHO E CORRIDAS POR MOTORISTA\n';
+    csvContent += 'Motorista;Nº Corridas;Faturamento Total (R$);KM Rodados;Horas Trabalhadas;R$/Hora (Bruto)\n';
     driverStatsList.forEach((d) => {
-      const dRate = d.hours > 0 ? (d.revenue / d.hours) : 0;
+      const dRate = d.hours > 0 ? d.revenue / d.hours : 0;
       csvContent += `${d.name};${d.trips};R$ ${d.revenue.toFixed(2)};${d.km.toFixed(1)} km;${d.hours.toFixed(1)} h;R$ ${dRate.toFixed(2)}/h\n`;
     });
-    csvContent += "\n";
+    csvContent += '\n';
 
-    csvContent += "FATURAMENTO POR PLATAFORMA\n";
+    csvContent += 'FATURAMENTO POR PLATAFORMA\n';
     csvContent += `Uber;R$ ${uberRevenue.toFixed(2)}\n`;
     csvContent += `99Pop;R$ ${ninetyNineRevenue.toFixed(2)}\n`;
     csvContent += `InDrive;R$ ${inDriveRevenue.toFixed(2)}\n`;
     csvContent += `Corridas Particulares;R$ ${privateRevenue.toFixed(2)}\n\n`;
 
-    csvContent += "DESPESAS POR CATEGORIA\n";
-    csvContent += `Recargas Elétricas/Combustível;R$ ${chargingExpenses.toFixed(2)}\n`;
-    csvContent += `Manutenção e Pneus;R$ ${maintenanceExpenses.toFixed(2)}\n`;
-    csvContent += `Seguro Auto;R$ ${insuranceExpenses.toFixed(2)}\n`;
+    csvContent += 'DESPESAS POR CATEGORIA\n';
+    csvContent += `Recargas Elétricas / Combustível;R$ ${chargingExpenses.toFixed(2)}\n`;
+    csvContent += `Manutenção e Peças;R$ ${maintenanceExpenses.toFixed(2)}\n`;
+    csvContent += `Seguro & Proteção;R$ ${insuranceExpenses.toFixed(2)}\n`;
     csvContent += `Outras Despesas;R$ ${otherExpenses.toFixed(2)}\n\n`;
 
-    csvContent += "LANÇAMENTOS INDIVIDUAIS DE CORRIDAS\n";
-    csvContent += "Data;Plataforma;Motorista;Nº Corridas;KM;Horário Início;Horário Fim;Horas Trabalhadas;Valor Bruto (R$);Gorjetas (R$);Total (R$)\n";
+    csvContent += 'LANÇAMENTOS INDIVIDUAIS DE DESPESAS\n';
+    csvContent += 'Data;Categoria;Valor (R$);Motorista;Anotações / Detalhes\n';
+    activeExpenses.forEach((exp) => {
+      const catLabel = CATEGORY_LABELS[exp.category]?.label || exp.category;
+      csvContent += `${formatToBrazilianDate(exp.expenseDate)};${catLabel};R$ ${exp.amount.toFixed(2)};${exp.driverName || 'Geral'};"${(exp.notes || '').replace(/"/g, '""')}"\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += 'LANÇAMENTOS INDIVIDUAIS DE CORRIDAS\n';
+    csvContent += 'Data;Plataforma;Motorista;Nº Corridas;KM;Horário Início;Horário Fim;Horas Trabalhadas;Valor Bruto (R$);Gorjetas (R$);Total (R$)\n';
     activeEarnings.forEach((e) => {
       const tot = e.grossAmount + e.tipsAmount;
-      const hCalc = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || "") : "");
+      const hCalc = e.workedHours || (e.startTime && e.endTime ? calculateHoursBetween(e.startTime, e.endTime) || '' : '');
       csvContent += `${formatToBrazilianDate(e.recordedAt)};${e.platform};${e.driverName || 'Sem motorista'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `relatorio_diario_receitas_despesas_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_receitas_despesas_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -150,23 +222,25 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   return (
     <div className="space-y-6 pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-emerald-400" />
-            Relatório Diário: Receitas x Despesas
+            Relatório Financeiro: Receitas x Despesas
           </h2>
-          <p className="text-xs text-slate-400">Demonstrativo de resultado diário e balanço operacional</p>
+          <p className="text-xs text-slate-400">
+            Balanço operacional autoexplicativo, comparação mês a mês e diagnóstico inteligente com IA
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setIsFullReportOpen(true)}
             className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
             title="Abrir Relatório Completo Executivo do Veículo"
           >
             <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
-            <span>Relatório Completo</span>
+            <span>Relatório do Veículo</span>
           </button>
 
           <button
@@ -181,10 +255,12 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           <button
             onClick={handleExportCSV}
             className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
+            title="Exportar dados completos em Excel"
           >
             <Download className="w-4 h-4" />
             Excel
           </button>
+
           <button
             onClick={() => exportWeeklyDriverShiftReport(vehicle, earnings, expenses, customStart || '2026-08-24', customEnd || '2026-08-30')}
             className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
@@ -196,26 +272,44 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         </div>
       </div>
 
-      {/* Filtro de Período Configurável e Fixo (Mensal, 15d, Semanal, Período, Hoje) */}
+      {/* Filtro de Período Configurável com Navegação de Mês e Comparação MoM */}
       <ReportPeriodFilter
-        onPeriodChange={(mode, start, end) => {
+        onPeriodChange={(mode, start, end, comp) => {
           setPeriodMode(mode);
           setCustomStart(start);
           setCustomEnd(end);
+          if (comp) setComparisonData(comp);
         }}
       />
 
-      {/* Big KPI Cards Grid */}
+      {/* PAINEL COMPARATIVO MÊS A MÊS & IA (Exibido quando ativada a comparação) */}
+      {comparisonData?.isComparing && (
+        <MonthlyComparisonDashboard
+          vehicle={vehicle}
+          currentEarnings={activeEarnings}
+          currentExpenses={activeExpenses}
+          currentLabel={comparisonData.currentLabel}
+          currentStart={comparisonData.currentStart}
+          currentEnd={comparisonData.currentEnd}
+          previousEarnings={compareEarnings}
+          previousExpenses={compareExpenses}
+          previousLabel={comparisonData.compareLabel || 'Mês Anterior'}
+          previousStart={comparisonData.compareStart || ''}
+          previousEnd={comparisonData.compareEnd || ''}
+        />
+      )}
+
+      {/* Big KPI Cards Grid (Período Selecionado) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Entradas */}
         <div className="bg-pma-card border border-emerald-800/60 rounded-3xl p-4 shadow-xl">
           <span className="text-[10px] font-extrabold uppercase text-emerald-400 flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" /> RECEITA BRUTA
           </span>
-          <p className="text-xl font-black text-driver-profit mt-1">
+          <p className="text-xl sm:text-2xl font-black text-driver-profit mt-1">
             R$ {totalRevenue.toFixed(2)}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">{activeEarnings.length} lançamentos</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{activeEarnings.length} corridas/entradas</p>
         </div>
 
         {/* Saídas */}
@@ -223,10 +317,10 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           <span className="text-[10px] font-extrabold uppercase text-rose-400 flex items-center gap-1">
             <TrendingDown className="w-3.5 h-3.5" /> DESPESAS
           </span>
-          <p className="text-xl font-black text-driver-danger mt-1">
+          <p className="text-xl sm:text-2xl font-black text-driver-danger mt-1">
             -R$ {totalExpenses.toFixed(2)}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">{activeExpenses.length} lançamentos</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{activeExpenses.length} lançamentos de custo</p>
         </div>
 
         {/* Lucro Líquido */}
@@ -234,7 +328,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           <span className="text-[10px] font-extrabold uppercase text-emerald-400 flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5" /> LUCRO LÍQUIDO
           </span>
-          <p className="text-xl font-black text-white mt-1">
+          <p className="text-xl sm:text-2xl font-black text-white mt-1">
             R$ {netProfit.toFixed(2)}
           </p>
           <p className="text-[10px] font-bold text-emerald-400 mt-0.5">Margem {marginPercent.toFixed(1)}%</p>
@@ -245,7 +339,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           <span className="text-[10px] font-extrabold uppercase text-amber-400 flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" /> HORAS & R$/H
           </span>
-          <p className="text-xl font-black text-white mt-1">
+          <p className="text-xl sm:text-2xl font-black text-white mt-1">
             {totalWorkedHours > 0 ? `${totalWorkedHours.toFixed(1)}h` : '--'}
           </p>
           <p className="text-[10px] text-emerald-400 font-mono mt-0.5">
@@ -255,10 +349,10 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
       </div>
 
       {/* Barra Visual Comparativa Receitas (Verde) x Despesas (Vermelha) */}
-       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="font-extrabold text-sm text-white flex items-center justify-between">
           <span>Proporção Operacional (Entradas x Saídas)</span>
-          <span className="text-xs text-slate-400">Total: R$ {(totalRevenue + totalExpenses).toFixed(2)}</span>
+          <span className="text-xs text-slate-400">Total Movimentado: R$ {(totalRevenue + totalExpenses).toFixed(2)}</span>
         </h3>
 
         <div className="w-full bg-slate-900 h-6 rounded-2xl overflow-hidden p-1 flex border border-slate-800">
@@ -275,6 +369,105 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
             {totalRevenue + totalExpenses > 0 ? `${((totalExpenses / (totalRevenue + totalExpenses)) * 100).toFixed(0)}% Saídas` : ''}
           </div>
         </div>
+      </div>
+
+      {/* Resumo de Despesas por Centro de Custo no Período */}
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
+        <h3 className="font-extrabold text-sm text-white flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-rose-400" />
+            Despesas por Categoria (Período Selecionado)
+          </span>
+          <span className="text-xs text-rose-400 font-mono font-bold">
+            Total: -R$ {totalExpenses.toFixed(2)}
+          </span>
+        </h3>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+            <span className="text-[10px] font-extrabold text-blue-400 uppercase flex items-center gap-1">
+              {vehicle.isElectric ? <Zap className="w-3 h-3" /> : <Fuel className="w-3 h-3" />}
+              CC-01 Rodagem
+            </span>
+            <p className="text-sm font-black text-white mt-1">R$ {chargingExpenses.toFixed(2)}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Recarga / Combustível</p>
+          </div>
+
+          <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+            <span className="text-[10px] font-extrabold text-amber-400 uppercase flex items-center gap-1">
+              <Wrench className="w-3 h-3" />
+              CC-02 Manutenção
+            </span>
+            <p className="text-sm font-black text-white mt-1">R$ {maintenanceExpenses.toFixed(2)}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Peças, óleo e pneus</p>
+          </div>
+
+          <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+            <span className="text-[10px] font-extrabold text-purple-400 uppercase flex items-center gap-1">
+              <Shield className="w-3 h-3" />
+              CC-03 Proteção
+            </span>
+            <p className="text-sm font-black text-white mt-1">R$ {insuranceExpenses.toFixed(2)}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Seguro, lava-jato, pedágio</p>
+          </div>
+
+          <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+            <span className="text-[10px] font-extrabold text-rose-400 uppercase flex items-center gap-1">
+              <Layers className="w-3 h-3" />
+              CC-04 Impostos & Outros
+            </span>
+            <p className="text-sm font-black text-white mt-1">R$ {otherExpenses.toFixed(2)}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">IPVA, parcelas, taxas</p>
+          </div>
+        </div>
+
+        {/* Lista Individual de Lançamentos de Despesas */}
+        {activeExpenses.length > 0 && (
+          <div className="pt-3 border-t border-slate-800/80 space-y-2">
+            <h4 className="text-xs font-extrabold uppercase text-slate-400 flex items-center justify-between">
+              <span>Lançamentos Individuais de Despesas</span>
+              <span className="text-[10px] font-mono font-normal">{activeExpenses.length} item(ns)</span>
+            </h4>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {activeExpenses.map((exp) => {
+                const catInfo = CATEGORY_LABELS[exp.category] || { label: exp.category, cc: 'CC-04 Outros' };
+                return (
+                  <div key={exp.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-900 border border-slate-800">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-400 flex items-center justify-center font-bold text-xs">
+                        {['ELECTRIC_CHARGING', 'FUEL'].includes(exp.category) ? '⚡' : ['MAINTENANCE', 'OIL_CHANGE', 'BRAKES'].includes(exp.category) ? '🔧' : '🧾'}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>{catInfo.label}</span>
+                          {exp.driverName && (
+                            <span className="text-[10px] text-slate-400 font-normal">({exp.driverName})</span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-slate-400 flex flex-wrap items-center gap-1 mt-0.5">
+                          <span>{catInfo.cc}</span>
+                          {exp.notes && <span className="text-slate-300 italic">• {exp.notes}</span>}
+                          {exp.odometerKm && <span>• {exp.odometerKm} km</span>}
+                          {exp.fuelLiters && <span>• {exp.fuelLiters} L</span>}
+                          {exp.kwhAmount && <span>• {exp.kwhAmount} kWh</span>}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs font-extrabold text-rose-400 font-mono">
+                        -R$ {exp.amount.toFixed(2)}
+                      </p>
+                      <p className="text-[9px] text-slate-400 font-mono">
+                        {formatToBrazilianDate(exp.expenseDate)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Detalhamento de Corridas por Motorista */}
@@ -319,7 +512,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
       </div>
 
       {/* Detalhamento Diário Receitas por Aplicativo */}
-       <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
+      <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-emerald-400" />
           Faturamento por Plataforma (Entradas)
@@ -350,8 +543,8 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         {/* Lista de Lançamentos de Faturamento com Botão de Edição */}
         {activeEarnings.length > 0 && (
           <div className="pt-3 border-t border-slate-800/80 space-y-2">
-            <h4 className="text-xs font-extrabold uppercase text-slate-400">Lançamentos Individuais (Clique em Editar para alterar)</h4>
-            <div className="space-y-2">
+            <h4 className="text-xs font-extrabold uppercase text-slate-400">Lançamentos Individuais de Corridas</h4>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {activeEarnings.map((e) => {
                 const total = e.grossAmount + e.tipsAmount;
                 const hCalc = e.workedHours || (e.startTime && e.endTime ? calculateHoursBetween(e.startTime, e.endTime) : undefined);
@@ -373,7 +566,9 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>{e.earningType === 'REFERRAL' ? 'Indicação (Bônus)' : e.earningType === 'BONUS' ? 'Missão / Bônus' : e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}</span>
+                          <span>
+                            {e.earningType === 'REFERRAL' ? 'Indicação (Bônus)' : e.earningType === 'BONUS' ? 'Missão / Bônus' : e.platform === 'UBER' ? 'Uber' : e.platform === 'NINETY_NINE' ? '99Pop' : e.platform === 'PRIVATE' ? 'Particular' : 'InDrive'}
+                          </span>
                           {e.earningType === 'REFERRAL' && (
                             <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
                               🎁 Indicação

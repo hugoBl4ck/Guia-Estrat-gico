@@ -23,5 +23,6 @@ local.properties
 .DS_Store
 Thumbs.db
 backup_*.json
+backups/
 Supabase Snippet*.csv
 supabase/.temp/
