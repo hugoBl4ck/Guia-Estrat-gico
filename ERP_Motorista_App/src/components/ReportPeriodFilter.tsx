@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Pin, CheckCircle2, ChevronLeft, ChevronRight, ArrowLeftRight, Sparkles } from 'lucide-react';
-import { getTodayLocalDateString, formatToLocalDateString } from '../utils/dateUtils';
+import {
+  getTodayLocalDateString,
+  formatToLocalDateString,
+  formatToBrazilianDate,
+  calculateComparisonPeriod,
+  PeriodDefinition,
+} from '../utils/dateUtils';
 
 export type ReportPeriodMode = 'MENSAL' | 'QUINZENAL' | 'SEMANAL' | 'HOJE' | 'PERIODO' | 'TODOS';
 
@@ -59,7 +65,7 @@ export const ReportPeriodFilter: React.FC<ReportPeriodFilterProps> = ({
   const [fixedMode, setFixedMode] = useState<ReportPeriodMode | null>(null);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
 
-  // Calcula datas exatas para o mês selecionado e mês comparado
+  // Calcula datas exatas para o mês selecionado
   const getDatesForMonth = (year: number, monthIndex: number) => {
     const lastDay = new Date(year, monthIndex + 1, 0).getDate();
     const monthStr = String(monthIndex + 1).padStart(2, '0');
@@ -78,30 +84,40 @@ export const ReportPeriodFilter: React.FC<ReportPeriodFilterProps> = ({
     month: number,
     comparing: boolean
   ) => {
-    const cur = getDatesForMonth(year, month);
+    let compResult: PeriodDefinition;
 
-    // Mês anterior para comparação
-    const prevDate = new Date(year, month - 1, 1);
-    const prevYear = prevDate.getFullYear();
-    const prevMonth = prevDate.getMonth();
-    const prev = getDatesForMonth(prevYear, prevMonth);
+    if (mode === 'MENSAL') {
+      const cur = getDatesForMonth(year, month);
+      compResult = calculateComparisonPeriod(cur.start, cur.end, cur.monthYear);
+    } else if (mode === 'PERIODO') {
+      compResult = calculateComparisonPeriod(cStart, cEnd);
+    } else if (mode === 'HOJE') {
+      const today = getTodayLocalDateString();
+      compResult = calculateComparisonPeriod(today, today);
+    } else if (mode === 'SEMANAL') {
+      const nowD = new Date();
+      const s7 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - 7);
+      compResult = calculateComparisonPeriod(formatToLocalDateString(s7), getTodayLocalDateString());
+    } else if (mode === 'QUINZENAL') {
+      const nowD = new Date();
+      const s15 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - 15);
+      compResult = calculateComparisonPeriod(formatToLocalDateString(s15), getTodayLocalDateString());
+    } else {
+      compResult = calculateComparisonPeriod(cStart, cEnd);
+    }
 
     const compData: PeriodComparisonData = {
       isComparing: comparing,
-      selectedMonthYear: cur.monthYear,
-      currentLabel: mode === 'MENSAL' ? cur.label : getPeriodLabel(mode, cStart, cEnd, year, month),
-      currentStart: mode === 'MENSAL' ? cur.start : cStart,
-      currentEnd: mode === 'MENSAL' ? cur.end : cEnd,
-      compareLabel: prev.label,
-      compareStart: prev.start,
-      compareEnd: prev.end,
+      selectedMonthYear: compResult.selectedMonthYear || `${year}-${String(month + 1).padStart(2, '0')}`,
+      currentLabel: compResult.currentLabel,
+      currentStart: compResult.currentStart,
+      currentEnd: compResult.currentEnd,
+      compareLabel: compResult.compareLabel,
+      compareStart: compResult.compareStart,
+      compareEnd: compResult.compareEnd,
     };
 
-    if (mode === 'MENSAL') {
-      onPeriodChange(mode, cur.start, cur.end, compData);
-    } else {
-      onPeriodChange(mode, cStart, cEnd, compData);
-    }
+    onPeriodChange(mode, compResult.currentStart, compResult.currentEnd, compData);
   };
 
   // Carregar preferência de período fixo no mount

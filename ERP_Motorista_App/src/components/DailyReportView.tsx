@@ -30,7 +30,7 @@ import { FullVehicleReportModal } from './FullVehicleReportModal';
 import { ShareReportModal } from './ShareReportModal';
 import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod, PeriodComparisonData } from './ReportPeriodFilter';
 import { MonthlyComparisonDashboard } from './MonthlyComparisonDashboard';
-import { formatToBrazilianDate } from '../utils/dateUtils';
+import { formatToBrazilianDate, calculateComparisonPeriod } from '../utils/dateUtils';
 import { exportWeeklyDriverShiftReport } from '../utils/excelExporter';
 import { aggregateExpensesByDriver } from '../utils/driverReports';
 import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
@@ -60,42 +60,25 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   // Aba visual do relatório: Comparativo MoM & IA (padrão) ou Extrato Geral
   const [activeReportTab, setActiveReportTab] = useState<'COMPARISON' | 'OVERVIEW'>('COMPARISON');
 
-  // Fallback padrão garantido para o comparativo mensal (evita qualquer atraso de renderização)
+  // Fallback padrão garantido para o comparativo mensal com base nas datas selecionadas
   const defaultComparison = useMemo<PeriodComparisonData>(() => {
     const now = new Date();
-    const curYear = now.getFullYear();
-    const curMonth = now.getMonth();
-    const monthNames = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
-
-    const curLastDay = new Date(curYear, curMonth + 1, 0).getDate();
-    const curMonthStr = String(curMonth + 1).padStart(2, '0');
-    const currentStart = `${curYear}-${curMonthStr}-01`;
-    const currentEnd = `${curYear}-${curMonthStr}-${String(curLastDay).padStart(2, '0')}`;
-    const currentLabel = `${monthNames[curMonth]} / ${curYear}`;
-
-    const prevDate = new Date(curYear, curMonth - 1, 1);
-    const prevYear = prevDate.getFullYear();
-    const prevMonth = prevDate.getMonth();
-    const prevLastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
-    const prevMonthStr = String(prevMonth + 1).padStart(2, '0');
-    const compareStart = `${prevYear}-${prevMonthStr}-01`;
-    const compareEnd = `${prevYear}-${prevMonthStr}-${String(prevLastDay).padStart(2, '0')}`;
-    const compareLabel = `${monthNames[prevMonth]} / ${prevYear}`;
+    const s = customStart || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const e = customEnd || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const comp = calculateComparisonPeriod(s, e);
 
     return {
       isComparing: true,
-      selectedMonthYear: `${curYear}-${curMonthStr}`,
-      currentLabel,
-      currentStart,
-      currentEnd,
-      compareLabel,
-      compareStart,
-      compareEnd,
+      selectedMonthYear: comp.selectedMonthYear || s.slice(0, 7),
+      currentLabel: comp.currentLabel,
+      currentStart: comp.currentStart,
+      currentEnd: comp.currentEnd,
+      compareLabel: comp.compareLabel,
+      compareStart: comp.compareStart,
+      compareEnd: comp.compareEnd,
     };
-  }, []);
+  }, [customStart, customEnd]);
 
   const activeComparison = comparisonData || defaultComparison;
 
@@ -103,15 +86,15 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   const activeEarnings = filterItemsByPeriod(
     earnings,
     periodMode,
-    customStart,
-    customEnd,
+    activeComparison.currentStart,
+    activeComparison.currentEnd,
     activeComparison.selectedMonthYear
   );
   const activeExpenses = filterItemsByPeriod(
     expenses,
     periodMode,
-    customStart,
-    customEnd,
+    activeComparison.currentStart,
+    activeComparison.currentEnd,
     activeComparison.selectedMonthYear
   );
 
