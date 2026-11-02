@@ -41,6 +41,7 @@ import {
   formatToLocalDateString,
   formatToBrazilianDate,
 } from '../utils/dateUtils';
+import { filterAndProrateExpensesForDriver } from '../utils/driverReports';
 
 interface DashboardHUDProps {
   vehicle: Vehicle;
@@ -126,9 +127,10 @@ export const DashboardHUD: React.FC<DashboardHUDProps> = ({
   };
 
   const filteredEarnings = (earnings || []).filter((e) => !e.isDeleted && isDriverMatch(e.driverName));
-  const filteredExpenses = (expenses || []).filter(
-    (exp) => !exp.isDeleted && (driverFilter === 'ALL' || !exp.driverName || isDriverMatch(exp.driverName))
-  );
+  const filteredExpenses =
+    driverFilter === 'ALL'
+      ? (expenses || []).filter((exp) => !exp.isDeleted)
+      : filterAndProrateExpensesForDriver(expenses || [], driverFilter, drivers);
 
   const cpk = calculateCPK(vehicle);
   const summary = calculateShiftSummary(activeShift, filteredEarnings, filteredExpenses, vehicle, cpk);

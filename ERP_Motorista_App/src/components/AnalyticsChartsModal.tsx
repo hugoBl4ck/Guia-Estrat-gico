@@ -594,7 +594,7 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
                         R$ {((driverExpenseSummary?.chargingTotal || 0) + (driverExpenseSummary?.fuelTotal || 0)).toFixed(2)}
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        Manutenção: R$ {(driverExpenseSummary?.maintenanceTotal || 0).toFixed(2)} • Seguro: R$ {(driverExpenseSummary?.insuranceTotal || 0).toFixed(2)} • Outros: R$ {(driverExpenseSummary?.otherTotal || 0).toFixed(2)}
+                        Prestação: R$ {(driverExpenseSummary?.financingTotal || 0).toFixed(2)} • Manutenção: R$ {(driverExpenseSummary?.maintenanceTotal || 0).toFixed(2)} • Seguro: R$ {(driverExpenseSummary?.insuranceTotal || 0).toFixed(2)} • Outros: R$ {(driverExpenseSummary?.otherTotal || 0).toFixed(2)}
                       </p>
                       <p className="text-[11px] text-white font-bold pt-1 border-t border-slate-800 mt-1 flex items-center justify-between">
                         <span>Despesas totais: R$ {(driverExpenseSummary?.totalAmount || 0).toFixed(2)}</span>

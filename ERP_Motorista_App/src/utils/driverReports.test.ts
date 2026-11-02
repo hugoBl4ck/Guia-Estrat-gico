@@ -61,6 +61,45 @@ describe('aggregateExpensesByDriver', () => {
     expect(result[0].driverName).toBe('Não especificado');
     expect(result[0].chargingTotal).toBe(10);
   });
+
+  it('automatically splits past FINANCING installments 50%/50% per driver without breaking old records and supports custom % splits', () => {
+    const expenses: Expense[] = [
+      // Past installment (e.g. 1ª a 4ª) saved before driverSplits existed
+      makeExpense({
+        id: 'fin-past-1',
+        category: 'FINANCING',
+        amount: 3086.58,
+        driverName: 'Hugo',
+        installmentNumber: 1,
+        installmentsCount: 48,
+      }),
+      // Future installment with custom 60% / 40% split
+      makeExpense({
+        id: 'fin-custom-5',
+        category: 'FINANCING',
+        amount: 3000,
+        driverName: 'Hugo',
+        installmentNumber: 5,
+        installmentsCount: 48,
+        driverSplits: [
+          { driverName: 'Hugo', percentage: 60 },
+          { driverName: 'Ari', percentage: 40 },
+        ],
+      }),
+    ];
+
+    const result = aggregateExpensesByDriver(expenses);
+    const hugo = result.find((d) => d.driverName === 'Hugo')!;
+    const ari = result.find((d) => d.driverName === 'Ari')!;
+
+    // 50% of 3086.58 (1543.29) + 60% of 3000 (1800) = 3343.29
+    expect(hugo.financingTotal).toBe(3343.29);
+    expect(hugo.totalAmount).toBe(3343.29);
+
+    // 50% of 3086.58 (1543.29) + 40% of 3000 (1200) = 2743.29
+    expect(ari.financingTotal).toBe(2743.29);
+    expect(ari.totalAmount).toBe(2743.29);
+  });
 });
 
 describe('getDailyEarningsSeries', () => {

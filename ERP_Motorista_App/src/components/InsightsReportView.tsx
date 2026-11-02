@@ -11,6 +11,7 @@ import {
 } from '../utils/driverInsights';
 import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
 import { formatToBrazilianDate } from '../utils/dateUtils';
+import { filterAndProrateExpensesForDriver, getEffectiveExpenseSplits } from '../utils/driverReports';
 
 interface InsightsReportViewProps {
   vehicle: Vehicle;
@@ -73,7 +74,10 @@ export const InsightsReportView: React.FC<InsightsReportViewProps> = ({
       if (!e.isDeleted && e.driverName?.trim()) names.add(e.driverName.trim());
     });
     (expenses || []).forEach((x) => {
-      if (!x.isDeleted && x.driverName?.trim()) names.add(x.driverName.trim());
+      if (x.isDeleted) return;
+      getEffectiveExpenseSplits(x).forEach((s) => {
+        if (s.driverName?.trim() && s.percentage > 0) names.add(s.driverName.trim());
+      });
     });
     return Array.from(names);
   }, [earnings, expenses]);
@@ -90,7 +94,7 @@ export const InsightsReportView: React.FC<InsightsReportViewProps> = ({
     () =>
       selectedDriver === 'ALL'
         ? expenses
-        : expenses.filter((x) => (x.driverName?.trim() || 'Não especificado') === selectedDriver),
+        : filterAndProrateExpensesForDriver(expenses, selectedDriver),
     [expenses, selectedDriver]
   );
 
@@ -98,7 +102,7 @@ export const InsightsReportView: React.FC<InsightsReportViewProps> = ({
     () =>
       selectedDriver === 'ALL'
         ? allExpenses
-        : allExpenses.filter((x) => (x.driverName?.trim() || 'Não especificado') === selectedDriver),
+        : filterAndProrateExpensesForDriver(allExpenses, selectedDriver),
     [allExpenses, selectedDriver]
   );
 

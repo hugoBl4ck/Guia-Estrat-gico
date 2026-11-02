@@ -341,6 +341,9 @@ export function App() {
                     ...localExp,
                     ...cloudExp,
                     driverName: resolvedDriver,
+                    driverSplits: cloudExp.driverSplits || localExp.driverSplits,
+                    installmentNumber: cloudExp.installmentNumber ?? localExp.installmentNumber,
+                    installmentsCount: cloudExp.installmentsCount ?? localExp.installmentsCount,
                     notes: cloudExp.notes !== undefined ? cloudExp.notes : localExp.notes,
                     vehicleId: resolvedVehicle,
                   });

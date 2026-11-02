@@ -32,6 +32,21 @@ describe('Driver Persistence & Fallback', () => {
     const res4 = decodeDriverAndNotes('Corrida simples', null);
     expect(res4.driverName).toBeUndefined();
     expect(res4.notes).toBe('Corrida simples');
+
+    // 5. Quando há rateio [split:Hugo=50,Ari=50] nas notas de prestação
+    const encodedSplit = encodeDriverInNotes('Prestação do Veículo (Parcela 4/48)', 'Hugo', [
+      { driverName: 'Hugo', percentage: 60 },
+      { driverName: 'Ari', percentage: 40 },
+    ]);
+    expect(encodedSplit).toBe('Prestação do Veículo (Parcela 4/48) [driver:Hugo] [split:Hugo=60,Ari=40]');
+
+    const decodedSplit = decodeDriverAndNotes(encodedSplit, null);
+    expect(decodedSplit.driverName).toBe('Hugo');
+    expect(decodedSplit.notes).toBe('Prestação do Veículo (Parcela 4/48)');
+    expect(decodedSplit.driverSplits).toEqual([
+      { driverName: 'Hugo', percentage: 60 },
+      { driverName: 'Ari', percentage: 40 },
+    ]);
   });
 
   it('getInitialDriversForUser deve retornar os motoristas padrão ou usar o nome fornecido', () => {

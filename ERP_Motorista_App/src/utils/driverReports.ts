@@ -1,6 +1,6 @@
-import { Driver, Earning, Expense, PlatformType } from '../types';
+import { Driver, DriverExpenseSplit, Earning, Expense, PlatformType } from '../types';
 import { formatToBrazilianDate } from './dateUtils';
-import { calculateHoursBetween } from './financialCalculators';
+import { calculateHoursBetween, roundCurrency } from './financialCalculators';
 
 export interface DriverExpenseSummary {
   driverName: string;
@@ -8,8 +8,99 @@ export interface DriverExpenseSummary {
   fuelTotal: number;
   maintenanceTotal: number;
   insuranceTotal: number;
+  financingTotal: number;
   otherTotal: number;
   totalAmount: number;
+}
+
+const DEFAULT_FINANCING_DRIVERS = ['Hugo', 'Ari'];
+
+/**
+ * Retorna a divisão percentual efetiva de uma despesa por motorista.
+ * - Se `exp.driverSplits` estiver preenchido, utiliza os percentuais configurados.
+ * - Se for `FINANCING` (Prestação do Veículo) sem `driverSplits` explícito (ex: 1ª a 4ª parcelas passadas),
+ *   aplica automaticamente 50% para cada motorista cadastrado (padrão Hugo 50% / Ari 50%) sem quebrar dados antigos.
+ * - Caso contrário, aloca 100% ao `exp.driverName` (ou 'Não especificado').
+ */
+export function getEffectiveExpenseSplits(
+  exp: Expense,
+  registeredDrivers?: Driver[]
+): DriverExpenseSplit[] {
+  if (exp.driverSplits && Array.isArray(exp.driverSplits) && exp.driverSplits.length > 0) {
+    const valid = exp.driverSplits
+      .filter((s) => s && s.driverName && s.driverName.trim() !== '' && Number(s.percentage) > 0)
+      .map((s) => ({
+        driverName: s.driverName.trim(),
+        percentage: Number(s.percentage),
+      }));
+    if (valid.length > 0) {
+      return valid;
+    }
+  }
+
+  if (exp.category === 'FINANCING') {
+    const driverNames =
+      registeredDrivers && registeredDrivers.length >= 2
+        ? registeredDrivers.map((d) => d.name.trim()).filter(Boolean)
+        : DEFAULT_FINANCING_DRIVERS;
+
+    if (driverNames.length >= 2) {
+      const count = driverNames.length;
+      const basePct = Math.floor((10000 / count)) / 100;
+      return driverNames.map((name, idx) => ({
+        driverName: name,
+        percentage: idx === count - 1 ? roundCurrency(100 - basePct * (count - 1)) : basePct,
+      }));
+    }
+  }
+
+  return [
+    {
+      driverName: exp.driverName?.trim() || 'Não especificado',
+      percentage: 100,
+    },
+  ];
+}
+
+/**
+ * Formata um rótulo legível para o rateio da despesa (ex: "Hugo 50% • Ari 50%").
+ */
+export function formatExpenseSplitLabel(exp: Expense, registeredDrivers?: Driver[]): string {
+  const splits = getEffectiveExpenseSplits(exp, registeredDrivers);
+  if (splits.length <= 1 && splits[0]?.percentage === 100) {
+    return splits[0].driverName;
+  }
+  return splits.map((s) => `${s.driverName} ${Number(s.percentage.toFixed(1))}%`).join(' • ');
+}
+
+/**
+ * Filtra e rateia despesas para um único motorista (útil em visões filtradas por motorista).
+ */
+export function filterAndProrateExpensesForDriver(
+  expenses: Expense[],
+  driverName: string,
+  registeredDrivers?: Driver[]
+): Expense[] {
+  const target = driverName.trim().toLowerCase();
+  const result: Expense[] = [];
+
+  (expenses || []).forEach((exp) => {
+    if (exp.isDeleted) return;
+    const splits = getEffectiveExpenseSplits(exp, registeredDrivers);
+    const match = splits.find((s) => s.driverName.trim().toLowerCase() === target);
+    if (match && match.percentage > 0) {
+      const proratedAmount =
+        match.percentage === 100 ? exp.amount : roundCurrency((exp.amount * match.percentage) / 100);
+      result.push({
+        ...exp,
+        amount: proratedAmount,
+        driverName: match.driverName,
+        driverSplits: splits,
+      });
+    }
+  });
+
+  return result;
 }
 
 const PLATFORM_LABELS: Record<PlatformType, string> = {
@@ -46,34 +137,47 @@ const getEarningHours = (e: Earning): number => {
   return 0;
 };
 
-/** Agrupa despesas por motorista, destacando recarga elétrica e combustível separadamente. */
-export function aggregateExpensesByDriver(expenses: Expense[]): DriverExpenseSummary[] {
+/** Agrupa despesas por motorista, destacando recarga elétrica, combustível e financiamento separadamente (com rateio por % quando aplicável). */
+export function aggregateExpensesByDriver(
+  expenses: Expense[],
+  registeredDrivers?: Driver[]
+): DriverExpenseSummary[] {
   const byDriver = new Map<string, DriverExpenseSummary>();
 
   (expenses || []).forEach((exp) => {
     if (exp.isDeleted) return;
-    const driverName = exp.driverName?.trim() || 'Não especificado';
-    const current = byDriver.get(driverName) || {
-      driverName,
-      chargingTotal: 0,
-      fuelTotal: 0,
-      maintenanceTotal: 0,
-      insuranceTotal: 0,
-      otherTotal: 0,
-      totalAmount: 0,
-    };
+    const splits = getEffectiveExpenseSplits(exp, registeredDrivers);
 
-    if (exp.category === 'ELECTRIC_CHARGING') current.chargingTotal += exp.amount;
-    else if (exp.category === 'FUEL') current.fuelTotal += exp.amount;
-    else if (
-      ['MAINTENANCE', 'OIL_CHANGE', 'BRAKES', 'WORKSHOP_MAINTENANCE', 'SPARK_PLUGS_BELT'].includes(exp.category)
-    ) {
-      current.maintenanceTotal += exp.amount;
-    } else if (exp.category === 'INSURANCE') current.insuranceTotal += exp.amount;
-    else current.otherTotal += exp.amount;
+    splits.forEach((split) => {
+      if (split.percentage <= 0) return;
+      const driverName = split.driverName?.trim() || 'Não especificado';
+      const shareAmount =
+        split.percentage === 100 ? exp.amount : roundCurrency((exp.amount * split.percentage) / 100);
 
-    current.totalAmount += exp.amount;
-    byDriver.set(driverName, current);
+      const current = byDriver.get(driverName) || {
+        driverName,
+        chargingTotal: 0,
+        fuelTotal: 0,
+        maintenanceTotal: 0,
+        insuranceTotal: 0,
+        financingTotal: 0,
+        otherTotal: 0,
+        totalAmount: 0,
+      };
+
+      if (exp.category === 'ELECTRIC_CHARGING') current.chargingTotal = roundCurrency(current.chargingTotal + shareAmount);
+      else if (exp.category === 'FUEL') current.fuelTotal = roundCurrency(current.fuelTotal + shareAmount);
+      else if (
+        ['MAINTENANCE', 'OIL_CHANGE', 'BRAKES', 'WORKSHOP_MAINTENANCE', 'SPARK_PLUGS_BELT'].includes(exp.category)
+      ) {
+        current.maintenanceTotal = roundCurrency(current.maintenanceTotal + shareAmount);
+      } else if (exp.category === 'INSURANCE') current.insuranceTotal = roundCurrency(current.insuranceTotal + shareAmount);
+      else if (exp.category === 'FINANCING') current.financingTotal = roundCurrency(current.financingTotal + shareAmount);
+      else current.otherTotal = roundCurrency(current.otherTotal + shareAmount);
+
+      current.totalAmount = roundCurrency(current.totalAmount + shareAmount);
+      byDriver.set(driverName, current);
+    });
   });
 
   return Array.from(byDriver.values());
@@ -154,6 +258,7 @@ export interface DriverDetailedReport {
   energyTotal: number;
   maintenanceTotal: number;
   insuranceTotal: number;
+  financingTotal: number;
   otherTotal: number;
   netProfit: number;
   marginPercent: number;
@@ -220,9 +325,12 @@ export function buildDriversComparativeReport(
     driverNamesSet.add(e.driverName?.trim() || 'Não especificado');
   });
   liveExpenses.forEach((x) => {
-    if (x.driverName && x.driverName.trim()) {
-      driverNamesSet.add(x.driverName.trim());
-    }
+    const splits = getEffectiveExpenseSplits(x, registeredDrivers);
+    splits.forEach((s) => {
+      if (s.driverName && s.driverName.trim() && s.percentage > 0) {
+        driverNamesSet.add(s.driverName.trim());
+      }
+    });
   });
 
   // Se nenhum lançamento tiver motorista mas houver motoristas registrados, usa-os caso haja atividade
@@ -232,7 +340,9 @@ export function buildDriversComparativeReport(
     });
   }
 
-  const expenseMap = new Map(aggregateExpensesByDriver(liveExpenses).map((d) => [d.driverName, d]));
+  const expenseMap = new Map(
+    aggregateExpensesByDriver(liveExpenses, registeredDrivers).map((d) => [d.driverName, d])
+  );
 
   const fleetTotalRevenue = liveEarnings.reduce((s, e) => s + (e.grossAmount || 0) + (e.tipsAmount || 0), 0);
   const fleetTotalTrips = liveEarnings.reduce((s, e) => s + (e.totalTrips || 1), 0);
@@ -244,8 +354,7 @@ export function buildDriversComparativeReport(
       .filter((e) => (e.driverName?.trim() || 'Não especificado') === driverName)
       .sort((a, b) => parseIsoDate(b.recordedAt).getTime() - parseIsoDate(a.recordedAt).getTime());
 
-    const drvExpenses = liveExpenses
-      .filter((x) => (x.driverName?.trim() || 'Não especificado') === driverName)
+    const drvExpenses = filterAndProrateExpensesForDriver(liveExpenses, driverName, registeredDrivers)
       .sort((a, b) => parseIsoDate(b.expenseDate).getTime() - parseIsoDate(a.expenseDate).getTime());
 
     const expSummary = expenseMap.get(driverName) || {
@@ -254,6 +363,7 @@ export function buildDriversComparativeReport(
       fuelTotal: 0,
       maintenanceTotal: 0,
       insuranceTotal: 0,
+      financingTotal: 0,
       otherTotal: 0,
       totalAmount: 0,
     };
@@ -387,6 +497,7 @@ export function buildDriversComparativeReport(
       energyTotal,
       maintenanceTotal: expSummary.maintenanceTotal,
       insuranceTotal: expSummary.insuranceTotal,
+      financingTotal: expSummary.financingTotal,
       otherTotal: expSummary.otherTotal,
       netProfit,
       marginPercent,

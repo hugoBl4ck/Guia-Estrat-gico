@@ -88,7 +88,7 @@ export function exportDriversCompleteExcel(
 
   lines.push('1. QUADRO COMPARATIVO GERAL POR MOTORISTA');
   lines.push(
-    'Motorista;Corridas;Dias Trabalhados;KM Rodados;Horas;Faturamento Bruto (R$);Gorjetas (R$);Receita Total (R$);Recarga/Combustível (R$);Manutenção (R$);Outras Despesas (R$);Despesas Totais (R$);Lucro Líquido (R$);Margem (%);R$/Hora Bruto;R$/Hora Líquido;Receita/KM;CPK Motorista;Lucro/KM;Ticket Médio;Share Receita (%)'
+    'Motorista;Corridas;Dias Trabalhados;KM Rodados;Horas;Faturamento Bruto (R$);Gorjetas (R$);Receita Total (R$);Recarga/Combustível (R$);Prestação Financiamento (R$);Manutenção (R$);Outras Despesas (R$);Despesas Totais (R$);Lucro Líquido (R$);Margem (%);R$/Hora Bruto;R$/Hora Líquido;Receita/KM;CPK Motorista;Lucro/KM;Ticket Médio;Share Receita (%)'
   );
 
   summary.drivers.forEach((d) => {
@@ -103,6 +103,7 @@ export function exportDriversCompleteExcel(
         `R$ ${d.tipsAmount.toFixed(2)}`,
         `R$ ${d.totalRevenue.toFixed(2)}`,
         `R$ ${d.energyTotal.toFixed(2)}`,
+        `R$ ${d.financingTotal.toFixed(2)}`,
         `R$ ${d.maintenanceTotal.toFixed(2)}`,
         `R$ ${(d.insuranceTotal + d.otherTotal).toFixed(2)}`,
         `R$ ${d.directExpenses.toFixed(2)}`,
@@ -515,6 +516,11 @@ const IndividualDriverCard: React.FC<{
       color: '#3B82F6',
     },
     {
+      name: 'Prestação / Financiamento',
+      value: driverReport.financingTotal,
+      color: '#EC4899',
+    },
+    {
       name: 'Manutenção',
       value: driverReport.maintenanceTotal,
       color: '#F59E0B',
@@ -921,17 +927,29 @@ const IndividualDriverCard: React.FC<{
               <p className="text-[11px] text-slate-500">Nenhuma despesa vinculada.</p>
             ) : (
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {driverReport.expensesList.slice(0, 15).map((x) => (
-                  <div
-                    key={x.id}
-                    className="flex items-center justify-between text-[11px] bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5"
-                  >
-                    <span className="text-slate-300 truncate">
-                      {formatToBrazilianDate(x.expenseDate)} • {CATEGORY_LABELS[x.category]?.label || x.category}
-                    </span>
-                    <span className="font-mono font-bold text-rose-400 ml-2 shrink-0">-{brl(x.amount)}</span>
-                  </div>
-                ))}
+                {driverReport.expensesList.slice(0, 15).map((x) => {
+                  const splitForDriver = x.driverSplits?.find(
+                    (s) => s.driverName.trim().toLowerCase() === driverReport.driverName.trim().toLowerCase()
+                  );
+                  return (
+                    <div
+                      key={`${x.id}-${driverReport.driverName}`}
+                      className="flex items-center justify-between text-[11px] bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5"
+                    >
+                      <span className="text-slate-300 truncate flex items-center gap-1.5">
+                        <span>
+                          {formatToBrazilianDate(x.expenseDate)} • {CATEGORY_LABELS[x.category]?.label || x.category}
+                        </span>
+                        {splitForDriver && splitForDriver.percentage < 100 && (
+                          <span className="text-[9px] font-mono bg-amber-950 text-amber-300 border border-amber-700/60 px-1.5 py-0.2 rounded">
+                            {Number(splitForDriver.percentage.toFixed(1))}%
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-mono font-bold text-rose-400 ml-2 shrink-0">-{brl(x.amount)}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -35,7 +35,7 @@ import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod, PeriodCompar
 import { MonthlyComparisonDashboard } from './MonthlyComparisonDashboard';
 import { formatToBrazilianDate, calculateComparisonPeriod } from '../utils/dateUtils';
 import { exportWeeklyDriverShiftReport } from '../utils/excelExporter';
-import { aggregateExpensesByDriver, buildDriversComparativeReport } from '../utils/driverReports';
+import { aggregateExpensesByDriver, buildDriversComparativeReport, formatExpenseSplitLabel, getEffectiveExpenseSplits } from '../utils/driverReports';
 import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
 import { InsightsReportView } from './InsightsReportView';
 
@@ -243,10 +243,14 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     csvContent += `Outras Despesas;R$ ${otherExpenses.toFixed(2)}\n\n`;
 
     csvContent += 'LANÇAMENTOS INDIVIDUAIS DE DESPESAS\n';
-    csvContent += 'Data;Categoria;Valor (R$);Motorista;Anotações / Detalhes\n';
+    csvContent += 'Data;Categoria;Valor (R$);Motorista / Rateio;Anotações / Detalhes\n';
     activeExpenses.forEach((exp) => {
       const catLabel = CATEGORY_LABELS[exp.category]?.label || exp.category;
-      csvContent += `${formatToBrazilianDate(exp.expenseDate)};${catLabel};R$ ${exp.amount.toFixed(2)};${exp.driverName || 'Geral'};"${(exp.notes || '').replace(/"/g, '""')}"\n`;
+      const driverOrSplitLabel =
+        exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0)
+          ? formatExpenseSplitLabel(exp, drivers)
+          : exp.driverName || 'Geral';
+      csvContent += `${formatToBrazilianDate(exp.expenseDate)};${catLabel};R$ ${exp.amount.toFixed(2)};${driverOrSplitLabel};"${(exp.notes || '').replace(/"/g, '""')}"\n`;
     });
     csvContent += '\n';
 
@@ -588,11 +592,23 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                             {['ELECTRIC_CHARGING', 'FUEL'].includes(exp.category) ? '⚡' : ['MAINTENANCE', 'OIL_CHANGE', 'BRAKES'].includes(exp.category) ? '🔧' : '🧾'}
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-white flex flex-wrap items-center gap-1.5">
                               <span>{catInfo.label}</span>
-                              {exp.driverName && (
+                              {exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0) ? (
+                                <span className="text-[10px] font-mono bg-amber-950/70 text-amber-300 border border-amber-700/60 px-1.5 py-0.5 rounded-lg">
+                                  {getEffectiveExpenseSplits(exp, drivers)
+                                    .map(
+                                      (s) =>
+                                        `${s.driverName} ${Number(s.percentage.toFixed(1))}% (R$ ${(
+                                          (exp.amount * s.percentage) /
+                                          100
+                                        ).toFixed(2)})`
+                                    )
+                                    .join(' • ')}
+                                </span>
+                              ) : exp.driverName ? (
                                 <span className="text-[10px] text-slate-400 font-normal">({exp.driverName})</span>
-                              )}
+                              ) : null}
                             </p>
                             <p className="text-[10px] text-slate-400 flex flex-wrap items-center gap-1 mt-0.5">
                               <span>{catInfo.cc}</span>
@@ -672,10 +688,14 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-slate-800/80 text-[10px] font-mono">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-2 pt-2 border-t border-slate-800/80 text-[10px] font-mono">
                         <div className="bg-slate-950/70 rounded-lg px-2 py-1">
                           <span className="text-slate-500 block">Recarga/Comb.</span>
                           <span className="text-blue-300 font-bold">R$ {d.energyTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-slate-950/70 rounded-lg px-2 py-1">
+                          <span className="text-slate-500 block">Prestação (Fin.)</span>
+                          <span className="text-amber-300 font-bold">R$ {d.financingTotal.toFixed(2)}</span>
                         </div>
                         <div className="bg-slate-950/70 rounded-lg px-2 py-1">
                           <span className="text-slate-500 block">Desp. Diretas</span>

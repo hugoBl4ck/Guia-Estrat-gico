@@ -2,7 +2,7 @@ import React from 'react';
 import { X, FileSpreadsheet, Download, Printer, Car, ShieldCheck, DollarSign, Wrench, TrendingUp, Building2, CheckCircle2, Clock } from 'lucide-react';
 import { Vehicle, Earning, Expense, ReserveBucket } from '../types';
 import { calculateHoursBetween } from '../utils/financialCalculators';
-import { buildDriversComparativeReport } from '../utils/driverReports';
+import { buildDriversComparativeReport, formatExpenseSplitLabel } from '../utils/driverReports';
 
 interface FullVehicleReportModalProps {
   isOpen: boolean;
@@ -838,7 +838,12 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
                   {activeExpenses.map((exp) => (
                     <tr key={exp.id} className="text-slate-300 hover:bg-slate-900/50">
                       <td className="py-1 px-2 text-slate-400 text-[11px]">{exp.expenseDate ? exp.expenseDate.slice(0, 10).split('-').reverse().join('/') : '-'}</td>
-                      <td className="py-1 px-2 font-bold text-white text-[11px]">👤 {exp.driverName || 'Hugo'}</td>
+                      <td className="py-1 px-2 font-bold text-white text-[11px]">
+                        👤{' '}
+                        {exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0)
+                          ? formatExpenseSplitLabel(exp)
+                          : exp.driverName || 'Hugo'}
+                      </td>
                       <td className="py-1 px-2 text-amber-400 font-semibold text-[11px]">{exp.category}</td>
                       <td className="py-1 px-2 text-slate-400 text-[11px] max-w-xs truncate">{exp.notes || (exp.kwhAmount ? `${exp.kwhAmount} kWh @ R$ ${exp.tariffPerKwh || '1,69'}/kWh` : '-')}</td>
                       <td className="py-1 px-2 text-right font-bold text-rose-400 text-[11px]">-R$ {exp.amount.toFixed(2)}</td>

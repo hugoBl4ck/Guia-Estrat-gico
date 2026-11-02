@@ -1,7 +1,7 @@
 import { dbService, LocalUserContext } from './db';
 import { FinanceState } from './financeReducer';
 import { supabase, isSupabaseConfigured, uploadReceiptDataUrl } from './supabaseClient';
-import { Vehicle, Shift } from '../types';
+import { Vehicle, Shift, DriverExpenseSplit } from '../types';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { syncErrorService } from './syncErrorState';
 import { getRetryDelayMs, isSyncJobOwnedByUser, isSyncJobReady, replaceUserSyncJob } from './syncQueue';
@@ -52,24 +52,71 @@ export interface IDataRepository {
 }
 
 /**
- * Anexa a identificação do motorista nas notas caso a tabela da nuvem não possua coluna nativa driver_name.
+ * Anexa a identificação do motorista (e eventual rateio por porcentagem) nas notas caso a tabela da nuvem não possua coluna nativa.
  */
-export function encodeDriverInNotes(notes?: string | null, driverName?: string | null): string | null {
-  if (!driverName || driverName.trim() === '') return notes || null;
-  const cleanDriver = driverName.trim();
-  const rawNotes = notes ? notes.trim() : '';
-  if (rawNotes.includes('[driver:')) {
-    return rawNotes.replace(/\[driver:[^\]]+\]/, `[driver:${cleanDriver}]`);
+export function encodeDriverInNotes(
+  notes?: string | null,
+  driverName?: string | null,
+  driverSplits?: DriverExpenseSplit[] | null
+): string | null {
+  let result = notes ? notes.trim() : '';
+
+  if (driverName && driverName.trim() !== '') {
+    const cleanDriver = driverName.trim();
+    if (result.includes('[driver:')) {
+      result = result.replace(/\[driver:[^\]]+\]/, `[driver:${cleanDriver}]`);
+    } else {
+      result = result ? `${result} [driver:${cleanDriver}]` : `[driver:${cleanDriver}]`;
+    }
   }
-  return rawNotes ? `${rawNotes} [driver:${cleanDriver}]` : `[driver:${cleanDriver}]`;
+
+  if (driverSplits && Array.isArray(driverSplits) && driverSplits.length > 0) {
+    const validSplits = driverSplits
+      .filter((s) => s && s.driverName && s.driverName.trim() !== '' && Number(s.percentage) > 0)
+      .map((s) => `${s.driverName.trim()}=${Number(s.percentage)}`);
+    if (validSplits.length > 0) {
+      const splitTag = `[split:${validSplits.join(',')}]`;
+      if (result.includes('[split:')) {
+        result = result.replace(/\[split:[^\]]+\]/, splitTag);
+      } else {
+        result = result ? `${result} ${splitTag}` : splitTag;
+      }
+    }
+  }
+
+  return result || null;
 }
 
 /**
- * Extrai o nome do motorista e as notas limpas a partir dos dados do Supabase.
+ * Extrai o nome do motorista, o rateio (driverSplits) e as notas limpas a partir dos dados do Supabase.
  */
-export function decodeDriverAndNotes(rawNotes?: string | null, rawDriverName?: string | null): { driverName?: string; notes?: string } {
+export function decodeDriverAndNotes(
+  rawNotes?: string | null,
+  rawDriverName?: string | null
+): { driverName?: string; notes?: string; driverSplits?: DriverExpenseSplit[] } {
   let driverName = rawDriverName && rawDriverName.trim() !== '' ? rawDriverName.trim() : undefined;
   let notes = rawNotes ? rawNotes.trim() : undefined;
+  let driverSplits: DriverExpenseSplit[] | undefined;
+
+  if (notes && notes.includes('[split:')) {
+    const splitMatch = notes.match(/\[split:([^\]]+)\]/);
+    if (splitMatch && splitMatch[1]) {
+      const parsedSplits = splitMatch[1]
+        .split(',')
+        .map((pair) => {
+          const [namePart, pctPart] = pair.split('=');
+          const name = namePart ? namePart.trim() : '';
+          const percentage = pctPart !== undefined ? parseFloat(pctPart) : NaN;
+          return { driverName: name, percentage };
+        })
+        .filter((s) => s.driverName !== '' && Number.isFinite(s.percentage) && s.percentage > 0);
+      if (parsedSplits.length > 0) {
+        driverSplits = parsedSplits;
+      }
+      notes = notes.replace(/\[split:[^\]]+\]/, '').trim();
+      if (!notes) notes = undefined;
+    }
+  }
 
   if (notes && notes.includes('[driver:')) {
     const match = notes.match(/\[driver:([^\]]+)\]/);
@@ -82,7 +129,7 @@ export function decodeDriverAndNotes(rawNotes?: string | null, rawDriverName?: s
     }
   }
 
-  return { driverName, notes };
+  return driverSplits ? { driverName, notes, driverSplits } : { driverName, notes };
 }
 
 export class DataRepository implements IDataRepository {
@@ -337,8 +384,8 @@ export class DataRepository implements IDataRepository {
             tarifa_kwh: exp.tariffPerKwh || null,
             tipo_recarga: exp.chargingType || null,
             odometro_km: exp.odometerKm || null,
-            observacao: encodeDriverInNotes(exp.notes, exp.driverName),
-            notes: encodeDriverInNotes(exp.notes, exp.driverName),
+            observacao: encodeDriverInNotes(exp.notes, exp.driverName, exp.driverSplits),
+            notes: encodeDriverInNotes(exp.notes, exp.driverName, exp.driverSplits),
             expense_date: exp.expenseDate,
             veiculo_id: exp.vehicleId || null,
             vehicle_id: exp.vehicleId || null,
@@ -407,6 +454,7 @@ export class DataRepository implements IDataRepository {
       // 4. Sincronizar Mapeamento de Motoristas e Veículos no Supabase na tabela turnos (onde notes é TEXT ilimitado)
       const itemDriversMap: Record<string, string> = {};
       const itemVehiclesMap: Record<string, string> = {};
+      const itemSplitsMap: Record<string, DriverExpenseSplit[]> = {};
       (state.earnings || []).forEach((e) => {
         if (e.driverName) itemDriversMap[e.id] = e.driverName;
         if (e.vehicleId) itemVehiclesMap[e.id] = e.vehicleId;
@@ -414,16 +462,17 @@ export class DataRepository implements IDataRepository {
       (state.expenses || []).forEach((exp) => {
         if (exp.driverName) itemDriversMap[exp.id] = exp.driverName;
         if (exp.vehicleId) itemVehiclesMap[exp.id] = exp.vehicleId;
+        if (exp.driverSplits && exp.driverSplits.length > 0) itemSplitsMap[exp.id] = exp.driverSplits;
       });
 
-      if (Object.keys(itemDriversMap).length > 0 || Object.keys(itemVehiclesMap).length > 0) {
+      if (Object.keys(itemDriversMap).length > 0 || Object.keys(itemVehiclesMap).length > 0 || Object.keys(itemSplitsMap).length > 0) {
         try {
           await supabase.from('turnos').upsert({
             id: 'shift-system-metadata',
             start_time: '2020-01-01T00:00:00.000Z',
             start_odometer_km: 0,
             status: 'SYSTEM',
-            notes: JSON.stringify({ drivers: itemDriversMap, vehicles: itemVehiclesMap }),
+            notes: JSON.stringify({ drivers: itemDriversMap, vehicles: itemVehiclesMap, splits: itemSplitsMap }),
             user_id: userId,
             user_email: userEmail,
           }, { onConflict: 'id' });
@@ -485,6 +534,7 @@ export class DataRepository implements IDataRepository {
       // 1. Carregar mapeamento de motoristas e veículos da tabela turnos (TEXT ilimitado)
       let cloudDriverMap: Record<string, string> = {};
       let cloudVehicleMap: Record<string, string> = {};
+      let cloudSplitsMap: Record<string, DriverExpenseSplit[]> = {};
       try {
         const { data: systemTurnos } = await supabase
           .from('turnos')
@@ -496,9 +546,10 @@ export class DataRepository implements IDataRepository {
           const metaTurno = systemTurnos.find((t) => t.id === 'shift-system-metadata') || systemTurnos[0];
           if (metaTurno && metaTurno.notes) {
             const parsed = JSON.parse(metaTurno.notes);
-            if (parsed.drivers || parsed.vehicles) {
+            if (parsed.drivers || parsed.vehicles || parsed.splits) {
               cloudDriverMap = parsed.drivers || {};
               cloudVehicleMap = parsed.vehicles || {};
+              cloudSplitsMap = parsed.splits || {};
             } else {
               cloudDriverMap = parsed;
             }
@@ -598,8 +649,9 @@ export class DataRepository implements IDataRepository {
         expensesList = cloudDespesas.filter((d) => !d.is_deleted).map((d) => {
           const obsLower = (d.observacao || d.notes || '').toLowerCase();
           const cat = (d.categoria || d.category || '').toUpperCase();
-          const { driverName: extractedDriver, notes } = decodeDriverAndNotes(d.observacao || d.notes, d.driver_name || d.driverName);
+          const { driverName: extractedDriver, notes, driverSplits: extractedSplits } = decodeDriverAndNotes(d.observacao || d.notes, d.driver_name || d.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[d.id];
+          const mappedSplits = extractedSplits || cloudSplitsMap[d.id];
           const rawVehicleId = d.veiculo_id || cloudVehicleMap[d.id];
           const resolvedVehicleId = rawVehicleId || d.vehicle_id;
 
@@ -613,6 +665,7 @@ export class DataRepository implements IDataRepository {
             expenseDate: d.expense_date || d.created_at || new Date().toISOString(),
             vehicleId: resolvedVehicleId,
             driverName: mappedDriver || undefined,
+            ...(mappedSplits && mappedSplits.length > 0 ? { driverSplits: mappedSplits } : {}),
             ...(d.receipt_url ? { receiptPath: d.receipt_url as string } : {}),
           };
         });

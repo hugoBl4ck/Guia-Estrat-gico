@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2, Pencil, Paperclip, FileText } from 'lucide-react';
-import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver, MaintenanceScheduleEntry } from '../types';
+import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver, MaintenanceScheduleEntry, DriverExpenseSplit } from '../types';
+import { getEffectiveExpenseSplits } from '../utils/driverReports';
+import { roundCurrency } from '../utils/financialCalculators';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
 import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
 import { getTodayLocalDateString, formatToLocalDateString, formatToBrazilianDate } from '../utils/dateUtils';
@@ -35,14 +37,35 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicle.id);
-  // Estado de edição inline de motorista e veículo
+  // Estado de edição inline de motorista, rateio de prestação e veículo
   const [editingDriverExpenseId, setEditingDriverExpenseId] = useState<string | null>(null);
   const [editingDriverValue, setEditingDriverValue] = useState<string>('');
+  const [editingSplitsValue, setEditingSplitsValue] = useState<DriverExpenseSplit[]>([]);
+  const [editingInstallmentNumber, setEditingInstallmentNumber] = useState<string>('');
+  const [editingInstallmentsTotal, setEditingInstallmentsTotal] = useState<string>('48');
   const [editingVehicleExpenseId, setEditingVehicleExpenseId] = useState<string | null>(null);
   const editingDriverRef = useRef<HTMLDivElement>(null);
 
   // Lista de motoristas disponíveis com fallback dinâmico
   const availableDrivers: Driver[] = drivers.length > 0 ? drivers : (currentDriverName ? [{ id: 'drv-current', name: currentDriverName, isDefault: true }] : []);
+  const financingDrivers: Driver[] =
+    availableDrivers.length >= 2
+      ? availableDrivers
+      : [
+          { id: 'drv-hugo', name: 'Hugo', isDefault: true },
+          { id: 'drv-ari', name: 'Ari' },
+        ];
+
+  const buildDefaultFinancingSplits = (): DriverExpenseSplit[] => {
+    const count = financingDrivers.length;
+    const basePct = Math.floor(10000 / count) / 100;
+    return financingDrivers.map((d, idx) => ({
+      driverName: d.name,
+      percentage: idx === count - 1 ? roundCurrency(100 - basePct * (count - 1)) : basePct,
+    }));
+  };
+
+  const [financingSplits, setFinancingSplits] = useState<DriverExpenseSplit[]>(() => buildDefaultFinancingSplits());
 
   // Ordenação da tabela de despesas
   type SortKey = 'date' | 'category' | 'description' | 'amount' | 'driver';
@@ -182,14 +205,64 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     setSelectedVehicleId(vehicle.id);
   }, [vehicle.id]);
 
+  const getSuggestedFinancingInstallment = (targetVeh: Vehicle): number => {
+    const total = targetVeh.financingTotalInstallments || 48;
+    const vehFinExpenses = (expenses || []).filter(
+      (e) => !e.isDeleted && e.category === 'FINANCING' && (!e.vehicleId || e.vehicleId === targetVeh.id)
+    );
+    const paidNumbers = new Set<number>();
+    vehFinExpenses.forEach((e) => {
+      if (e.installmentNumber && e.installmentNumber >= 1 && e.installmentNumber < total) {
+        paidNumbers.add(e.installmentNumber);
+      } else if (e.notes) {
+        const match = e.notes.match(/Parcela\s+(\d+)\s*\/\s*(\d+)/i);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (parsed >= 1 && parsed < total) paidNumbers.add(parsed);
+        }
+      }
+    });
+
+    if (vehFinExpenses.length > 0) {
+      for (let i = 1; i <= total; i++) {
+        if (!paidNumbers.has(i) && i > vehFinExpenses.length) {
+          return i;
+        }
+      }
+      return Math.min(total, vehFinExpenses.length + 1);
+    }
+
+    // Caso ainda não haja lançamentos na tabela, sugere a 4ª parcela (ou próxima após as pagas)
+    return 4;
+  };
+
+  const handleFinancingSplitChange = (index: number, rawValue: string) => {
+    const numVal = Math.max(0, Math.min(100, parseFloat(rawValue) || 0));
+    setFinancingSplits((prev) => {
+      const next = prev.map((s) => ({ ...s }));
+      if (!next[index]) return prev;
+      next[index].percentage = numVal;
+      if (next.length === 2) {
+        const otherIndex = index === 0 ? 1 : 0;
+        next[otherIndex].percentage = roundCurrency(Math.max(0, 100 - numVal));
+      }
+      return next;
+    });
+  };
+
   const handleCategoryChange = (newCat: ExpenseCategory) => {
     setCategory(newCat);
     if (newCat === 'FINANCING') {
+      const targetVeh = vehicles.find((v) => v.id === selectedVehicleId) || vehicle;
+      const totalInst = targetVeh.financingTotalInstallments || 48;
+      const suggestedInst = getSuggestedFinancingInstallment(targetVeh);
       setPaymentMode('SPECIFIC_INSTALLMENT');
-      setSpecificInstallmentsTotal('48');
-      setSpecificInstallmentNumber('48');
-      if (vehicle.monthlyRentalCost > 0) {
-        setAmount(vehicle.monthlyRentalCost.toString());
+      setSpecificInstallmentsTotal(totalInst.toString());
+      setSpecificInstallmentNumber(suggestedInst.toString());
+      setFinancingSplits(buildDefaultFinancingSplits());
+      const defaultAmt = targetVeh.monthlyFinancingCost || targetVeh.monthlyRentalCost || 0;
+      if (defaultAmt > 0) {
+        setAmount(defaultAmt.toString());
       }
     }
   };
@@ -293,6 +366,17 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     if (isNaN(val) || val <= 0) return;
 
     const baseDate = new Date(`${expenseDateInput}T12:00:00`);
+    const effectiveSplits =
+      category === 'FINANCING'
+        ? financingSplits
+            .filter((s) => s.driverName && s.driverName.trim() !== '' && Number(s.percentage) > 0)
+            .map((s) => ({ driverName: s.driverName.trim(), percentage: Number(s.percentage) }))
+        : undefined;
+    const primarySplitDriver =
+      effectiveSplits && effectiveSplits.length > 0
+        ? [...effectiveSplits].sort((a, b) => b.percentage - a.percentage)[0].driverName
+        : undefined;
+    const effectiveDriverName = primarySplitDriver || driverName || currentDriverName || undefined;
 
     if (paymentMode === 'SPECIFIC_INSTALLMENT') {
       const instNum = parseInt(specificInstallmentNumber, 10) || 1;
@@ -321,7 +405,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         receiptUrl: receiptUrl || undefined,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
-        driverName: driverName || currentDriverName || undefined,
+        driverName: effectiveDriverName,
+        ...(effectiveSplits && effectiveSplits.length > 0 ? { driverSplits: effectiveSplits } : {}),
       });
     } else if (paymentMode === 'AUTO_SPLIT_CARD' && installmentsCount > 1) {
       const installmentVal = Math.round((val / installmentsCount) * 100) / 100;
@@ -350,7 +435,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           receiptUrl: receiptUrl || undefined,
           source: 'manual',
           vehicleId: selectedVehicleId || vehicle.id,
-          driverName: driverName || currentDriverName || undefined,
+          driverName: effectiveDriverName,
+          ...(effectiveSplits && effectiveSplits.length > 0 ? { driverSplits: effectiveSplits } : {}),
         });
       }
     } else {
@@ -371,7 +457,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         receiptUrl: receiptUrl || undefined,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
-        driverName: driverName || currentDriverName || undefined,
+        driverName: effectiveDriverName,
+        ...(effectiveSplits && effectiveSplits.length > 0 ? { driverSplits: effectiveSplits } : {}),
       });
     }
 
@@ -435,9 +522,96 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         return <span className="bg-indigo-950 text-indigo-400 border border-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Shield className="w-3 h-3" /> Documentação / IPVA</span>;
       case 'TRAFFIC_FINE':
         return <span className="bg-rose-950 text-rose-400 border border-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Car className="w-3 h-3" /> Multa de Trânsito</span>;
+      case 'FINANCING':
+        return <span className="bg-amber-950 text-amber-300 border border-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><DollarSign className="w-3 h-3" /> Prestação / Financiamento</span>;
       default:
         return <span className="bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">{cat}</span>;
     }
+  };
+
+  const openInlineDriverOrSplitEditor = (exp: Expense) => {
+    setEditingDriverExpenseId(exp.id);
+    setEditingDriverValue(exp.driverName || currentDriverName || '');
+    const effective = getEffectiveExpenseSplits(exp, financingDrivers);
+    const mergedSplits = financingDrivers.map((d) => {
+      const found = effective.find((s) => s.driverName.toLowerCase() === d.name.toLowerCase());
+      return {
+        driverName: d.name,
+        percentage: found ? found.percentage : 0,
+      };
+    });
+    setEditingSplitsValue(mergedSplits);
+
+    let instNum = exp.installmentNumber ? String(exp.installmentNumber) : '';
+    let instTot = exp.installmentsCount ? String(exp.installmentsCount) : String(vehicle.financingTotalInstallments || 48);
+    if (!instNum && exp.notes) {
+      const m = exp.notes.match(/Parcela\s+(\d+)\s*\/\s*(\d+)/i);
+      if (m) {
+        instNum = m[1];
+        instTot = m[2];
+      }
+    }
+    setEditingInstallmentNumber(instNum);
+    setEditingInstallmentsTotal(instTot || '48');
+  };
+
+  const handleEditingSplitChange = (index: number, rawValue: string) => {
+    const numVal = Math.max(0, Math.min(100, parseFloat(rawValue) || 0));
+    setEditingSplitsValue((prev) => {
+      const next = prev.map((s) => ({ ...s }));
+      if (!next[index]) return prev;
+      next[index].percentage = numVal;
+      if (next.length === 2) {
+        const otherIndex = index === 0 ? 1 : 0;
+        next[otherIndex].percentage = roundCurrency(Math.max(0, 100 - numVal));
+      }
+      return next;
+    });
+  };
+
+  const saveInlineDriverOrSplit = (exp: Expense) => {
+    if (!onEditExpense) {
+      setEditingDriverExpenseId(null);
+      return;
+    }
+
+    if (exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0)) {
+      const validSplits = editingSplitsValue
+        .filter((s) => s.driverName && s.driverName.trim() !== '' && Number(s.percentage) > 0)
+        .map((s) => ({ driverName: s.driverName.trim(), percentage: Number(s.percentage) }));
+      const finalSplits = validSplits.length > 0 ? validSplits : buildDefaultFinancingSplits();
+      const primaryDriver = [...finalSplits].sort((a, b) => b.percentage - a.percentage)[0]?.driverName || exp.driverName || 'Hugo';
+
+      const parsedInstNum = parseInt(editingInstallmentNumber, 10);
+      const parsedInstTot = parseInt(editingInstallmentsTotal, 10) || vehicle.financingTotalInstallments || 48;
+      let updatedNotes = exp.notes || '';
+      if (parsedInstNum > 0) {
+        if (/Parcela\s+\d+\s*\/\s*\d+/i.test(updatedNotes)) {
+          updatedNotes = updatedNotes.replace(/Parcela\s+\d+\s*\/\s*\d+/i, `Parcela ${parsedInstNum}/${parsedInstTot}`);
+        } else if (updatedNotes) {
+          updatedNotes = `${updatedNotes} (Parcela ${parsedInstNum}/${parsedInstTot})`;
+        } else {
+          updatedNotes = `Prestação do Veículo (Parcela ${parsedInstNum}/${parsedInstTot})`;
+        }
+      }
+
+      onEditExpense({
+        ...exp,
+        driverName: primaryDriver,
+        driverSplits: finalSplits,
+        ...(parsedInstNum > 0
+          ? {
+              installmentNumber: parsedInstNum,
+              installmentsCount: parsedInstTot,
+              notes: updatedNotes,
+            }
+          : {}),
+      });
+    } else if (editingDriverValue.trim()) {
+      onEditExpense({ ...exp, driverName: editingDriverValue.trim() });
+    }
+
+    setEditingDriverExpenseId(null);
   };
 
   return (
@@ -667,59 +841,163 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                       {formatToBrazilianDate(exp.expenseDate)}
                     </td>
 
-                    {/* Motorista — clicável para edição */}
+                    {/* Motorista / Rateio — clicável para edição */}
                     <td className="px-3 py-3 hidden md:table-cell whitespace-nowrap">
                       {editingDriverExpenseId === exp.id ? (
-                        <div ref={editingDriverRef} className="flex flex-col gap-1 min-w-[140px]">
-                          <div className="flex gap-1 flex-wrap">
-                            {availableDrivers.map((d) => (
+                        exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0) ? (
+                          <div ref={editingDriverRef} className="flex flex-col gap-1.5 min-w-[210px] bg-slate-900 p-2.5 rounded-xl border border-amber-500/60 shadow-xl">
+                            <span className="text-[9px] font-extrabold uppercase text-amber-400">
+                              Rateio da Prestação (%)
+                            </span>
+                            {editingSplitsValue.length === 2 && (
+                              <div className="flex gap-1 flex-wrap">
+                                {[
+                                  [50, 50],
+                                  [60, 40],
+                                  [40, 60],
+                                  [70, 30],
+                                  [100, 0],
+                                  [0, 100],
+                                ].map(([p1, p2]) => (
+                                  <button
+                                    key={`${p1}-${p2}`}
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingSplitsValue([
+                                        { driverName: editingSplitsValue[0].driverName, percentage: p1 },
+                                        { driverName: editingSplitsValue[1].driverName, percentage: p2 },
+                                      ])
+                                    }
+                                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-amber-500 hover:text-black text-[9px] font-mono font-bold text-slate-300 border border-slate-700 transition-colors"
+                                  >
+                                    {p1}/{p2}%
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <div className="space-y-1">
+                              {editingSplitsValue.map((s, sIdx) => (
+                                <div key={s.driverName} className="flex items-center justify-between gap-1.5 text-[10px]">
+                                  <span className="text-slate-200 font-bold truncate max-w-[70px]">{s.driverName}:</span>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.5"
+                                      value={s.percentage}
+                                      onChange={(e) => handleEditingSplitChange(sIdx, e.target.value)}
+                                      className="w-14 bg-black border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-amber-300 font-mono font-bold text-right focus:border-amber-400 outline-none"
+                                    />
+                                    <span className="text-slate-400 font-mono">%</span>
+                                    <span className="text-[9px] text-emerald-400 font-mono">
+                                      (R$ {((exp.amount * (s.percentage || 0)) / 100).toFixed(2)})
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800 text-[9px]">
+                              <span className="text-slate-400 font-bold">Nº Parcela:</span>
+                              <div className="flex items-center gap-1 font-mono">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={editingInstallmentNumber}
+                                  onChange={(e) => setEditingInstallmentNumber(e.target.value)}
+                                  placeholder="ex: 4"
+                                  className="w-11 bg-black border border-slate-700 rounded px-1 py-0.5 text-amber-300 font-bold text-center"
+                                />
+                                <span className="text-slate-500">/</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={editingInstallmentsTotal}
+                                  onChange={(e) => setEditingInstallmentsTotal(e.target.value)}
+                                  className="w-11 bg-black border border-slate-700 rounded px-1 py-0.5 text-slate-300 font-bold text-center"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-1 pt-1">
                               <button
-                                key={d.id}
-                                onClick={() => setEditingDriverValue(d.name)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
-                                  editingDriverValue === d.name
-                                    ? 'bg-emerald-500 border-emerald-400 text-white'
-                                    : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-emerald-500'
-                                }`}
+                                type="button"
+                                onClick={() => saveInlineDriverOrSplit(exp)}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold py-1 rounded transition-colors"
                               >
-                                {d.name}
+                                ✓ Salvar Rateio
                               </button>
-                            ))}
+                              <button
+                                type="button"
+                                onClick={() => setEditingDriverExpenseId(null)}
+                                className="px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] rounded transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
-                          <input
-                            type="text"
-                            value={editingDriverValue}
-                            onChange={(e) => setEditingDriverValue(e.target.value)}
-                            placeholder="Ou digite o nome..."
-                            className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-[10px] text-white focus:border-emerald-400 outline-none"
-                            autoFocus
-                          />
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => {
-                                if (editingDriverValue.trim() && onEditExpense) {
-                                  onEditExpense({ ...exp, driverName: editingDriverValue.trim() });
-                                }
-                                setEditingDriverExpenseId(null);
-                              }}
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold py-0.5 rounded transition-colors"
-                            >
-                              ✓ Salvar
-                            </button>
-                            <button
-                              onClick={() => setEditingDriverExpenseId(null)}
-                              className="px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] rounded transition-colors"
-                            >
-                              ✕
-                            </button>
+                        ) : (
+                          <div ref={editingDriverRef} className="flex flex-col gap-1 min-w-[140px]">
+                            <div className="flex gap-1 flex-wrap">
+                              {availableDrivers.map((d) => (
+                                <button
+                                  key={d.id}
+                                  onClick={() => setEditingDriverValue(d.name)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                    editingDriverValue === d.name
+                                      ? 'bg-emerald-500 border-emerald-400 text-white'
+                                      : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-emerald-500'
+                                  }`}
+                                >
+                                  {d.name}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              type="text"
+                              value={editingDriverValue}
+                              onChange={(e) => setEditingDriverValue(e.target.value)}
+                              placeholder="Ou digite o nome..."
+                              className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-[10px] text-white focus:border-emerald-400 outline-none"
+                              autoFocus
+                            />
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => saveInlineDriverOrSplit(exp)}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold py-0.5 rounded transition-colors"
+                              >
+                                ✓ Salvar
+                              </button>
+                              <button
+                                onClick={() => setEditingDriverExpenseId(null)}
+                                className="px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] rounded transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )
+                      ) : exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0) ? (
+                        <button
+                          onClick={() => openInlineDriverOrSplitEditor(exp)}
+                          className="group flex flex-col items-start gap-0.5 bg-amber-950/50 border border-amber-700/60 hover:border-amber-400 text-amber-200 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-colors text-left"
+                          title="Clique para editar a porcentagem de cada motorista ou nº da parcela"
+                        >
+                          <span className="flex items-center gap-1 text-amber-300">
+                            <User className="w-3 h-3 text-amber-400" />
+                            {getEffectiveExpenseSplits(exp, financingDrivers)
+                              .map((s) => `${s.driverName} ${Number(s.percentage.toFixed(1))}%`)
+                              .join(' • ')}
+                            <Pencil className="w-2.5 h-2.5 text-amber-400/70 group-hover:text-amber-300 transition-colors" />
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-300">
+                            {getEffectiveExpenseSplits(exp, financingDrivers)
+                              .map((s) => `${s.driverName}: R$ ${((exp.amount * s.percentage) / 100).toFixed(2)}`)
+                              .join(' | ')}
+                          </span>
+                        </button>
                       ) : (
                         <button
-                          onClick={() => {
-                            setEditingDriverExpenseId(exp.id);
-                            setEditingDriverValue(exp.driverName || currentDriverName || '');
-                          }}
+                          onClick={() => openInlineDriverOrSplitEditor(exp)}
                           className="group inline-flex items-center gap-1 bg-slate-800 border border-slate-700 hover:border-emerald-500 text-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-colors"
                           title="Clique para editar o motorista"
                         >
@@ -808,44 +1086,98 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                         </span>
                         <div className="flex items-center flex-wrap gap-1 sm:hidden">
                           {getCategoryBadge(exp.category)}
-                          {/* Mobile: motorista editável */}
+                          {/* Mobile: motorista / rateio editável */}
                           {editingDriverExpenseId === exp.id ? (
-                            <div className="flex flex-col gap-1 w-full mt-1">
-                              <div className="flex gap-1 flex-wrap">
-                                {availableDrivers.map((d) => (
-                                  <button
-                                    key={d.id}
-                                    onClick={() => setEditingDriverValue(d.name)}
-                                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-colors ${
-                                      editingDriverValue === d.name
-                                        ? 'bg-emerald-500 border-emerald-400 text-white'
-                                        : 'bg-slate-800 border-slate-600 text-slate-300'
-                                    }`}
-                                  >
-                                    {d.name}
-                                  </button>
+                            exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0) ? (
+                              <div className="flex flex-col gap-1.5 w-full mt-1 bg-slate-900 p-2 rounded-xl border border-amber-500/60">
+                                <span className="text-[9px] font-extrabold uppercase text-amber-400">Rateio da Prestação (%)</span>
+                                {editingSplitsValue.map((s, sIdx) => (
+                                  <div key={s.driverName} className="flex items-center justify-between gap-1 text-[10px]">
+                                    <span className="text-white font-bold">{s.driverName}:</span>
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={s.percentage}
+                                        onChange={(e) => handleEditingSplitChange(sIdx, e.target.value)}
+                                        className="w-14 bg-black border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-amber-300 font-mono font-bold text-right"
+                                      />
+                                      <span className="text-slate-400 font-mono">%</span>
+                                      <span className="text-[9px] text-emerald-400 font-mono">
+                                        R$ {((exp.amount * (s.percentage || 0)) / 100).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
                                 ))}
+                                <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800 text-[9px]">
+                                  <span className="text-slate-400 font-bold">Parcela:</span>
+                                  <div className="flex items-center gap-1 font-mono">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={editingInstallmentNumber}
+                                      onChange={(e) => setEditingInstallmentNumber(e.target.value)}
+                                      className="w-11 bg-black border border-slate-700 rounded px-1 py-0.5 text-amber-300 font-bold text-center"
+                                    />
+                                    <span>/</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={editingInstallmentsTotal}
+                                      onChange={(e) => setEditingInstallmentsTotal(e.target.value)}
+                                      className="w-11 bg-black border border-slate-700 rounded px-1 py-0.5 text-slate-300 font-bold text-center"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <button onClick={() => saveInlineDriverOrSplit(exp)} className="flex-1 bg-emerald-600 text-white text-[9px] font-bold py-1 rounded">✓ Salvar Rateio</button>
+                                  <button onClick={() => setEditingDriverExpenseId(null)} className="px-2 bg-slate-700 text-slate-300 text-[9px] rounded">✕</button>
+                                </div>
                               </div>
-                              <input
-                                type="text"
-                                value={editingDriverValue}
-                                onChange={(e) => setEditingDriverValue(e.target.value)}
-                                placeholder="Nome do motorista..."
-                                className="bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-[9px] text-white outline-none w-full"
-                              />
-                              <div className="flex gap-1">
-                                <button onClick={() => { if (editingDriverValue.trim() && onEditExpense) onEditExpense({ ...exp, driverName: editingDriverValue.trim() }); setEditingDriverExpenseId(null); }} className="flex-1 bg-emerald-600 text-white text-[9px] font-bold py-0.5 rounded">✓ Salvar</button>
-                                <button onClick={() => setEditingDriverExpenseId(null)} className="px-2 bg-slate-700 text-slate-300 text-[9px] rounded">✕</button>
+                            ) : (
+                              <div className="flex flex-col gap-1 w-full mt-1">
+                                <div className="flex gap-1 flex-wrap">
+                                  {availableDrivers.map((d) => (
+                                    <button
+                                      key={d.id}
+                                      onClick={() => setEditingDriverValue(d.name)}
+                                      className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-colors ${
+                                        editingDriverValue === d.name
+                                          ? 'bg-emerald-500 border-emerald-400 text-white'
+                                          : 'bg-slate-800 border-slate-600 text-slate-300'
+                                      }`}
+                                    >
+                                      {d.name}
+                                    </button>
+                                  ))}
+                                </div>
+                                <input
+                                  type="text"
+                                  value={editingDriverValue}
+                                  onChange={(e) => setEditingDriverValue(e.target.value)}
+                                  placeholder="Nome do motorista..."
+                                  className="bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-[9px] text-white outline-none w-full"
+                                />
+                                <div className="flex gap-1">
+                                  <button onClick={() => saveInlineDriverOrSplit(exp)} className="flex-1 bg-emerald-600 text-white text-[9px] font-bold py-0.5 rounded">✓ Salvar</button>
+                                  <button onClick={() => setEditingDriverExpenseId(null)} className="px-2 bg-slate-700 text-slate-300 text-[9px] rounded">✕</button>
+                                </div>
                               </div>
-                            </div>
+                            )
                           ) : (
                             <button
-                              onClick={() => { setEditingDriverExpenseId(exp.id); setEditingDriverValue(exp.driverName || currentDriverName || ''); }}
+                              onClick={() => openInlineDriverOrSplitEditor(exp)}
                               className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-bold"
-                              title="Editar motorista"
+                              title="Editar motorista / rateio"
                             >
                               <User className="w-2.5 h-2.5 text-emerald-400" />
-                              {exp.driverName || vehicle.tenantName || 'Motorista'}
+                              {exp.category === 'FINANCING' || (exp.driverSplits && exp.driverSplits.length > 0)
+                                ? getEffectiveExpenseSplits(exp, financingDrivers)
+                                    .map((s) => `${s.driverName} ${Number(s.percentage.toFixed(0))}%`)
+                                    .join(' • ')
+                                : exp.driverName || vehicle.tenantName || 'Motorista'}
                               <Pencil className="w-2 h-2 text-slate-500" />
                             </button>
                           )}
@@ -1269,6 +1601,98 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                   </div>
                 )}
 
+                {/* 5.0 OPÇÕES ESPECÍFICAS PARA PRESTAÇÃO / FINANCIAMENTO (DIVISÃO % POR MOTORISTA) */}
+                {category === 'FINANCING' && (
+                  <div className="space-y-3 p-3.5 bg-amber-950/30 border border-amber-700/70 rounded-2xl animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-amber-300 font-extrabold flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-amber-400" />
+                        Divisão da Prestação por Motorista (%)
+                      </label>
+                      <span className="text-[10px] font-mono bg-amber-900/60 text-amber-200 px-2 py-0.5 rounded-full border border-amber-700/60">
+                        Total: {financingSplits.reduce((s, d) => s + (Number(d.percentage) || 0), 0).toFixed(0)}%
+                      </span>
+                    </div>
+
+                    {/* Atalhos Rápidos de Porcentagem */}
+                    {financingSplits.length === 2 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: '50% / 50% (Inicial)', p1: 50, p2: 50 },
+                          { label: '60% / 40%', p1: 60, p2: 40 },
+                          { label: '40% / 60%', p1: 40, p2: 60 },
+                          { label: '70% / 30%', p1: 70, p2: 30 },
+                          { label: '30% / 70%', p1: 30, p2: 70 },
+                          { label: `100% ${financingSplits[0].driverName}`, p1: 100, p2: 0 },
+                          { label: `100% ${financingSplits[1].driverName}`, p1: 0, p2: 100 },
+                        ].map((preset) => {
+                          const isCurrent =
+                            Math.abs(financingSplits[0].percentage - preset.p1) < 0.01 &&
+                            Math.abs(financingSplits[1].percentage - preset.p2) < 0.01;
+                          return (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() =>
+                                setFinancingSplits([
+                                  { driverName: financingSplits[0].driverName, percentage: preset.p1 },
+                                  { driverName: financingSplits[1].driverName, percentage: preset.p2 },
+                                ])
+                              }
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold border transition-all ${
+                                isCurrent
+                                  ? 'bg-amber-500 text-black border-amber-400 font-black shadow-md'
+                                  : 'bg-black/80 text-slate-300 border-slate-800 hover:border-amber-600'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Inputs individuais por motorista */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {financingSplits.map((split, sIdx) => {
+                        const totalVal = parseFloat(amount) || 0;
+                        const driverShare = roundCurrency((totalVal * (Number(split.percentage) || 0)) / 100);
+                        return (
+                          <div
+                            key={split.driverName}
+                            className="p-2.5 bg-black/80 border border-slate-800 rounded-xl flex flex-col gap-1.5"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-white flex items-center gap-1">
+                                👤 {split.driverName}
+                              </span>
+                              <span className="text-[11px] font-mono font-black text-emerald-400">
+                                R$ {driverShare.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                value={split.percentage}
+                                onChange={(e) => handleFinancingSplitChange(sIdx, e.target.value)}
+                                className="w-full bg-slate-900 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono font-bold outline-none focus:border-amber-400"
+                              />
+                              <span className="text-xs font-mono font-bold text-slate-400">%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <p className="text-[10px] text-amber-200/80 font-mono leading-relaxed">
+                      💡 No relatório de despesas e por motorista, esta prestação será dividida exatamente conforme a porcentagem acima ({financingSplits.map((s) => `${s.driverName}: ${s.percentage}%`).join(' / ')}).
+                    </p>
+                  </div>
+                )}
+
                 {/* 5. OPÇÕES ESPECÍFICAS PARA COMBUSTÃO */}
                 {category === 'FUEL' && (
                   <div className="space-y-3 p-3.5 bg-slate-900 border border-amber-900/60 rounded-2xl">
@@ -1507,24 +1931,33 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                       </div>
 
                       {/* Botões Rápidos de Parcela */}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {['1', '2', '3', '4', '5'].map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setSpecificInstallmentNumber(num)}
+                            className={`py-1.5 px-2.5 border font-bold text-[10px] rounded-lg transition-all ${
+                              specificInstallmentNumber === num
+                                ? 'bg-amber-500 border-amber-400 text-black font-extrabold'
+                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {num}ª Parcela
+                          </button>
+                        ))}
                         <button
                           type="button"
                           onClick={() => {
                             setSpecificInstallmentNumber(specificInstallmentsTotal || '48');
                           }}
-                          className="flex-1 py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 text-amber-300 font-extrabold text-[10px] rounded-lg transition-all"
+                          className={`flex-1 py-1.5 px-2.5 border font-extrabold text-[10px] rounded-lg transition-all ${
+                            specificInstallmentNumber === (specificInstallmentsTotal || '48')
+                              ? 'bg-amber-500 border-amber-400 text-black'
+                              : 'bg-amber-950/80 hover:bg-amber-900 border-amber-700/60 text-amber-300'
+                          }`}
                         >
-                          🏁 Selecionar Última Parcela ({specificInstallmentsTotal || '48'}/{specificInstallmentsTotal || '48'})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSpecificInstallmentNumber('1');
-                          }}
-                          className="py-1.5 px-3 bg-slate-950 border border-slate-800 text-slate-400 font-bold text-[10px] rounded-lg hover:text-white"
-                        >
-                          1ª Parcela
+                          🏁 Última ({specificInstallmentsTotal || '48'}/{specificInstallmentsTotal || '48'})
                         </button>
                       </div>
 

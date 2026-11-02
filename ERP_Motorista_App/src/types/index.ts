@@ -135,6 +135,11 @@ export interface EarningDraft {
   timestamp: string;
 }
 
+export interface DriverExpenseSplit {
+  driverName: string;
+  percentage: number;
+}
+
 export interface Expense {
   id: string;
   shiftId?: string;
@@ -156,6 +161,7 @@ export interface Expense {
   vehicleId?: string;
   driverId?: string;
   driverName?: string;
+  driverSplits?: DriverExpenseSplit[];
   
   // Origem, Parcelamento e NF-e
   source?: 'manual' | 'ocr' | 'xml' | 'voice';
