@@ -2,6 +2,7 @@ import React from 'react';
 import { X, FileSpreadsheet, Download, Printer, Car, ShieldCheck, DollarSign, Wrench, TrendingUp, Building2, CheckCircle2, Clock } from 'lucide-react';
 import { Vehicle, Earning, Expense, ReserveBucket } from '../types';
 import { calculateHoursBetween } from '../utils/financialCalculators';
+import { buildDriversComparativeReport } from '../utils/driverReports';
 
 interface FullVehicleReportModalProps {
   isOpen: boolean;
@@ -51,23 +52,19 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
   const inDriveRev = activeEarnings.filter(e => e.platform === 'INDRIVE').reduce((s, e) => s + e.grossAmount + e.tipsAmount, 0);
   const privateRev = activeEarnings.filter(e => e.platform === 'PRIVATE').reduce((s, e) => s + e.grossAmount + e.tipsAmount, 0);
 
-  // Agrupar por Motorista
-  const driverStatsMap: { [name: string]: { trips: number; revenue: number; km: number; hours: number } } = {};
-  activeEarnings.forEach((e) => {
-    const dName = e.driverName || 'Não especificado';
-    if (!driverStatsMap[dName]) {
-      driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
-    }
-    const itemHours = e.workedHours || (e.startTime && e.endTime ? (calculateHoursBetween(e.startTime, e.endTime) || 0) : 0);
-    driverStatsMap[dName].trips += e.totalTrips || 1;
-    driverStatsMap[dName].revenue += e.grossAmount + e.tipsAmount;
-    driverStatsMap[dName].km += e.rideDistanceKm || 0;
-    driverStatsMap[dName].hours += itemHours;
-  });
-
-  const driverStatsList = Object.keys(driverStatsMap).map((name) => ({
-    name,
-    ...driverStatsMap[name],
+  // Agrupar por Motorista com dados completos (Receita, Despesas, Lucro, Eficiência)
+  const driversSummary = buildDriversComparativeReport(activeEarnings, activeExpenses);
+  const driverStatsList = driversSummary.drivers.map((d) => ({
+    name: d.driverName,
+    trips: d.trips,
+    revenue: d.totalRevenue,
+    expenses: d.directExpenses,
+    netProfit: d.netProfit,
+    km: d.km,
+    hours: d.hours,
+    grossPerHour: d.grossPerHour,
+    profitPerKm: d.profitPerKm,
+    sharePercent: d.revenueSharePercent,
   }));
 
   // Despesas por Centro de Custo (CC-01 a CC-04)
@@ -101,11 +98,13 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
   const financingPercent = monthlyFinancing > 0 ? Math.min(100, Math.round((financingReserved / monthlyFinancing) * 100)) : 100;
   const netSurplusCash = Math.max(0, cashProfit - monthlyFinancing);
 
-  // Odômetro e KM
+  // Odômetro e KM Operacional do Período
   const kmRodados = vehicle.currentOdometerKm || 0;
-  const cpk = kmRodados > 0 ? (totalExpenses / kmRodados) : 0;
-  const revenuePerKm = kmRodados > 0 ? (totalRevenue / kmRodados) : 0;
-  const profitPerKm = kmRodados > 0 ? (netProfit / kmRodados) : 0;
+  const periodKm = activeEarnings.reduce((sum, e) => sum + (e.rideDistanceKm || 0), 0);
+  const effectiveKm = periodKm > 0 ? periodKm : kmRodados;
+  const cpk = effectiveKm > 0 ? (totalExpenses / effectiveKm) : 0;
+  const revenuePerKm = effectiveKm > 0 ? (totalRevenue / effectiveKm) : 0;
+  const profitPerKm = effectiveKm > 0 ? (netProfit / effectiveKm) : 0;
 
   // Exportar em CSV para Excel
   const handleExportCSV = () => {
@@ -629,11 +628,13 @@ export const FullVehicleReportModal: React.FC<FullVehicleReportModalProps> = ({
                   </tr>
                 )}
 
-                {/* Faturamento por Motorista */}
+                {/* Faturamento e Resultado por Motorista */}
                 {driverStatsList.map((d) => (
                   <tr key={d.name} className="text-emerald-300 text-[11px] bg-slate-900/60 font-semibold">
-                    <td className="px-6 py-1.5">👤 Faturamento Motorista {d.name}</td>
-                    <td className="px-4 py-1.5 text-center text-[10px] text-emerald-400">{d.trips} corridas ({d.km.toFixed(1)} km)</td>
+                    <td className="px-6 py-1.5">👤 Motorista {d.name} ({d.sharePercent.toFixed(1)}% da receita)</td>
+                    <td className="px-4 py-1.5 text-center text-[10px] text-emerald-400">
+                      {d.trips} corridas ({d.km.toFixed(1)} km • Líq: R$ {d.netProfit.toFixed(2)})
+                    </td>
                     <td className="px-4 py-1.5 text-right font-mono font-bold">R$ {d.revenue.toFixed(2)}</td>
                   </tr>
                 ))}

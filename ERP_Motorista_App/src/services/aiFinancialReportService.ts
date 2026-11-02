@@ -1,5 +1,6 @@
 import { Expense, Earning, Vehicle, ExpenseCategory } from '../types';
 import { downloadExcelCsv } from '../utils/excelExporter';
+import { calculateHoursBetween } from '../utils/financialCalculators';
 
 export interface CategoryComparison {
   category: ExpenseCategory;
@@ -124,6 +125,10 @@ export function calculatePeriodSummary(
 
   const workedHours = activeEarnings.reduce((s, e) => {
     if (e.workedHours && e.workedHours > 0) return s + e.workedHours;
+    if (e.startTime && e.endTime) {
+      const calc = calculateHoursBetween(e.startTime, e.endTime);
+      if (calc && calc > 0) return s + calc;
+    }
     return s;
   }, 0);
 

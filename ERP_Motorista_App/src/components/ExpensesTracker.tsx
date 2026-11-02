@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2, Pencil } from 'lucide-react';
-import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver } from '../types';
+import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2, Pencil, Paperclip, FileText } from 'lucide-react';
+import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver, MaintenanceScheduleEntry } from '../types';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
 import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
 import { getTodayLocalDateString, formatToLocalDateString, formatToBrazilianDate } from '../utils/dateUtils';
+import { fileToReceiptDataUrl, isPdfDataUrl, RECEIPT_ACCEPT } from '../utils/receiptAttachment';
+import { getReceiptSignedUrl } from '../services/supabaseClient';
 
 interface ExpensesTrackerProps {
   vehicle: Vehicle;
@@ -120,6 +122,53 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   // Combustion specific
   const [fuelLiters, setFuelLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('4.65');
+
+  // Vínculo inteligente com Revisão Oficial do Veículo
+  const [linkedRevisionIndex, setLinkedRevisionIndex] = useState<number | null>(null);
+  const [revisionActionType, setRevisionActionType] = useState<'SCHEDULE' | 'COMPLETE'>('SCHEDULE');
+
+  const handleOpenAddExpenseForRevision = (entry: MaintenanceScheduleEntry, index: number, isScheduled: boolean) => {
+    setCategory('MAINTENANCE');
+    setAmount(entry.estimatedCost.toString());
+    setNotes(`${index + 1}ª Revisão Oficial (${entry.intervalKm.toLocaleString('pt-BR')} km)`);
+    setExpenseDateInput(entry.plannedDate || getTodayLocalDateString());
+    setLinkedRevisionIndex(index);
+    setRevisionActionType(isScheduled ? 'SCHEDULE' : 'COMPLETE');
+    setShowModal(true);
+  };
+
+  // Anexo de nota fiscal / comprovante (foto ou PDF)
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
+  const [attachingToExpenseId, setAttachingToExpenseId] = useState<string | null>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
+
+  const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      setReceiptError(null);
+      setReceiptUrl(await fileToReceiptDataUrl(file));
+    } catch (err: any) {
+      setReceiptError(err.message || 'Erro ao anexar arquivo.');
+    }
+  };
+
+  // Anexar a uma despesa já lançada (a partir da lista)
+  const handleAttachToExisting = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const target = expenses.find((x) => x.id === attachingToExpenseId);
+    setAttachingToExpenseId(null);
+    if (!file || !target || !onEditExpense) return;
+    try {
+      onEditExpense({ ...target, receiptUrl: await fileToReceiptDataUrl(file) });
+    } catch (err: any) {
+      window.alert(err.message || 'Erro ao anexar arquivo.');
+    }
+  };
 
   // Sincronizar driverName quando currentDriverName mudar
   useEffect(() => {
@@ -269,6 +318,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         paymentMethod: 'PIX',
         installmentsCount: instTotal,
         installmentNumber: instNum,
+        receiptUrl: receiptUrl || undefined,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
         driverName: driverName || currentDriverName || undefined,
@@ -297,6 +347,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           paymentMethod: 'CREDIT_CARD',
           installmentsCount,
           installmentNumber: i + 1,
+          receiptUrl: receiptUrl || undefined,
           source: 'manual',
           vehicleId: selectedVehicleId || vehicle.id,
           driverName: driverName || currentDriverName || undefined,
@@ -317,17 +368,47 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         paymentMethod: 'MONEY',
         installmentsCount: 1,
         installmentNumber: 1,
+        receiptUrl: receiptUrl || undefined,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
         driverName: driverName || currentDriverName || undefined,
       });
     }
 
+    // Sincroniza o cronograma oficial do veículo caso a despesa tenha sido vinculada a uma revisão
+    if (linkedRevisionIndex !== null && vehicle.maintenanceSchedule && onUpdateVehicle) {
+      const updatedSchedule = vehicle.maintenanceSchedule.map((entry, idx) => {
+        if (idx !== linkedRevisionIndex) return entry;
+        if (revisionActionType === 'SCHEDULE') {
+          return {
+            ...entry,
+            plannedDate: expenseDateInput,
+            completedDate: undefined,
+          };
+        } else {
+          return {
+            ...entry,
+            completedDate: expenseDateInput,
+            completedKm: odometerKm ? parseFloat(odometerKm) : (vehicle.currentOdometerKm || entry.intervalKm),
+            plannedDate: undefined,
+          };
+        }
+      });
+      onUpdateVehicle({
+        ...vehicle,
+        maintenanceSchedule: updatedSchedule,
+      });
+    }
+
+    setLinkedRevisionIndex(null);
+    setRevisionActionType('SCHEDULE');
     setAmount('');
     setNotes('');
     setOdometerKm('');
     setKwhAmount('');
     setFuelLiters('');
+    setReceiptUrl(null);
+    setReceiptError(null);
     setInstallmentsCount(1);
     setPaymentMode('SINGLE_CASH');
     setExpenseDateInput(getTodayLocalDateString());
@@ -415,7 +496,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
 
         const cc4Outros = (expenses || []).reduce((sum, exp) => {
           if (exp.isDeleted) return sum;
-          return ['DOCUMENTS', 'IPVA_LICENSING', 'FINANCING', 'OTHER', 'TRAFFIC_FINE'].includes(exp.category) ? sum + exp.amount : sum;
+          return ['DOCUMENTS', 'IPVA_LICENSING', 'FINANCING', 'OTHER', 'TRAFFIC_FINE', 'TAX_MEI', 'PERSONAL_USE'].includes(exp.category) ? sum + exp.amount : sum;
         }, 0);
 
         const grandTotal = cc1Rodagem + cc2Manutencao + cc3Protecao + cc4Outros;
@@ -501,7 +582,9 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
             vehicle={vehicle}
             currentOdometerKm={vehicle.currentOdometerKm}
             maintenanceBucketBalance={maintBalance}
+            expenses={expenses}
             onUpdateVehicle={onUpdateVehicle}
+            onOpenAddExpenseForRevision={handleOpenAddExpenseForRevision}
           />
         );
       })()}
@@ -818,7 +901,32 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     </td>
 
                     {/* Ação */}
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                      {(exp.receiptUrl || exp.receiptPath) ? (
+                        <button
+                          onClick={async () => {
+                            if (exp.receiptUrl) return setViewingReceipt(exp.receiptUrl);
+                            const signed = await getReceiptSignedUrl(exp.receiptPath!);
+                            if (signed) setViewingReceipt(signed);
+                            else window.alert('Não foi possível abrir o comprovante (verifique a conexão).');
+                          }}
+                          className="p-1.5 text-emerald-400 hover:bg-emerald-950/40 rounded-xl transition-colors"
+                          title="Ver nota fiscal / comprovante"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                        </button>
+                      ) : onEditExpense ? (
+                        <button
+                          onClick={() => {
+                            setAttachingToExpenseId(exp.id);
+                            attachInputRef.current?.click();
+                          }}
+                          className="p-1.5 text-slate-600 hover:text-emerald-400 hover:bg-emerald-950/40 rounded-xl transition-colors"
+                          title="Anexar nota fiscal / comprovante"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                        </button>
+                      ) : null}
                       <button
                         onClick={() => {
                           if (window.confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO\n\nTem certeza que deseja apagar esta despesa no valor de R$ ${exp.amount.toFixed(2)}?\n\nEsta ação não poderá ser desfeita.`)) {
@@ -847,6 +955,42 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Input oculto: anexar a despesa existente */}
+      <input ref={attachInputRef} type="file" accept={RECEIPT_ACCEPT} onChange={handleAttachToExisting} className="hidden" />
+
+      {/* Visualizador de nota fiscal */}
+      {viewingReceipt && (
+        <div
+          onClick={() => setViewingReceipt(null)}
+          className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 cursor-pointer"
+        >
+          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-2xl max-h-[92dvh] bg-pma-card border border-white/10 rounded-3xl p-3 cursor-default flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-white flex items-center gap-1.5"><Paperclip className="w-4 h-4 text-emerald-400" /> Nota fiscal / Comprovante</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={viewingReceipt}
+                  download={isPdfDataUrl(viewingReceipt) ? 'comprovante.pdf' : 'comprovante.jpg'}
+                  className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl"
+                >
+                  Baixar
+                </a>
+                <button onClick={() => setViewingReceipt(null)} className="p-1.5 text-slate-400 hover:text-white rounded-full bg-slate-900 border border-slate-800" title="Fechar">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto rounded-2xl bg-black/50 flex-1">
+              {isPdfDataUrl(viewingReceipt) ? (
+                <iframe src={viewingReceipt} title="Comprovante PDF" className="w-full h-[70dvh]" />
+              ) : (
+                <img src={viewingReceipt} alt="Comprovante" className="w-full h-auto" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Captura por Foto / XML */}
       <ExpenseReceiptCapture
@@ -1165,6 +1309,105 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                   </div>
                 )}
 
+                {/* 5.1 VÍNCULO INTELIGENTE COM REVISÃO OFICIAL DO VEÍCULO */}
+                {(category === 'MAINTENANCE' || category === 'WORKSHOP_MAINTENANCE' || linkedRevisionIndex !== null) &&
+                  vehicle.maintenanceSchedule &&
+                  vehicle.maintenanceSchedule.length > 0 && (
+                    <div className="p-3.5 bg-amber-950/40 border border-amber-800/80 rounded-2xl space-y-2.5 text-left animate-fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5 text-amber-400" />
+                          Vincular à Revisão Oficial do Veículo:
+                        </span>
+                        {linkedRevisionIndex !== null && (
+                          <button
+                            type="button"
+                            onClick={() => setLinkedRevisionIndex(null)}
+                            className="text-[10px] text-slate-400 hover:text-white underline"
+                          >
+                            Desvincular
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        {vehicle.maintenanceSchedule.map((rev, rIdx) => {
+                          const isSelected = linkedRevisionIndex === rIdx;
+                          return (
+                            <button
+                              key={rIdx}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setLinkedRevisionIndex(null);
+                                } else {
+                                  setLinkedRevisionIndex(rIdx);
+                                  if (!amount || amount === '0') {
+                                    setAmount(rev.estimatedCost.toString());
+                                  }
+                                  setNotes(`${rIdx + 1}ª Revisão Oficial (${rev.intervalKm.toLocaleString('pt-BR')} km)`);
+                                  if (rev.plannedDate) {
+                                    setExpenseDateInput(rev.plannedDate);
+                                  }
+                                }
+                              }}
+                              className={`p-2 rounded-xl text-left border text-xs transition-all ${
+                                isSelected
+                                  ? 'bg-amber-500 text-black border-amber-400 font-extrabold shadow-md'
+                                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="font-bold flex items-center justify-between">
+                                <span>{rIdx + 1}ª Revisão</span>
+                                <span className="text-[10px] font-mono opacity-80">{rev.intervalKm.toLocaleString('pt-BR')} km</span>
+                              </div>
+                              <div className="text-[10px] opacity-80 font-mono mt-0.5">
+                                R$ {rev.estimatedCost.toFixed(2)}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {linkedRevisionIndex !== null && (
+                        <div className="pt-1 space-y-1.5 border-t border-amber-900/40">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Status desta Revisão:</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setRevisionActionType('SCHEDULE')}
+                              className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                                revisionActionType === 'SCHEDULE'
+                                  ? 'bg-sky-600 text-white border-sky-400 shadow-sm'
+                                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <Calendar className="w-3.5 h-3.5" />
+                              📅 Agendamento
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRevisionActionType('COMPLETE')}
+                              className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                                revisionActionType === 'COMPLETE'
+                                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm'
+                                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              ✅ Já Realizada
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-amber-200/90 font-mono">
+                            {revisionActionType === 'SCHEDULE'
+                              ? `📌 O painel mostrará a ${linkedRevisionIndex + 1}ª revisão como AGENDADA para ${expenseDateInput}.`
+                              : `🎉 O painel marcará a ${linkedRevisionIndex + 1}ª revisão como CONCLUÍDA e avançará o plano para a próxima.`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 {/* 6. VALOR TOTAL PAGO (R$) */}
                 <div>
                   <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center justify-between">
@@ -1355,6 +1598,36 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     }
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-rose-500"
                   />
+                </div>
+
+                {/* 10. ANEXO DE NOTA FISCAL / COMPROVANTE */}
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center gap-1">
+                    <Paperclip className="w-3.5 h-3.5 text-emerald-400" /> Nota Fiscal / Comprovante (opcional)
+                  </label>
+                  {receiptUrl ? (
+                    <div className="flex items-center gap-3 bg-slate-900 border border-emerald-800/60 rounded-2xl p-2.5">
+                      {isPdfDataUrl(receiptUrl) ? (
+                        <div className="w-14 h-14 rounded-xl bg-rose-950 text-rose-400 flex items-center justify-center shrink-0"><FileText className="w-6 h-6" /></div>
+                      ) : (
+                        <img src={receiptUrl} alt="Anexo" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                      )}
+                      <button type="button" onClick={() => setViewingReceipt(receiptUrl)} className="flex-1 text-left text-xs font-bold text-emerald-300">Anexo pronto — toque para ver</button>
+                      <button type="button" onClick={() => setReceiptUrl(null)} className="p-1.5 text-slate-400 hover:text-rose-400" title="Remover anexo"><X className="w-4 h-4" /></button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex items-center justify-center gap-1.5 bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-300 text-xs font-bold py-3 rounded-2xl cursor-pointer transition-colors">
+                        <Camera className="w-4 h-4 text-emerald-400" /> Tirar foto
+                        <input type="file" accept="image/*" capture="environment" onChange={handleReceiptFile} className="hidden" />
+                      </label>
+                      <label className="flex items-center justify-center gap-1.5 bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-300 text-xs font-bold py-3 rounded-2xl cursor-pointer transition-colors">
+                        <FileText className="w-4 h-4 text-emerald-400" /> Foto / PDF
+                        <input type="file" accept={RECEIPT_ACCEPT} onChange={handleReceiptFile} className="hidden" />
+                      </label>
+                    </div>
+                  )}
+                  {receiptError && <p className="text-[11px] text-rose-400 mt-1">{receiptError}</p>}
                 </div>
               </div>
 

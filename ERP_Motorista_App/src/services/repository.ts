@@ -1,6 +1,6 @@
 import { dbService, LocalUserContext } from './db';
 import { FinanceState } from './financeReducer';
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured, uploadReceiptDataUrl } from './supabaseClient';
 import { Vehicle, Shift } from '../types';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { syncErrorService } from './syncErrorState';
@@ -319,7 +319,14 @@ export class DataRepository implements IDataRepository {
       if (state.expenses) {
         const allExpenses = state.expenses;
         if (allExpenses.length > 0) {
-          const payloadExpenses = allExpenses.map((exp) => ({
+          const payloadExpenses = await Promise.all(allExpenses.map(async (exp) => {
+            // Anexo (nota fiscal): sobe a data URL local para o bucket privado e sincroniza só o caminho
+            let receiptPath: string | null = exp.receiptPath || null;
+            if (!receiptPath && exp.receiptUrl && exp.receiptUrl.startsWith('data:')) {
+              receiptPath = await uploadReceiptDataUrl(exp.receiptUrl, userId, exp.id);
+            }
+            return {
+
             id: exp.id,
             shift_id: exp.shiftId || null,
             categoria: exp.category,
@@ -339,6 +346,8 @@ export class DataRepository implements IDataRepository {
             is_deleted: Boolean(exp.isDeleted),
             user_id: userId,
             user_email: userEmail,
+            receipt_url: receiptPath,
+            };
           }));
 
           let { error: upsertError } = await supabase
@@ -348,6 +357,15 @@ export class DataRepository implements IDataRepository {
           // Fallback caso a tabela despesas não tenha a coluna veiculo_id
           if (upsertError && (upsertError.message?.includes('veiculo_id') || upsertError.message?.includes('vehicle_id') || upsertError.details?.includes('column'))) {
             const fallbackPayload = payloadExpenses.map(({ veiculo_id, ...rest }) => rest);
+            const retry = await supabase
+              .from('despesas')
+              .upsert(fallbackPayload, { onConflict: 'id' });
+            upsertError = retry.error;
+          }
+
+          // Fallback caso a tabela despesas ainda não tenha a coluna receipt_url
+          if (upsertError && upsertError.message?.includes('receipt_url')) {
+            const fallbackPayload = payloadExpenses.map(({ receipt_url, ...rest }) => rest);
             const retry = await supabase
               .from('despesas')
               .upsert(fallbackPayload, { onConflict: 'id' });
@@ -595,6 +613,7 @@ export class DataRepository implements IDataRepository {
             expenseDate: d.expense_date || d.created_at || new Date().toISOString(),
             vehicleId: resolvedVehicleId,
             driverName: mappedDriver || undefined,
+            ...(d.receipt_url ? { receiptPath: d.receipt_url as string } : {}),
           };
         });
       }

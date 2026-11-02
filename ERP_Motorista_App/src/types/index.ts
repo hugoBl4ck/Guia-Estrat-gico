@@ -31,6 +31,8 @@ export interface MaintenanceScheduleEntry {
   description: string;
   isMajorService: boolean;
   plannedDate?: string;
+  completedDate?: string; // Marcada manualmente como realizada (YYYY-MM-DD)
+  completedKm?: number;   // Odômetro no momento da conclusão manual
 }
 
 export interface Vehicle {
@@ -145,7 +147,8 @@ export interface Expense {
   tariffPerKwh?: number;
   chargingType?: ChargingLocationType;
   notes?: string;
-  receiptUrl?: string;
+  receiptUrl?: string;        // Anexo local (data URL de foto/PDF)
+  receiptPath?: string;       // Caminho no bucket privado 'receipts' do Supabase
   expenseDate: string;
   isPersonalUse?: boolean;
   isDeleted?: boolean;

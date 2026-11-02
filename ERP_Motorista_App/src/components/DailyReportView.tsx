@@ -23,22 +23,36 @@ import {
   Wrench,
   Layers,
   Bot,
+  Users,
+  User,
 } from 'lucide-react';
-import { Vehicle, Earning, Expense } from '../types';
+import { Vehicle, Earning, Expense, Driver } from '../types';
 import { calculateHoursBetween } from '../utils/financialCalculators';
 import { FullVehicleReportModal } from './FullVehicleReportModal';
+import { DriverFullReportModal, DriverPerformanceView, DriverReportViewMode } from './DriverFullReportModal';
 import { ShareReportModal } from './ShareReportModal';
 import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod, PeriodComparisonData } from './ReportPeriodFilter';
 import { MonthlyComparisonDashboard } from './MonthlyComparisonDashboard';
 import { formatToBrazilianDate, calculateComparisonPeriod } from '../utils/dateUtils';
 import { exportWeeklyDriverShiftReport } from '../utils/excelExporter';
-import { aggregateExpensesByDriver } from '../utils/driverReports';
+import { aggregateExpensesByDriver, buildDriversComparativeReport } from '../utils/driverReports';
 import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
+import { InsightsReportView } from './InsightsReportView';
+
+/** Segunda a domingo da semana atual (YYYY-MM-DD), usada quando não há período personalizado. */
+const getCurrentWeekRange = (): { start: string; end: string } => {
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { start: fmt(monday), end: fmt(sunday) };
+};
 
 interface DailyReportViewProps {
   vehicle: Vehicle;
   earnings: Earning[];
   expenses: Expense[];
+  drivers?: Driver[];
   onEditEarningClick?: (earning: Earning) => void;
   onDeleteEarning?: (id: string) => void;
 }
@@ -47,18 +61,22 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   vehicle,
   earnings,
   expenses,
+  drivers = [],
   onEditEarningClick,
   onDeleteEarning,
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isFullReportOpen, setIsFullReportOpen] = useState(false);
+  const [isDriverReportOpen, setIsDriverReportOpen] = useState(false);
+  const [driverModalMode, setDriverModalMode] = useState<DriverReportViewMode>('COMPLETE');
+  const [driverModalSelectedName, setDriverModalSelectedName] = useState<string | undefined>();
   const [periodMode, setPeriodMode] = useState<ReportPeriodMode>('MENSAL');
   const [customStart, setCustomStart] = useState<string | undefined>();
   const [customEnd, setCustomEnd] = useState<string | undefined>();
   const [comparisonData, setComparisonData] = useState<PeriodComparisonData | null>(null);
   
-  // Aba visual do relatório: Comparativo MoM & IA (padrão) ou Extrato Geral
-  const [activeReportTab, setActiveReportTab] = useState<'COMPARISON' | 'OVERVIEW'>('COMPARISON');
+  // Aba visual do relatório: Comparativo MoM & IA (padrão), Motoristas (Individual & Comparativo), Extrato Geral ou Insights
+  const [activeReportTab, setActiveReportTab] = useState<'COMPARISON' | 'DRIVERS' | 'OVERVIEW' | 'INSIGHTS'>('COMPARISON');
 
   // Fallback padrão garantido para o comparativo mensal com base nas datas selecionadas
   const defaultComparison = useMemo<PeriodComparisonData>(() => {
@@ -183,6 +201,11 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     }
   });
 
+  const driversComparative = useMemo(
+    () => buildDriversComparativeReport(activeEarnings, activeExpenses, drivers),
+    [activeEarnings, activeExpenses, drivers]
+  );
+
   // Exportar CSV com BOM \uFEFF para Excel no Windows
   const handleExportCSV = () => {
     let csvContent = '\uFEFF';
@@ -261,6 +284,19 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => {
+              setDriverModalMode('COMPLETE');
+              setDriverModalSelectedName(undefined);
+              setIsDriverReportOpen(true);
+            }}
+            className="bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+            title="Abrir Relatório Completo Individual e Comparativo por Motorista"
+          >
+            <Users className="w-4 h-4 stroke-[2.5]" />
+            <span>Relatório de Motoristas</span>
+          </button>
+
+          <button
             onClick={() => setIsFullReportOpen(true)}
             className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
             title="Abrir Relatório Completo Executivo do Veículo"
@@ -288,7 +324,10 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           </button>
 
           <button
-            onClick={() => exportWeeklyDriverShiftReport(vehicle, earnings, expenses, customStart || '2026-08-24', customEnd || '2026-08-30')}
+            onClick={() => {
+              const week = getCurrentWeekRange();
+              exportWeeklyDriverShiftReport(vehicle, earnings, expenses, customStart || week.start, customEnd || week.end);
+            }}
             className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
             title="Baixar receitas separadas por motorista e turno da semana selecionada"
           >
@@ -308,35 +347,87 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         }}
       />
 
-      {/* SELETOR DE MODO DE VISUALIZAÇÃO: COMPARATIVO IA VS RESUMO OPERACIONAL */}
-      <div className="bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl flex items-center gap-2">
+      {/* SELETOR DE MODO DE VISUALIZAÇÃO: COMPARATIVO IA, MOTORISTAS, EXTRATO OU INSIGHTS */}
+      <div className="bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl flex flex-wrap items-center gap-1.5">
         <button
           onClick={() => setActiveReportTab('COMPARISON')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
             activeReportTab === 'COMPARISON'
               ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Sparkles className="w-4 h-4" />
-          <span>Cards Comparativos & Diagnóstico IA</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/30 font-bold">
+          <Sparkles className="w-4 h-4 shrink-0" />
+          <span>Comparativo & IA</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/30 font-bold hidden sm:inline">
             {activeComparison.currentLabel} vs {activeComparison.compareLabel}
           </span>
         </button>
 
         <button
+          onClick={() => setActiveReportTab('DRIVERS')}
+          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+            activeReportTab === 'DRIVERS'
+              ? 'bg-cyan-400 text-black shadow-[0_0_15px_rgba(34,211,238,0.3)]'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Users className="w-4 h-4 shrink-0" />
+          <span>Motoristas (Individual & Comparativo)</span>
+        </button>
+
+        <button
           onClick={() => setActiveReportTab('OVERVIEW')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
             activeReportTab === 'OVERVIEW'
               ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Layers className="w-4 h-4" />
+          <Layers className="w-4 h-4 shrink-0" />
           <span>Extrato de Despesas & Entradas</span>
         </button>
+
+        <button
+          onClick={() => setActiveReportTab('INSIGHTS')}
+          className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+            activeReportTab === 'INSIGHTS'
+              ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 shrink-0" />
+          <span>Insights</span>
+        </button>
       </div>
+
+      {/* ABA DE RELATÓRIO DE MOTORISTAS (INDIVIDUAL, GRÁFICOS E COMPARATIVO) */}
+      {activeReportTab === 'DRIVERS' && (
+        <DriverPerformanceView
+          vehicle={vehicle}
+          earnings={activeEarnings}
+          expenses={activeExpenses}
+          drivers={drivers}
+          periodLabel={activeComparison.currentLabel}
+          onOpenFullModal={() => {
+            setDriverModalMode('COMPLETE');
+            setDriverModalSelectedName(undefined);
+            setIsDriverReportOpen(true);
+          }}
+        />
+      )}
+
+      {/* 3. ABA DE INSIGHTS: equilíbrio, CPK, dias, plataformas, consumo e comprovantes */}
+      {activeReportTab === 'INSIGHTS' && (
+        <InsightsReportView
+          vehicle={vehicle}
+          earnings={activeEarnings}
+          expenses={activeExpenses}
+          allExpenses={expenses}
+          periodStart={activeComparison.currentStart}
+          periodEnd={activeComparison.currentEnd}
+        />
+      )}
 
       {/* 1. ABA DE COMPARATIVO MÊS A MÊS & IA (VISÍVEL POR PADRÃO) */}
       {activeReportTab === 'COMPARISON' && (
@@ -529,41 +620,89 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
             )}
           </div>
 
-          {/* Detalhamento de Corridas por Motorista */}
+          {/* Detalhamento Aprimorado de Corridas, Custos e Lucro por Motorista */}
           <div className="bg-pma-card border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
-            <h3 className="font-extrabold text-sm text-white flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-400" />
-                Corridas e Faturamento por Motorista
-              </span>
-              <span className="text-xs text-slate-400">{driverStatsList.length} motorista(s)</span>
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                Desempenho Individual e Comparativo por Motorista ({driversComparative.drivers.length})
+              </h3>
+              <button
+                onClick={() => {
+                  setDriverModalMode('COMPLETE');
+                  setDriverModalSelectedName(undefined);
+                  setIsDriverReportOpen(true);
+                }}
+                className="bg-cyan-500/20 hover:bg-cyan-500 hover:text-black text-cyan-300 border border-cyan-500/40 font-extrabold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Ver Gráficos & Comparativo Completo</span>
+              </button>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {driverStatsList.map((d, idx) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {driversComparative.drivers.map((d, idx) => {
                 const colors = ['bg-emerald-400', 'bg-amber-400', 'bg-cyan-400', 'bg-indigo-400', 'bg-purple-400', 'bg-rose-400'];
                 const colorClass = colors[idx % colors.length];
-                const driverExpenses = driverExpensesMap.get(d.name);
-                const chargingSpend = (driverExpenses?.chargingTotal || 0) + (driverExpenses?.fuelTotal || 0);
                 return (
-                  <div key={d.name} className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+                  <div key={d.driverName} className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2.5 flex flex-col justify-between">
                     <div>
-                      <p className="font-extrabold text-white flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${colorClass}`}></span>
-                        Motorista {d.name}
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {d.trips} corridas • {d.km.toFixed(1)} km rodados {d.hours > 0 ? `• ${d.hours.toFixed(1)}h (R$ ${(d.revenue / d.hours).toFixed(2)}/h)` : ''}
-                      </p>
-                      {driverExpenses && driverExpenses.totalAmount > 0 && (
-                        <p className="text-[11px] text-rose-400 mt-0.5 font-semibold">
-                          ⚡ Recarga/Combustível: R$ {chargingSpend.toFixed(2)} • Despesas totais: R$ {driverExpenses.totalAmount.toFixed(2)}
-                        </p>
-                      )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-extrabold text-white flex items-center gap-1.5 text-sm">
+                            <span className={`w-2.5 h-2.5 rounded-full ${colorClass}`}></span>
+                            Motorista {d.driverName}
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300 border border-slate-700">
+                              {d.revenueSharePercent.toFixed(0)}% da Receita
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {d.trips} corridas • {d.daysWorked}d • {d.km.toFixed(1)} km{' '}
+                            {d.hours > 0 ? `• ${d.hours.toFixed(1)}h (R$ ${d.grossPerHour.toFixed(2)}/h)` : ''}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-sm font-black text-emerald-400 font-mono block">
+                            R$ {d.totalRevenue.toFixed(2)}
+                          </span>
+                          <span className={`text-[11px] font-bold font-mono ${d.netProfit >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
+                            Líq: R$ {d.netProfit.toFixed(2)} ({d.marginPercent.toFixed(0)}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-slate-800/80 text-[10px] font-mono">
+                        <div className="bg-slate-950/70 rounded-lg px-2 py-1">
+                          <span className="text-slate-500 block">Recarga/Comb.</span>
+                          <span className="text-blue-300 font-bold">R$ {d.energyTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-slate-950/70 rounded-lg px-2 py-1">
+                          <span className="text-slate-500 block">Desp. Diretas</span>
+                          <span className="text-rose-400 font-bold">-R$ {d.directExpenses.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-slate-950/70 rounded-lg px-2 py-1">
+                          <span className="text-slate-500 block">Lucro / KM</span>
+                          <span className="text-emerald-300 font-bold">
+                            {d.km > 0 ? `R$ ${d.profitPerKm.toFixed(2)}/km` : '—'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-sm font-black text-emerald-400 font-mono">
-                      R$ {d.revenue.toFixed(2)}
-                    </span>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setDriverModalSelectedName(d.driverName);
+                          setDriverModalMode('INDIVIDUAL');
+                          setIsDriverReportOpen(true);
+                        }}
+                        className="bg-slate-800 hover:bg-emerald-500 hover:text-black text-emerald-400 border border-slate-700 font-extrabold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1 transition-all"
+                      >
+                        <User className="w-3.5 h-3.5" />
+                        <span>Gráficos & Relatório de {d.driverName}</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -722,6 +861,19 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         vehicle={vehicle}
         earnings={earnings}
         expenses={expenses}
+      />
+
+      {/* Modal do Relatório Completo de Motoristas (Individual + Gráficos + Comparativo) */}
+      <DriverFullReportModal
+        isOpen={isDriverReportOpen}
+        onClose={() => setIsDriverReportOpen(false)}
+        vehicle={vehicle}
+        earnings={activeEarnings}
+        expenses={activeExpenses}
+        drivers={drivers}
+        periodLabel={activeComparison.currentLabel}
+        initialMode={driverModalMode}
+        initialDriverName={driverModalSelectedName}
       />
     </div>
   );

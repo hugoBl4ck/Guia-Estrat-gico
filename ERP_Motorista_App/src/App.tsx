@@ -1134,6 +1134,7 @@ export function App() {
             vehicle={currentVehicle}
             earnings={activeEarnings}
             expenses={activeExpenses}
+            drivers={drivers}
             onEditEarningClick={handleOpenEditEarning}
             onDeleteEarning={handleDeleteEarning}
           />

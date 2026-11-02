@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { X, LineChart as LineIcon, PieChart as PieIcon, Car, TrendingUp, Sparkles, BarChart3, User } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, LineChart as LineIcon, PieChart as PieIcon, Car, BarChart3, User, Users } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { Vehicle, Earning, Expense, ReserveBucket } from '../types';
 import { formatToBrazilianDate } from '../utils/dateUtils';
-import { aggregateExpensesByDriver, getDailyEarningsSeries } from '../utils/driverReports';
+import { aggregateExpensesByDriver, getDailyEarningsSeries, buildDriversComparativeReport } from '../utils/driverReports';
 
 interface AnalyticsChartsModalProps {
   isOpen: boolean;
@@ -24,17 +24,25 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'trend' | 'buckets' | 'expenses' | 'fipe' | 'driver'>('trend');
   const [selectedDriver, setSelectedDriver] = useState<string>('ALL');
+  const [driverViewMode, setDriverViewMode] = useState<'INDIVIDUAL' | 'COMPARATIVE'>('INDIVIDUAL');
+
+  const driversSummary = useMemo(
+    () => buildDriversComparativeReport(earnings || [], expenses || []),
+    [earnings, expenses]
+  );
 
   if (!isOpen) return null;
 
-  // 1. Dados de Linha com Marcadores (Evolução Diária)
-  const trendMap = new Map<string, { date: string; receita: number; despesas: number; lucro: number }>();
-  
+  // 1. Dados de Linha com Marcadores (Evolução Diária ordenada cronologicamente)
+  const trendMap = new Map<string, { isoKey: string; date: string; receita: number; despesas: number; lucro: number }>();
+
   (earnings || []).forEach((e) => {
     if (e.isDeleted) return;
+    const isoKey = e.recordedAt ? e.recordedAt.slice(0, 10) : '9999-99-99';
     const fullDate = e.recordedAt ? formatToBrazilianDate(e.recordedAt) : 'Hoje';
     const dStr = fullDate.length >= 5 ? fullDate.slice(0, 5) : fullDate; // DD/MM
-    const cur = trendMap.get(dStr) || { date: dStr, receita: 0, despesas: 0, lucro: 0 };
+    const cur = trendMap.get(dStr) || { isoKey, date: dStr, receita: 0, despesas: 0, lucro: 0 };
+    if (isoKey < cur.isoKey) cur.isoKey = isoKey;
     cur.receita += e.grossAmount + e.tipsAmount;
     cur.lucro = cur.receita - cur.despesas;
     trendMap.set(dStr, cur);
@@ -42,15 +50,17 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
 
   (expenses || []).forEach((exp) => {
     if (exp.isDeleted) return;
+    const isoKey = exp.expenseDate ? exp.expenseDate.slice(0, 10) : '9999-99-99';
     const fullDate = exp.expenseDate ? formatToBrazilianDate(exp.expenseDate) : 'Hoje';
     const dStr = fullDate.length >= 5 ? fullDate.slice(0, 5) : fullDate; // DD/MM
-    const cur = trendMap.get(dStr) || { date: dStr, receita: 0, despesas: 0, lucro: 0 };
+    const cur = trendMap.get(dStr) || { isoKey, date: dStr, receita: 0, despesas: 0, lucro: 0 };
+    if (isoKey < cur.isoKey) cur.isoKey = isoKey;
     cur.despesas += exp.amount;
     cur.lucro = cur.receita - cur.despesas;
     trendMap.set(dStr, cur);
   });
 
-  const lineTrendData = Array.from(trendMap.values()).reverse();
+  const lineTrendData = Array.from(trendMap.values()).sort((a, b) => a.isoKey.localeCompare(b.isoKey));
 
   // 2. Dados de Pizza (Caixas Virtuais)
   const bucketPieData = (buckets || [])
@@ -82,7 +92,7 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
     };
   });
 
-  // 5. Relatorio por Motorista: grafico de ganhos diarios (estilo Uber) + gasto com recarga/combustivel
+  // 5. Relatório por Motorista: individual + comparativo
   const distinctDriverNames = Array.from(
     new Set((earnings || []).map((e) => e.driverName).filter((n): n is string => Boolean(n)))
   );
@@ -94,6 +104,24 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
   const driverTotalRevenue = driverEarnings.reduce((s, e) => s + e.grossAmount + e.tipsAmount, 0);
   const driverTotalTrips = driverEarnings.reduce((s, e) => s + (e.totalTrips || 1), 0);
   const driverTotalKm = driverEarnings.reduce((s, e) => s + (e.rideDistanceKm || 0), 0);
+  const selectedDriverDetailed =
+    selectedDriver !== 'ALL'
+      ? driversSummary.drivers.find((d) => d.driverName === selectedDriver)
+      : undefined;
+
+  const comparativeFinancialData = driversSummary.drivers.map((d) => ({
+    name: d.driverName,
+    Faturamento: Number(d.totalRevenue.toFixed(2)),
+    Despesas: Number(d.directExpenses.toFixed(2)),
+    Lucro: Number(d.netProfit.toFixed(2)),
+  }));
+
+  const comparativeEfficiencyData = driversSummary.drivers.map((d) => ({
+    name: d.driverName,
+    'R$/Hora': Number(d.grossPerHour.toFixed(2)),
+    'Ticket Médio': Number(d.avgTicketPerTrip.toFixed(2)),
+    'R$/KM': Number(d.revenuePerKm.toFixed(2)),
+  }));
 
   return (
     <div
@@ -112,7 +140,7 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
               <BarChart3 className="w-5 h-5 text-emerald-400" />
               Painel de Análise Visual & Gráficos
             </h2>
-            <p className="text-xs text-slate-400">Gráficos de tendência, caixas e composição de custos</p>
+            <p className="text-xs text-slate-400">Gráficos de tendência, caixas, custos e comparativo por motorista</p>
           </div>
           <button
             onClick={onClose}
@@ -406,85 +434,179 @@ export const AnalyticsChartsModal: React.FC<AnalyticsChartsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 5: RELATÓRIO POR MOTORISTA (BARCHART ESTILO UBER + GASTO COM RECARGA) */}
+          {/* TAB 5: RELATÓRIO POR MOTORISTA (INDIVIDUAL + COMPARATIVO) */}
           {activeTab === 'driver' && (
             <div className="space-y-4">
-              {distinctDriverNames.length > 1 && (
-                <div className="flex items-center gap-2 flex-wrap">
+              {/* Alternador entre Gráficos Individuais e Comparativo por Motorista */}
+              {driversSummary.drivers.length > 1 && (
+                <div className="flex items-center justify-between gap-2 bg-slate-950/70 p-1.5 rounded-2xl border border-slate-800">
                   <button
-                    onClick={() => setSelectedDriver('ALL')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      selectedDriver === 'ALL' ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
+                    onClick={() => setDriverViewMode('INDIVIDUAL')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                      driverViewMode === 'INDIVIDUAL'
+                        ? 'bg-cyan-400 text-black shadow-md'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    Todos
+                    <User className="w-3.5 h-3.5" />
+                    <span>Gráficos Individuais</span>
                   </button>
-                  {distinctDriverNames.map((name) => (
-                    <button
-                      key={name}
-                      onClick={() => setSelectedDriver(name)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        selectedDriver === name ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setDriverViewMode('COMPARATIVE')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                      driverViewMode === 'COMPARATIVE'
+                        ? 'bg-amber-400 text-black shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Comparativo entre Motoristas</span>
+                  </button>
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Faturamento</p>
-                  <p className="text-sm font-black text-emerald-400 font-mono">R$ {driverTotalRevenue.toFixed(2)}</p>
-                </div>
-                <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Corridas</p>
-                  <p className="text-sm font-black text-white font-mono">{driverTotalTrips}</p>
-                </div>
-                <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">KM Rodados</p>
-                  <p className="text-sm font-black text-white font-mono">{driverTotalKm.toFixed(1)}</p>
-                </div>
-              </div>
+              {driverViewMode === 'COMPARATIVE' && driversSummary.drivers.length > 1 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Comparativo Financeiro por Motorista
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-mono">Faturamento × Despesas × Lucro</span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Ganhos Diários (Bruto + Gorjetas)</span>
-                <span className="text-[10px] text-cyan-400 font-mono">Padrão usado por Uber/99 no painel do motorista</span>
-              </div>
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={comparativeFinancialData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                        <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
+                        <YAxis stroke="#64748B" fontSize={11} tickFormatter={(val) => `R$${val}`} />
+                        <RechartsTooltip
+                          formatter={(val: number) => [`R$ ${Number(val).toFixed(2)}`, '']}
+                          contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Bar dataKey="Faturamento" fill="#10B981" radius={[5, 5, 0, 0]} />
+                        <Bar dataKey="Despesas" fill="#EF4444" radius={[5, 5, 0, 0]} />
+                        <Bar dataKey="Lucro" fill="#22D3EE" radius={[5, 5, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
 
-              {dailyEarningsBarData.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs">Sem faturamento lançado no período selecionado.</div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Eficiência Comparada (R$/Hora, Ticket Médio e R$/KM)
+                    </span>
+                  </div>
+
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={comparativeEfficiencyData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                        <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
+                        <YAxis stroke="#64748B" fontSize={11} tickFormatter={(val) => `R$${val}`} />
+                        <RechartsTooltip
+                          formatter={(val: number) => [`R$ ${Number(val).toFixed(2)}`, '']}
+                          contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Bar dataKey="R$/Hora" fill="#F59E0B" radius={[5, 5, 0, 0]} />
+                        <Bar dataKey="Ticket Médio" fill="#A855F7" radius={[5, 5, 0, 0]} />
+                        <Bar dataKey="R$/KM" fill="#38BDF8" radius={[5, 5, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               ) : (
-                <div className="h-64 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailyEarningsBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                      <XAxis dataKey="date" stroke="#64748B" fontSize={11} />
-                      <YAxis stroke="#64748B" fontSize={11} tickFormatter={(val) => `R$${val}`} />
-                      <RechartsTooltip
-                        formatter={(val: number) => [`R$ ${val.toFixed(2)}`, 'Ganhos do dia']}
-                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
-                      />
-                      <Bar dataKey="total" fill="#22D3EE" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+                <>
+                  {distinctDriverNames.length > 1 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => setSelectedDriver('ALL')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          selectedDriver === 'ALL' ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        Todos
+                      </button>
+                      {distinctDriverNames.map((name) => (
+                        <button
+                          key={name}
+                          onClick={() => setSelectedDriver(name)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            selectedDriver === name ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-              {selectedDriver !== 'ALL' && (
-                <div className="p-3.5 bg-slate-900 border border-rose-800/60 rounded-2xl space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Gasto de {selectedDriver} com Recarga/Combustível</span>
-                  <p className="text-lg font-black text-rose-400 font-mono">
-                    R$ {((driverExpenseSummary?.chargingTotal || 0) + (driverExpenseSummary?.fuelTotal || 0)).toFixed(2)}
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Manutenção: R$ {(driverExpenseSummary?.maintenanceTotal || 0).toFixed(2)} • Seguro: R$ {(driverExpenseSummary?.insuranceTotal || 0).toFixed(2)} • Outros: R$ {(driverExpenseSummary?.otherTotal || 0).toFixed(2)}
-                  </p>
-                  <p className="text-[11px] text-white font-bold pt-1 border-t border-slate-800 mt-1">
-                    Despesas totais: R$ {(driverExpenseSummary?.totalAmount || 0).toFixed(2)}
-                  </p>
-                </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">Faturamento</p>
+                      <p className="text-sm font-black text-emerald-400 font-mono">R$ {driverTotalRevenue.toFixed(2)}</p>
+                    </div>
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">Lucro Líquido</p>
+                      <p className="text-sm font-black text-cyan-400 font-mono">
+                        R$ {(driverTotalRevenue - (driverExpenseSummary?.totalAmount || 0)).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">Corridas</p>
+                      <p className="text-sm font-black text-white font-mono">{driverTotalTrips}</p>
+                    </div>
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">KM Rodados</p>
+                      <p className="text-sm font-black text-white font-mono">{driverTotalKm.toFixed(1)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Ganhos Diários (Bruto + Gorjetas)</span>
+                    <span className="text-[10px] text-cyan-400 font-mono">Padrão usado por Uber/99 no painel do motorista</span>
+                  </div>
+
+                  {dailyEarningsBarData.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 text-xs">Sem faturamento lançado no período selecionado.</div>
+                  ) : (
+                    <div className="h-64 w-full pt-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dailyEarningsBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                          <XAxis dataKey="date" stroke="#64748B" fontSize={11} />
+                          <YAxis stroke="#64748B" fontSize={11} tickFormatter={(val) => `R$${val}`} />
+                          <RechartsTooltip
+                            formatter={(val: number) => [`R$ ${val.toFixed(2)}`, 'Ganhos do dia']}
+                            contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                          />
+                          <Bar dataKey="total" fill="#22D3EE" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {selectedDriver !== 'ALL' && (
+                    <div className="p-3.5 bg-slate-900 border border-rose-800/60 rounded-2xl space-y-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Gasto de {selectedDriver} com Recarga/Combustível</span>
+                      <p className="text-lg font-black text-rose-400 font-mono">
+                        R$ {((driverExpenseSummary?.chargingTotal || 0) + (driverExpenseSummary?.fuelTotal || 0)).toFixed(2)}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Manutenção: R$ {(driverExpenseSummary?.maintenanceTotal || 0).toFixed(2)} • Seguro: R$ {(driverExpenseSummary?.insuranceTotal || 0).toFixed(2)} • Outros: R$ {(driverExpenseSummary?.otherTotal || 0).toFixed(2)}
+                      </p>
+                      <p className="text-[11px] text-white font-bold pt-1 border-t border-slate-800 mt-1 flex items-center justify-between">
+                        <span>Despesas totais: R$ {(driverExpenseSummary?.totalAmount || 0).toFixed(2)}</span>
+                        {selectedDriverDetailed && selectedDriverDetailed.hours > 0 && (
+                          <span className="text-emerald-400 font-mono">
+                            R$ {selectedDriverDetailed.grossPerHour.toFixed(2)}/h (Líq: R$ {selectedDriverDetailed.netPerHour.toFixed(2)}/h)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

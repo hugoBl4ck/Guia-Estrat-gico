@@ -61,13 +61,13 @@ export const ExpenseReceiptCapture: React.FC<ExpenseReceiptCaptureProps> = ({
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 600;
+        const MAX_WIDTH = Math.min(1280, img.width);
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
 
         const ctx = canvas.getContext('2d');
-        const compressedUrl = ctx ? (ctx.drawImage(img, 0, 0, canvas.width, canvas.height), canvas.toDataURL('image/jpeg', 0.65)) : imgDataUrl;
+        const compressedUrl = ctx ? (ctx.drawImage(img, 0, 0, canvas.width, canvas.height), canvas.toDataURL('image/jpeg', 0.75)) : imgDataUrl;
         setSelectedImage(compressedUrl);
 
         recognizeReceiptText(imgDataUrl)
