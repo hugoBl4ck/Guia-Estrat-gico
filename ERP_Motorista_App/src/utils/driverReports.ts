@@ -1,6 +1,6 @@
 import { Driver, DriverExpenseSplit, Earning, Expense, PlatformType } from '../types';
 import { formatToBrazilianDate } from './dateUtils';
-import { calculateHoursBetween, roundCurrency } from './financialCalculators';
+import { calculateHoursBetween, roundCurrency, getEffectiveWorkedHours } from './financialCalculators';
 
 export interface DriverExpenseSummary {
   driverName: string;
@@ -130,11 +130,7 @@ const toIsoDateKey = (iso?: string): string => {
 };
 
 const getEarningHours = (e: Earning): number => {
-  if (e.workedHours && e.workedHours > 0) return e.workedHours;
-  if (e.startTime && e.endTime) {
-    return calculateHoursBetween(e.startTime, e.endTime) || 0;
-  }
-  return 0;
+  return getEffectiveWorkedHours(e);
 };
 
 /** Agrupa despesas por motorista, destacando recarga elétrica, combustível e financiamento separadamente (com rateio por % quando aplicável). */

@@ -123,6 +123,90 @@ export function calculateHoursBetween(startTime?: string, endTime?: string): num
 }
 
 /**
+ * Converte horas + minutos para o formato de tag "XhYm" (ex: 6, 24 => "6h24m")
+ */
+export function buildDurationHmString(hours: number, minutes: number): string {
+  const h = Math.max(0, Math.floor(Number(hours) || 0));
+  const m = Math.max(0, Math.min(59, Math.round(Number(minutes) || 0)));
+  return `${h}h${String(m).padStart(2, '0')}m`;
+}
+
+/**
+ * Extrai { hours, minutes } a partir de um registro de ganho (Earning).
+ * - Se `durationHm` estiver preenchido (ex: "6h24m" ou "4h40m"), usa os valores exatos.
+ * - Se `startTime` e `endTime` estiverem preenchidos, calcula a diferença exata em horas e minutos.
+ * - Se apenas `workedHours` estiver preenchido (lançamentos antigos onde o motorista digitou ex: 4,4 para 4h40m ou 6,2 para 6h20m/6,24 para 6h24m):
+ *   interpreta a parte após a vírgula (.1 a .59) como minutos (ex: .4 => 40m, .2 => 20m, .24 => 24m).
+ */
+export function decomposeWorkedHours(
+  e?: Pick<Earning, 'workedHours' | 'startTime' | 'endTime' | 'durationHm'> | null
+): { hours: number; minutes: number } {
+  if (!e) return { hours: 0, minutes: 0 };
+
+  if (e.durationHm) {
+    const match = e.durationHm.match(/(\d+)\s*h\s*(\d+)/i);
+    if (match) {
+      return {
+        hours: parseInt(match[1], 10) || 0,
+        minutes: Math.min(59, parseInt(match[2], 10) || 0),
+      };
+    }
+  }
+
+  if (e.startTime && e.endTime && (!e.workedHours || e.workedHours <= 0)) {
+    const calc = calculateHoursBetween(e.startTime, e.endTime);
+    if (calc && calc > 0) {
+      const totalMins = Math.round(calc * 60);
+      return { hours: Math.floor(totalMins / 60), minutes: totalMins % 60 };
+    }
+  }
+
+  if (e.workedHours && e.workedHours > 0) {
+    if (e.startTime && e.endTime) {
+      const totalMins = Math.round(e.workedHours * 60);
+      return { hours: Math.floor(totalMins / 60), minutes: totalMins % 60 };
+    }
+
+    const h = Math.floor(e.workedHours);
+    const rawFraction = Math.round((e.workedHours - h) * 10000) / 10000;
+    const hundredths = Math.round(rawFraction * 100);
+    // Se foi digitado manualmente no formato H,M ou H,MM (ex: 4,4 -> 40 min, 6,2 -> 20 min, 6,24 -> 24 min)
+    if (Math.abs(rawFraction * 100 - hundredths) < 0.001 && hundredths >= 0 && hundredths < 60) {
+      return { hours: h, minutes: hundredths };
+    }
+
+    const totalMins = Math.round(e.workedHours * 60);
+    return { hours: Math.floor(totalMins / 60), minutes: totalMins % 60 };
+  }
+
+  return { hours: 0, minutes: 0 };
+}
+
+/**
+ * Retorna o total de horas trabalhadas em horas decimais reais para cálculos financeiros (R$/hora),
+ * respeitando a conversão de lançamentos antigos (ex: 4,4 => 4h40m => 4.6667h).
+ */
+export function getEffectiveWorkedHours(
+  e?: Pick<Earning, 'workedHours' | 'startTime' | 'endTime' | 'durationHm'> | null
+): number {
+  const { hours, minutes } = decomposeWorkedHours(e);
+  if (hours === 0 && minutes === 0) return 0;
+  return Math.round(((hours + minutes / 60) + Number.EPSILON) * 10000) / 10000;
+}
+
+/**
+ * Formata um valor de horas decimais (ex: 6.4 ou 4.6667) para exibição clara em Horas e Minutos ("6h 24m", "4h 40m").
+ */
+export function formatWorkedHoursHm(decimalHours?: number | null): string {
+  if (!decimalHours || decimalHours <= 0) return '0h';
+  const totalMinutes = Math.round(decimalHours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+/**
  * Consolidação e Resumo Financeiro Dinâmico do Turno por Veículo
  */
 export function calculateShiftSummary(
@@ -143,14 +227,7 @@ export function calculateShiftSummary(
 
   // 1. Somar horas trabalhadas explicitamente informadas nos lançamentos
   const explicitWorkedHours = earnings.reduce((sum, e) => {
-    if (e.workedHours && e.workedHours > 0) {
-      return sum + e.workedHours;
-    }
-    if (e.startTime && e.endTime) {
-      const calc = calculateHoursBetween(e.startTime, e.endTime);
-      if (calc && calc > 0) return sum + calc;
-    }
-    return sum;
+    return sum + getEffectiveWorkedHours(e);
   }, 0);
 
   let activeHours = explicitWorkedHours > 0 ? explicitWorkedHours : 4.5;

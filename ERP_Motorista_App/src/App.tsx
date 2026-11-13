@@ -9,6 +9,7 @@ import { VoiceCopilotModal } from './components/VoiceCopilotModal';
 import { FlexFuelCalculator } from './components/FlexFuelCalculator';
 import { ElectricChargingCalculator } from './components/ElectricChargingCalculator';
 import { PersonalUsageTab } from './components/PersonalUsageTab';
+import { PersonalFinanceView } from './components/PersonalFinanceView';
 import { DailyReportView } from './components/DailyReportView';
 import { TaxOnlyReportView } from './components/TaxOnlyReportView';
 import { AddEarningModal } from './components/AddEarningModal';
@@ -380,6 +381,7 @@ export function App() {
                     startTime: cloudE.startTime || localE.startTime,
                     endTime: cloudE.endTime || localE.endTime,
                     workedHours: cloudE.workedHours !== undefined ? cloudE.workedHours : localE.workedHours,
+                    durationHm: cloudE.durationHm || localE.durationHm,
                     vehicleId: resolvedVehicle,
                   });
                 } else {
@@ -1159,6 +1161,17 @@ export function App() {
             vehicle={currentVehicle}
             personalLogs={state.personalLogs || []}
             onAddPersonalLog={handleAddPersonalLog}
+          />
+        )}
+
+        {activeTab === 'personalFinance' && (
+          <PersonalFinanceView
+            userId={userId}
+            userEmail={userEmail}
+            drivers={drivers}
+            currentDriverName={currentDriverName}
+            erpEarnings={activeEarnings}
+            erpExpenses={activeExpenses}
           />
         )}
 

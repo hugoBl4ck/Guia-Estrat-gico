@@ -551,6 +551,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               {
                 q: "O que são os Caixas Virtuais de Reserva?",
                 a: "São buckets automáticos que retêm uma porcentagem de cada corrida para cobrir custos futuros (Manutenção Preventiva, Combustível/Energia, Parcela/Seguro, MEI/Impostos e Lucro Livre). Assim você nunca é pego de surpresa quando precisa trocar pneus ou pagar o seguro."
+              },
+              {
+                q: "Como funciona o Módulo de Finanças Pessoais (Plano Wealth)?",
+                a: "Além do ERP do veículo, o Plano Wealth libera uma área exclusiva para sua vida pessoal: controle de gastos por categoria, transferência de Pró-labore em 1 clique a partir do lucro do carro, Reserva de Emergência com meta em meses e Carteira de Investimentos (Tesouro Selic, CDB, FIIs, Ações e Cripto) sincronizada com segurança no Supabase para qualquer motorista cadastrado."
               }
             ].map((faq, index) => (
               <div 
@@ -597,7 +601,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
 
       {/* 6. Section 6: Pricing / Access Ultimatum PMA Style */}
       <section id="acesso" className="py-24 border-t border-white/10 relative">
-        <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center space-y-10">
+        <div className="max-w-6xl mx-auto px-6 lg:px-12 text-center space-y-10">
           
           <div className="space-y-4">
             <span className="text-[11px] font-mono font-bold text-[#D4FF00] tracking-[0.3em] uppercase">06 / A ESCOLHA É SUA</span>
@@ -610,66 +614,120 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
               <br />
               SEU DIA.
             </h2>
-            <p className="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
-              Motoristas sem controle financeiro trabalham muito e lucram pouco. O GiroCerto ERP
-              coloca você no comando — com metas reais, caixas separados e visibilidade total
-              sobre cada centavo que entra e que sai do seu volante.
+            <p className="text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Comece grátis no ERP do seu veículo ou escolha a assinatura <strong className="text-white">GiroCerto Wealth</strong> para transformar o lucro da rua em reserva de emergência e investimentos pessoais sincronizados na nuvem.
             </p>
           </div>
 
-          <div className="p-10 bg-[#0B0D13] border-2 border-[#D4FF00] space-y-8 relative shadow-[0_0_50px_rgba(212,255,0,0.15)] text-left">
-            
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-[#D4FF00] uppercase tracking-widest bg-[#D4FF00]/10 px-3 py-1 border border-[#D4FF00]/30">
-                  ACESSO PRO COMPLETO
-                </span>
-                <h3 className="text-2xl font-black text-white uppercase mt-2">GiroCerto ERP — Plano Vitalício</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-left items-stretch">
+            {/* PLANO 1: MOTORISTA PRO (ERP DO VEICULO) */}
+            <div className="p-8 bg-[#0B0D13] border border-white/15 space-y-7 flex flex-col justify-between">
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest bg-white/5 px-3 py-1 border border-white/15">
+                      ERP OPERACIONAL DO VEÍCULO
+                    </span>
+                    <h3 className="text-2xl font-black text-white uppercase mt-2">Motorista PRO</h3>
+                  </div>
+                  <div className="text-left sm:text-right font-mono">
+                    <p className="text-[10px] text-slate-400 uppercase line-through">R$ 29,90/mês</p>
+                    <p className="text-3xl font-black text-white">R$ 0,00</p>
+                    <p className="text-[10px] text-emerald-400 uppercase">Grátis no lançamento</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs font-medium text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>5 Caixas Virtuais de Reserva Automáticos</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>3 Perfis de Metas Diárias (Leve / Moderada / Agressiva)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Calculadora EV Coelba vs Eletroposto vs Combustão</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Multi-Motorista com Rateio de Parcelas & Despesas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Sincronização Cloud Supabase + Offline-First</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Relatórios DRE, Isenção MEI & Modo Voz Hands-Free</span>
+                  </div>
+                </div>
               </div>
-              <div className="text-right font-mono">
-                <p className="text-xs text-slate-400 uppercase">Apenas</p>
-                <p className="text-4xl font-black text-[#D4FF00]">R$ 0,00</p>
-                <p className="text-[10px] text-slate-500 uppercase">No período de testes de lançamento</p>
-              </div>
+
+              <button
+                onClick={onOpenAuth}
+                className="w-full border border-white/25 hover:border-[#D4FF00] hover:text-[#D4FF00] text-white font-black text-sm py-4 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+              >
+                <span>CRIAR CONTA GRATUITA</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Inclusões */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-medium text-slate-300">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
-                <span>5 Caixas Virtuais de Reserva Automáticos</span>
+            {/* PLANO 2: GIROCERTO WEALTH (ASSINATURA PREMIUM + FINANCAS PESSOAIS) */}
+            <div className="p-8 bg-[#0B0D13] border-2 border-[#D4FF00] space-y-7 relative shadow-[0_0_50px_rgba(212,255,0,0.18)] flex flex-col justify-between">
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-black uppercase tracking-widest bg-[#D4FF00] px-3 py-1">
+                      ★ MAIS COMPLETO • PATRIMÔNIO
+                    </span>
+                    <h3 className="text-2xl font-black text-white uppercase mt-2">GiroCerto Wealth</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">ERP Completo + Finanças Pessoais</p>
+                  </div>
+                  <div className="text-left sm:text-right font-mono">
+                    <p className="text-[10px] text-[#D4FF00] uppercase">Assinatura Premium</p>
+                    <p className="text-3xl font-black text-[#D4FF00]">R$ 49,90<span className="text-xs text-slate-400 font-normal">/mês</span></p>
+                    <p className="text-[10px] text-slate-400 uppercase">7 dias grátis para testar</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs font-medium text-slate-200">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                    <span className="font-bold text-white">Tudo do Plano Motorista PRO incluso</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                    <span>Gerenciador de Gastos Pessoais por Categoria (Moradia, Mercado, Contas, Lazer)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                    <span>Retirada de Pró-labore 1-Clique direto do Lucro do ERP</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                    <span>Reserva de Emergência com Meta em Meses e Cobertura Real</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                    <span>Carteira de Investimentos (Tesouro Selic, CDB, FIIs, Ações e Cripto)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
+                    <span>Backup em Nuvem Supabase isolado por usuário + Exportação CSV</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
-                <span>3 Perfis de Metas Diárias (Leve / Moderada / Agressiva)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
-                <span>Calculadora EV Coelba vs Eletroposto vs Gasolina</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
-                <span>Sincronização Cloud Supabase em Segundo Plano</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
-                <span>Relatórios DRE Diários & Isenção Fiscal MEI</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#D4FF00] shrink-0" />
-                <span>Modo de Voz Hands-Free para Motoristas</span>
-              </div>
+
+              <button
+                onClick={onOpenAuth}
+                className="w-full bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-sm py-4 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.35)] active:scale-95"
+              >
+                <span>TESTAR 7 DIAS GRÁTIS NO WEALTH</span>
+                <ArrowRight className="w-5 h-5 stroke-[3]" />
+              </button>
             </div>
-
-            {/* CTA Final Acid Neon */}
-            <button
-              onClick={onOpenAuth}
-              className="w-full bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-base py-5 rounded-none uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.35)] active:scale-95"
-            >
-              <span>GARANTIR MEU ACESSO GRATUITO AGORA</span>
-              <ArrowRight className="w-5 h-5 stroke-[3]" />
-            </button>
-
           </div>
         </div>
       </section>

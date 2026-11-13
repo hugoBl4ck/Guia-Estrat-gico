@@ -121,6 +121,7 @@ export interface Earning {
   startTime?: string;      // Horário inicial opcional (ex: "07:30")
   endTime?: string;        // Horário final opcional (ex: "17:30")
   workedHours?: number;    // Total de horas trabalhadas opcional (ex: 10.0)
+  durationHm?: string;     // Duração exata em horas e minutos (ex: "6h24m", "4h40m")
 }
 
 export interface EarningDraft {
@@ -218,4 +219,94 @@ export interface MaintenanceScheduleEntry {
   estimatedCost: number;
   description: string;
   isMajorService: boolean;
+}
+
+// --- MÓDULO DE FINANÇAS PESSOAIS (SEPARADO DO ERP DO VEÍCULO) ---
+
+export type PersonalTransactionType =
+  | 'INCOME'
+  | 'EXPENSE'
+  | 'EMERGENCY_DEPOSIT'
+  | 'EMERGENCY_WITHDRAW'
+  | 'INVESTMENT_BUY'
+  | 'INVESTMENT_REDEEM';
+
+export type PersonalExpenseCategory =
+  | 'HOUSING'
+  | 'FOOD'
+  | 'HEALTH'
+  | 'EDUCATION'
+  | 'LEISURE'
+  | 'BILLS'
+  | 'TRANSPORT_FAMILY'
+  | 'SHOPPING'
+  | 'PRO_LABORE'
+  | 'EMERGENCY'
+  | 'INVESTMENT'
+  | 'OTHER_PERSONAL';
+
+export type PersonalInvestmentAssetType =
+  | 'TESOURO_SELIC'
+  | 'CDB_CDI'
+  | 'FII'
+  | 'ACOES'
+  | 'CRIPTO'
+  | 'POUPANCA'
+  | 'PREVIDENCIA'
+  | 'OUTRO';
+
+export interface PersonalTransaction {
+  id: string;
+  type: PersonalTransactionType;
+  category: PersonalExpenseCategory;
+  title: string;
+  amount: number;
+  date: string; // YYYY-MM-DD ou ISO
+  ownerName?: string;
+  notes?: string;
+  investmentId?: string;
+  isRecurring?: boolean;
+  isDeleted?: boolean;
+  updatedAt?: string;
+  createdAt: string;
+}
+
+export interface PersonalEmergencyGoal {
+  targetMonths: number;
+  monthlyEssentialCost: number;
+  customTargetAmount?: number;
+  yieldInfo?: string;
+  updatedAt?: string;
+}
+
+export interface PersonalInvestment {
+  id: string;
+  name: string;
+  assetType: PersonalInvestmentAssetType;
+  institution?: string;
+  investedAmount: number;
+  currentValue: number;
+  monthlyYieldRatePercent?: number;
+  ownerName?: string;
+  notes?: string;
+  isDeleted?: boolean;
+  updatedAt: string;
+}
+
+export interface PersonalFinanceState {
+  transactions: PersonalTransaction[];
+  investments: PersonalInvestment[];
+  emergencyGoal: PersonalEmergencyGoal;
+}
+
+export type PlanTier = 'FREE_PRO' | 'WEALTH_PRO';
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled';
+
+export interface UserSubscription {
+  userId?: string;
+  planTier: PlanTier;
+  status: SubscriptionStatus;
+  trialEndsAt?: string;
+  currentPeriodEnd?: string;
+  updatedAt: string;
 }

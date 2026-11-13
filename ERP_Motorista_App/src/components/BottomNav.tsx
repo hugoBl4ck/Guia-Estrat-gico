@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Compass, Receipt, Wallet, Zap, Mic, BarChart3, Car, MoreHorizontal, UserRound, X } from 'lucide-react';
+import { LayoutDashboard, Compass, Receipt, Wallet, Zap, Mic, BarChart3, Car, MoreHorizontal, UserRound, PiggyBank, X } from 'lucide-react';
 
-export type ActiveTab = 'hud' | 'shifts' | 'expenses' | 'buckets' | 'flex' | 'reports' | 'tax' | 'personal' | 'vehicles';
+export type ActiveTab = 'hud' | 'shifts' | 'expenses' | 'buckets' | 'flex' | 'reports' | 'tax' | 'personal' | 'personalFinance' | 'vehicles';
 
 interface BottomNavProps {
   activeTab: ActiveTab;
@@ -19,11 +19,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, o
   ];
 
   const secondaryTabs = [
+    { id: 'personalFinance', label: 'Fin. Pessoais', icon: PiggyBank },
     { id: 'vehicles', label: 'Frota', icon: Car },
     { id: 'buckets', label: 'Caixas', icon: Wallet },
     { id: 'tax', label: 'Patrimônio', icon: Car },
     { id: 'flex', label: 'Calculadoras', icon: Zap },
-    { id: 'personal', label: 'Particular', icon: UserRound },
+    { id: 'personal', label: 'Uso Particular', icon: UserRound },
   ];
 
   const renderTab = (tab: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }) => {

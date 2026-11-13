@@ -1,5 +1,5 @@
 import { Earning, Expense, ExpenseCategory, PlatformType } from '../types';
-import { calculateHoursBetween } from './financialCalculators';
+import { getEffectiveWorkedHours } from './financialCalculators';
 
 /** Categorias que são obrigação mensal (não dependem de rodar mais ou menos). */
 export const FIXED_CATEGORIES: ExpenseCategory[] = [
@@ -17,9 +17,7 @@ const parseDate = (iso: string): Date => new Date(iso.length === 10 ? `${iso}T12
 const earningTotal = (e: Earning) => (e.grossAmount || 0) + (e.tipsAmount || 0);
 
 export const earningHours = (e: Earning): number => {
-  if (e.workedHours && e.workedHours > 0) return e.workedHours;
-  if (e.startTime && e.endTime) return calculateHoursBetween(e.startTime, e.endTime) || 0;
-  return 0;
+  return getEffectiveWorkedHours(e);
 };
 
 const live = <T extends { isDeleted?: boolean }>(items: T[]) => items.filter((i) => !i.isDeleted);

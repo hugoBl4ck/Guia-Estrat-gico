@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { roundCurrency, calculateCPK, calculateShiftSummary, calculateHoursBetween, calculateVehicleInstallmentsSummary } from './financialCalculators';
+import {
+  roundCurrency,
+  calculateCPK,
+  calculateShiftSummary,
+  calculateHoursBetween,
+  calculateVehicleInstallmentsSummary,
+  decomposeWorkedHours,
+  getEffectiveWorkedHours,
+  formatWorkedHoursHm,
+  buildDurationHmString,
+} from './financialCalculators';
 import { VEHICLE_BYD_DOLPHIN } from './mockData';
 
 describe('financialCalculators', () => {
@@ -203,6 +213,34 @@ describe('financialCalculators', () => {
     expect(result.hasAmortizedLastInstallment).toBe(true);
     expect(result.finPaidInstallmentsList).toEqual([1, 48]);
     expect(result.insPaidInstallmentsList).toEqual([1, 2]);
+  });
+
+  it('decomposeWorkedHours, getEffectiveWorkedHours e formatWorkedHoursHm devem converter lançamentos antigos (ex: 4,4 -> 4h40m e 6,24 -> 6h24m) e novos (durationHm)', () => {
+    // Lançamento antigo digitado como 4,4 (significando 4h 40m)
+    const legacy440 = { workedHours: 4.4 };
+    expect(decomposeWorkedHours(legacy440)).toEqual({ hours: 4, minutes: 40 });
+    expect(getEffectiveWorkedHours(legacy440)).toBeCloseTo(4 + 40 / 60, 3);
+    expect(formatWorkedHoursHm(getEffectiveWorkedHours(legacy440))).toBe('4h 40m');
+
+    // Lançamento antigo digitado como 6,2 (6h 20m) ou 6,24 (6h 24m)
+    const legacy620 = { workedHours: 6.2 };
+    expect(decomposeWorkedHours(legacy620)).toEqual({ hours: 6, minutes: 20 });
+    expect(formatWorkedHoursHm(getEffectiveWorkedHours(legacy620))).toBe('6h 20m');
+
+    const legacy624 = { workedHours: 6.24 };
+    expect(decomposeWorkedHours(legacy624)).toEqual({ hours: 6, minutes: 24 });
+    expect(getEffectiveWorkedHours(legacy624)).toBe(6.4);
+    expect(formatWorkedHoursHm(getEffectiveWorkedHours(legacy624))).toBe('6h 24m');
+
+    // Lançamento novo com durationHm explícito ("6h24m")
+    const explicit624 = {
+      workedHours: 6.4,
+      durationHm: buildDurationHmString(6, 24),
+    };
+    expect(explicit624.durationHm).toBe('6h24m');
+    expect(decomposeWorkedHours(explicit624)).toEqual({ hours: 6, minutes: 24 });
+    expect(getEffectiveWorkedHours(explicit624)).toBe(6.4);
+    expect(formatWorkedHoursHm(getEffectiveWorkedHours(explicit624))).toBe('6h 24m');
   });
 });
 

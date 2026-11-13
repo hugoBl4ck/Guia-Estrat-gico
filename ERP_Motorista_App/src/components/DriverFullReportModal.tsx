@@ -44,6 +44,7 @@ import {
   DriverDetailedReport,
   DriversComparativeSummary,
 } from '../utils/driverReports';
+import { formatWorkedHoursHm } from '../utils/financialCalculators';
 import { formatToBrazilianDate } from '../utils/dateUtils';
 import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
 import { downloadExcelCsv } from '../utils/excelExporter';
@@ -98,7 +99,7 @@ export function exportDriversCompleteExcel(
         d.trips,
         d.daysWorked,
         d.km.toFixed(1),
-        d.hours.toFixed(1),
+        formatWorkedHoursHm(d.hours),
         `R$ ${d.grossRevenue.toFixed(2)}`,
         `R$ ${d.tipsAmount.toFixed(2)}`,
         `R$ ${d.totalRevenue.toFixed(2)}`,
@@ -219,7 +220,7 @@ export function printDriversCompleteReport(
                 RELATÓRIO INDIVIDUAL #${idx + 1}
               </span>
               <h3 style="font-size:16px;font-weight:800;color:#FFF;margin-top:6px;">👤 Motorista: ${d.driverName}</h3>
-              <p style="font-size:10px;color:#94A3B8;">${d.trips} corridas • ${d.daysWorked} dia(s) trabalhados • ${d.km.toFixed(1)} km • ${d.hours.toFixed(1)}h registradas</p>
+              <p style="font-size:10px;color:#94A3B8;">${d.trips} corridas • ${d.daysWorked} dia(s) trabalhados • ${d.km.toFixed(1)} km • ${formatWorkedHoursHm(d.hours)} registradas</p>
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#94A3B8;text-transform:uppercase;">Lucro Líquido Individual</div>
@@ -451,7 +452,7 @@ export function printDriversCompleteReport(
                     <td style="font-weight:800;color:#FFF;">${d.driverName}</td>
                     <td class="text-center">${d.trips}</td>
                     <td class="text-center">${d.km.toFixed(1)}</td>
-                    <td class="text-center">${d.hours.toFixed(1)}h</td>
+                    <td class="text-center">${formatWorkedHoursHm(d.hours)}</td>
                     <td class="text-right" style="color:#34D399;font-weight:700;">${brl(d.totalRevenue)}</td>
                     <td class="text-right" style="color:#60A5FA;">${brl(d.energyTotal)}</td>
                     <td class="text-right" style="color:#F87171;">-${brl(d.directExpenses)}</td>
@@ -559,7 +560,7 @@ const IndividualDriverCard: React.FC<{
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               {driverReport.trips} corridas • {driverReport.daysWorked} dia(s) trabalhados •{' '}
-              {driverReport.km.toFixed(1)} km • {driverReport.hours.toFixed(1)}h em operação
+              {driverReport.km.toFixed(1)} km • {formatWorkedHoursHm(driverReport.hours)} em operação
             </p>
           </div>
         </div>
@@ -1369,7 +1370,7 @@ export const DriverPerformanceView: React.FC<DriverPerformanceViewProps> = ({
                         <td className="py-2.5 text-center text-slate-300">{d.trips}</td>
                         <td className="py-2.5 text-center text-slate-400">{d.daysWorked}d</td>
                         <td className="py-2.5 text-right text-slate-300">{d.km.toFixed(1)}</td>
-                        <td className="py-2.5 text-right text-slate-300">{d.hours.toFixed(1)}h</td>
+                        <td className="py-2.5 text-right text-slate-300">{formatWorkedHoursHm(d.hours)}</td>
                         <td className="py-2.5 text-right font-bold text-emerald-400">{brl(d.totalRevenue)}</td>
                         <td className="py-2.5 text-right text-blue-400">{brl(d.energyTotal)}</td>
                         <td className="py-2.5 text-right text-rose-400">-{brl(d.directExpenses)}</td>

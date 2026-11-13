@@ -27,7 +27,11 @@ import {
   User,
 } from 'lucide-react';
 import { Vehicle, Earning, Expense, Driver } from '../types';
-import { calculateHoursBetween } from '../utils/financialCalculators';
+import {
+  calculateHoursBetween,
+  formatWorkedHoursHm,
+  getEffectiveWorkedHours,
+} from '../utils/financialCalculators';
 import { FullVehicleReportModal } from './FullVehicleReportModal';
 import { DriverFullReportModal, DriverPerformanceView, DriverReportViewMode } from './DriverFullReportModal';
 import { ShareReportModal } from './ShareReportModal';
@@ -131,14 +135,9 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   const netProfit = totalRevenue - totalExpenses;
   const marginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
-  // Cálculo preciso de Horas Trabalhadas
+  // Cálculo preciso de Horas Trabalhadas (suportando conversão automática de 4,4 -> 4h40m e 6,24 -> 6h24m)
   const totalWorkedHours = activeEarnings.reduce((sum, e) => {
-    if (e.workedHours && e.workedHours > 0) return sum + e.workedHours;
-    if (e.startTime && e.endTime) {
-      const calc = calculateHoursBetween(e.startTime, e.endTime);
-      if (calc && calc > 0) return sum + calc;
-    }
-    return sum;
+    return sum + getEffectiveWorkedHours(e);
   }, 0);
 
   const grossPerHour = totalWorkedHours > 0 ? totalRevenue / totalWorkedHours : 0;
@@ -181,7 +180,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     if (!driverStatsMap[dName]) {
       driverStatsMap[dName] = { trips: 0, revenue: 0, km: 0, hours: 0 };
     }
-    const itemHours = e.workedHours || (e.startTime && e.endTime ? calculateHoursBetween(e.startTime, e.endTime) || 0 : 0);
+    const itemHours = getEffectiveWorkedHours(e);
     driverStatsMap[dName].trips += e.totalTrips || 1;
     driverStatsMap[dName].revenue += e.grossAmount + e.tipsAmount;
     driverStatsMap[dName].km += e.rideDistanceKm || 0;
@@ -218,7 +217,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     csvContent += `Despesas Operacionais Totais;-R$ ${totalExpenses.toFixed(2)}\n`;
     csvContent += `Lucro Real Líquido;R$ ${netProfit.toFixed(2)}\n`;
     csvContent += `Margem de Lucro;${marginPercent.toFixed(1)}%\n`;
-    csvContent += `Horas Trabalhadas Totais;${totalWorkedHours.toFixed(1)} h\n`;
+    csvContent += `Horas Trabalhadas Totais;${formatWorkedHoursHm(totalWorkedHours)}\n`;
     csvContent += `R$ por Hora (Bruto);R$ ${grossPerHour.toFixed(2)}/h\n`;
     csvContent += `R$ por Hora (Líquido);R$ ${netPerHour.toFixed(2)}/h\n\n`;
 
@@ -226,7 +225,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     csvContent += 'Motorista;Nº Corridas;Faturamento Total (R$);KM Rodados;Horas Trabalhadas;R$/Hora (Bruto)\n';
     driverStatsList.forEach((d) => {
       const dRate = d.hours > 0 ? d.revenue / d.hours : 0;
-      csvContent += `${d.name};${d.trips};R$ ${d.revenue.toFixed(2)};${d.km.toFixed(1)} km;${d.hours.toFixed(1)} h;R$ ${dRate.toFixed(2)}/h\n`;
+      csvContent += `${d.name};${d.trips};R$ ${d.revenue.toFixed(2)};${d.km.toFixed(1)} km;${formatWorkedHoursHm(d.hours)};R$ ${dRate.toFixed(2)}/h\n`;
     });
     csvContent += '\n';
 
@@ -258,8 +257,8 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
     csvContent += 'Data;Plataforma;Motorista;Nº Corridas;KM;Horário Início;Horário Fim;Horas Trabalhadas;Valor Bruto (R$);Gorjetas (R$);Total (R$)\n';
     activeEarnings.forEach((e) => {
       const tot = e.grossAmount + e.tipsAmount;
-      const hCalc = e.workedHours || (e.startTime && e.endTime ? calculateHoursBetween(e.startTime, e.endTime) || '' : '');
-      csvContent += `${formatToBrazilianDate(e.recordedAt)};${e.platform};${e.driverName || 'Sem motorista'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
+      const hCalc = getEffectiveWorkedHours(e);
+      csvContent += `${formatToBrazilianDate(e.recordedAt)};${e.platform};${e.driverName || 'Sem motorista'};${e.totalTrips};${e.rideDistanceKm};${e.startTime || ''};${e.endTime || ''};${hCalc > 0 ? formatWorkedHoursHm(hCalc) : ''};R$ ${e.grossAmount.toFixed(2)};R$ ${e.tipsAmount.toFixed(2)};R$ ${tot.toFixed(2)}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -494,7 +493,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                 <Clock className="w-3.5 h-3.5" /> HORAS & R$/H
               </span>
               <p className="text-xl sm:text-2xl font-black text-white mt-1">
-                {totalWorkedHours > 0 ? `${totalWorkedHours.toFixed(1)}h` : '--'}
+                {totalWorkedHours > 0 ? formatWorkedHoursHm(totalWorkedHours) : '--'}
               </p>
               <p className="text-[10px] text-emerald-400 font-mono mt-0.5">
                 {totalWorkedHours > 0 ? `R$ ${grossPerHour.toFixed(2)}/h (Líq: R$ ${netPerHour.toFixed(2)}/h)` : 'Horas não informadas'}
@@ -674,7 +673,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                           </p>
                           <p className="text-[11px] text-slate-400 mt-0.5">
                             {d.trips} corridas • {d.daysWorked}d • {d.km.toFixed(1)} km{' '}
-                            {d.hours > 0 ? `• ${d.hours.toFixed(1)}h (R$ ${d.grossPerHour.toFixed(2)}/h)` : ''}
+                            {d.hours > 0 ? `• ${formatWorkedHoursHm(d.hours)} (R$ ${d.grossPerHour.toFixed(2)}/h)` : ''}
                           </p>
                         </div>
 
@@ -765,7 +764,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                   {activeEarnings.map((e) => {
                     const total = e.grossAmount + e.tipsAmount;
-                    const hCalc = e.workedHours || (e.startTime && e.endTime ? calculateHoursBetween(e.startTime, e.endTime) : undefined);
+                    const hCalc = getEffectiveWorkedHours(e);
                     return (
                       <div key={e.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-900 border border-slate-800">
                         <div className="flex items-center space-x-3">
@@ -807,12 +806,12 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
                               )}
                               {e.startTime && e.endTime && (
                                 <span className="text-emerald-400 font-mono bg-slate-950 px-1 rounded border border-slate-800">
-                                  ⏰ {e.startTime} - {e.endTime} {hCalc ? `(${hCalc}h)` : ''}
+                                  ⏰ {e.startTime} - {e.endTime} {hCalc > 0 ? `(${formatWorkedHoursHm(hCalc)})` : ''}
                                 </span>
                               )}
-                              {!e.startTime && hCalc && (
+                              {!e.startTime && hCalc > 0 && (
                                 <span className="text-emerald-400 font-mono bg-slate-950 px-1 rounded border border-slate-800">
-                                  ⏱️ {hCalc}h
+                                  ⏱️ {formatWorkedHoursHm(hCalc)}
                                 </span>
                               )}
                             </p>

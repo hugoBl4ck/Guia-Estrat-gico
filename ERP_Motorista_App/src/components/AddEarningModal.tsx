@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Plus, X, CheckCircle2, Car, Compass, Calendar, Pencil, User, Clock, Gift, Trophy, Sparkles } from 'lucide-react';
 import { Earning, PlatformType, Driver, EarningType } from '../types';
-import { calculateHoursBetween } from '../utils/financialCalculators';
+import {
+  calculateHoursBetween,
+  buildDurationHmString,
+  decomposeWorkedHours,
+  formatWorkedHoursHm,
+} from '../utils/financialCalculators';
 import { getTodayLocalDateString, formatToLocalDateString } from '../utils/dateUtils';
 
 interface AddEarningModalProps {
@@ -38,7 +43,8 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
   const [recordedDate, setRecordedDate] = useState<string>(getTodayLocalDateString());
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
-  const [workedHours, setWorkedHours] = useState<string>('');
+  const [workedHoursInt, setWorkedHoursInt] = useState<string>('');
+  const [workedMinutesInt, setWorkedMinutesInt] = useState<string>('');
 
   useEffect(() => {
     if (earningToEdit) {
@@ -52,7 +58,9 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
       setNotes(earningToEdit.notes || '');
       setStartTime(earningToEdit.startTime || '');
       setEndTime(earningToEdit.endTime || '');
-      setWorkedHours(earningToEdit.workedHours ? earningToEdit.workedHours.toString() : '');
+      const { hours, minutes } = decomposeWorkedHours(earningToEdit);
+      setWorkedHoursInt(hours > 0 || minutes > 0 ? String(hours) : '');
+      setWorkedMinutesInt(hours > 0 || minutes > 0 ? String(minutes) : '');
       if (earningToEdit.recordedAt) {
         setRecordedDate(formatToLocalDateString(earningToEdit.recordedAt));
       }
@@ -67,17 +75,22 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
       setNotes('');
       setStartTime('');
       setEndTime('');
-      setWorkedHours('');
+      setWorkedHoursInt('');
+      setWorkedMinutesInt('');
       setRecordedDate(getTodayLocalDateString());
     }
   }, [earningToEdit, isOpen, currentDriverName]);
 
-  // Recalcular automaticamente as horas trabalhadas quando Início e Fim forem alterados
+  // Recalcular automaticamente as horas e minutos trabalhados quando Início e Fim forem alterados
   const handleStartTimeChange = (newStart: string) => {
     setStartTime(newStart);
     if (newStart && endTime) {
       const calc = calculateHoursBetween(newStart, endTime);
-      if (calc !== undefined) setWorkedHours(calc.toString());
+      if (calc !== undefined) {
+        const totalMins = Math.round(calc * 60);
+        setWorkedHoursInt(String(Math.floor(totalMins / 60)));
+        setWorkedMinutesInt(String(totalMins % 60));
+      }
     }
   };
 
@@ -85,8 +98,33 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     setEndTime(newEnd);
     if (startTime && newEnd) {
       const calc = calculateHoursBetween(startTime, newEnd);
-      if (calc !== undefined) setWorkedHours(calc.toString());
+      if (calc !== undefined) {
+        const totalMins = Math.round(calc * 60);
+        setWorkedHoursInt(String(Math.floor(totalMins / 60)));
+        setWorkedMinutesInt(String(totalMins % 60));
+      }
     }
+  };
+
+  // Suporta digitação direta de "6,24", "4,4" ou "6:24" no campo de Horas separando automaticamente Horas e Minutos
+  const handleHoursInputChange = (raw: string) => {
+    const clean = raw.trim();
+    if (clean.includes(':') || clean.includes(',') || clean.includes('.')) {
+      const sep = clean.includes(':') ? ':' : clean.includes(',') ? ',' : '.';
+      const [hPart, mPart] = clean.split(sep);
+      const hNum = Math.max(0, parseInt(hPart, 10) || 0);
+      setWorkedHoursInt(String(hNum));
+      if (mPart !== undefined && mPart !== '') {
+        // Se digitou "4,4" (1 dígito após vírgula) significa 40m; se digitou "6,24" ou "4,05" (2 dígitos) significa 24m / 5m
+        const mVal =
+          sep !== ':' && mPart.length === 1
+            ? Math.min(59, (parseInt(mPart, 10) || 0) * 10)
+            : Math.min(59, parseInt(mPart.slice(0, 2), 10) || 0);
+        setWorkedMinutesInt(String(mVal));
+      }
+      return;
+    }
+    setWorkedHoursInt(clean.replace(/[^\d]/g, ''));
   };
 
   useEffect(() => {
@@ -123,7 +161,25 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     const isReferralOrBonus = earningType === 'REFERRAL' || earningType === 'BONUS';
     const trips = isReferralOrBonus ? (totalTrips ? parseInt(totalTrips, 10) : 0) : (totalTrips ? parseInt(totalTrips, 10) : 1);
     const distance = isReferralOrBonus ? 0 : (rideDistanceKm ? parseFloat(rideDistanceKm) : 0);
-    const parsedWorkedHours = isReferralOrBonus ? undefined : (workedHours ? parseFloat(workedHours) : (startTime && endTime ? calculateHoursBetween(startTime, endTime) : undefined));
+    const parsedH = Math.max(0, parseInt(workedHoursInt, 10) || 0);
+    const parsedM = Math.min(59, Math.max(0, parseInt(workedMinutesInt, 10) || 0));
+    const hasExplicitHm = workedHoursInt.trim() !== '' || workedMinutesInt.trim() !== '';
+    const manualDecimalHours =
+      hasExplicitHm && (parsedH > 0 || parsedM > 0)
+        ? Math.round(((parsedH + parsedM / 60) + Number.EPSILON) * 10000) / 10000
+        : undefined;
+    const autoCalcHours =
+      !manualDecimalHours && startTime && endTime ? calculateHoursBetween(startTime, endTime) : undefined;
+    const parsedWorkedHours = isReferralOrBonus ? undefined : (manualDecimalHours ?? autoCalcHours);
+    const finalDurationHm =
+      !isReferralOrBonus && parsedWorkedHours && parsedWorkedHours > 0
+        ? hasExplicitHm && (parsedH > 0 || parsedM > 0)
+          ? buildDurationHmString(parsedH, parsedM)
+          : buildDurationHmString(
+              Math.floor(Math.round(parsedWorkedHours * 60) / 60),
+              Math.round(parsedWorkedHours * 60) % 60
+            )
+        : undefined;
 
     const defaultNotes = earningType === 'REFERRAL' 
       ? `Indicação de Motorista/Passageiro (${platform === 'UBER' ? 'Uber' : platform === 'NINETY_NINE' ? '99' : platform})`
@@ -148,6 +204,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
         startTime: startTime.trim() || undefined,
         endTime: endTime.trim() || undefined,
         workedHours: parsedWorkedHours !== undefined && !isNaN(parsedWorkedHours) && parsedWorkedHours > 0 ? parsedWorkedHours : undefined,
+        durationHm: finalDurationHm,
       });
     } else {
       onAddEarning({
@@ -163,6 +220,7 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
         startTime: startTime.trim() || undefined,
         endTime: endTime.trim() || undefined,
         workedHours: parsedWorkedHours !== undefined && !isNaN(parsedWorkedHours) && parsedWorkedHours > 0 ? parsedWorkedHours : undefined,
+        durationHm: finalDurationHm,
       });
     }
 
@@ -173,7 +231,8 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
     setNotes('');
     setStartTime('');
     setEndTime('');
-    setWorkedHours('');
+    setWorkedHoursInt('');
+    setWorkedMinutesInt('');
     setRecordedDate(getTodayLocalDateString());
     onClose();
   };
@@ -471,24 +530,75 @@ export const AddEarningModal: React.FC<AddEarningModalProps> = ({
                     </div>
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[10px] text-slate-300 font-semibold">Total de Horas Trabalhadas (h)</label>
-                      {startTime && endTime && (
-                        <span className="text-[10px] text-emerald-400 font-mono font-bold">
-                          ⏱️ Duração: {calculateHoursBetween(startTime, endTime) || 0}h
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] text-slate-300 font-semibold">
+                        Tempo Trabalhado no App (Horas + Minutos exatos)
+                      </label>
+                      {(Number(workedHoursInt) > 0 || Number(workedMinutesInt) > 0) && (
+                        <span className="text-[10px] bg-emerald-950/90 text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-lg border border-emerald-700/60">
+                          ⏱️ {Number(workedHoursInt) || 0}h {String(Math.min(59, Number(workedMinutesInt) || 0)).padStart(2, '0')}m
                         </span>
                       )}
                     </div>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={workedHours}
-                      onChange={(e) => setWorkedHours(e.target.value)}
-                      placeholder="ex: 8.5 (ou auto via início e fim)"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-500 outline-none"
-                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={workedHoursInt}
+                          onChange={(e) => handleHoursInputChange(e.target.value)}
+                          placeholder="ex: 6 (ou 6,24)"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-12 py-2.5 text-sm text-white font-mono font-bold focus:border-emerald-500 outline-none"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-emerald-400 pointer-events-none">
+                          HORAS
+                        </span>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          step="1"
+                          value={workedMinutesInt}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setWorkedMinutesInt('');
+                              return;
+                            }
+                            const num = Math.min(59, Math.max(0, parseInt(val, 10) || 0));
+                            setWorkedMinutesInt(String(num));
+                          }}
+                          placeholder="ex: 24"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-10 py-2.5 text-sm text-white font-mono font-bold focus:border-emerald-500 outline-none"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-emerald-400 pointer-events-none">
+                          MIN
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                      <span className="text-[9px] text-slate-400 mr-1">Minutos rápidos:</span>
+                      {[0, 15, 20, 24, 30, 40, 45, 50].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setWorkedMinutesInt(String(m))}
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border transition-colors ${
+                            Number(workedMinutesInt) === m && workedMinutesInt !== ''
+                              ? 'bg-emerald-500 text-black border-emerald-400'
+                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-emerald-500/60'
+                          }`}
+                        >
+                          {String(m).padStart(2, '0')}m
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </>

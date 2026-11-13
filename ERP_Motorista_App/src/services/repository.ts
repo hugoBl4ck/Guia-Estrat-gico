@@ -57,7 +57,8 @@ export interface IDataRepository {
 export function encodeDriverInNotes(
   notes?: string | null,
   driverName?: string | null,
-  driverSplits?: DriverExpenseSplit[] | null
+  driverSplits?: DriverExpenseSplit[] | null,
+  durationHm?: string | null
 ): string | null {
   let result = notes ? notes.trim() : '';
 
@@ -84,19 +85,38 @@ export function encodeDriverInNotes(
     }
   }
 
+  if (durationHm && durationHm.trim() !== '') {
+    const hmTag = `[hm:${durationHm.trim()}]`;
+    if (result.includes('[hm:')) {
+      result = result.replace(/\[hm:[^\]]+\]/, hmTag);
+    } else {
+      result = result ? `${result} ${hmTag}` : hmTag;
+    }
+  }
+
   return result || null;
 }
 
 /**
- * Extrai o nome do motorista, o rateio (driverSplits) e as notas limpas a partir dos dados do Supabase.
+ * Extrai o nome do motorista, o rateio (driverSplits), a duração (durationHm) e as notas limpas a partir dos dados do Supabase.
  */
 export function decodeDriverAndNotes(
   rawNotes?: string | null,
   rawDriverName?: string | null
-): { driverName?: string; notes?: string; driverSplits?: DriverExpenseSplit[] } {
+): { driverName?: string; notes?: string; driverSplits?: DriverExpenseSplit[]; durationHm?: string } {
   let driverName = rawDriverName && rawDriverName.trim() !== '' ? rawDriverName.trim() : undefined;
   let notes = rawNotes ? rawNotes.trim() : undefined;
   let driverSplits: DriverExpenseSplit[] | undefined;
+  let durationHm: string | undefined;
+
+  if (notes && notes.includes('[hm:')) {
+    const hmMatch = notes.match(/\[hm:([^\]]+)\]/);
+    if (hmMatch && hmMatch[1]) {
+      durationHm = hmMatch[1].trim();
+      notes = notes.replace(/\[hm:[^\]]+\]/, '').trim();
+      if (!notes) notes = undefined;
+    }
+  }
 
   if (notes && notes.includes('[split:')) {
     const splitMatch = notes.match(/\[split:([^\]]+)\]/);
@@ -129,7 +149,12 @@ export function decodeDriverAndNotes(
     }
   }
 
-  return driverSplits ? { driverName, notes, driverSplits } : { driverName, notes };
+  return {
+    driverName,
+    notes,
+    ...(driverSplits ? { driverSplits } : {}),
+    ...(durationHm ? { durationHm } : {}),
+  };
 }
 
 export class DataRepository implements IDataRepository {
@@ -335,7 +360,7 @@ export class DataRepository implements IDataRepository {
             worked_hours: e.workedHours || null,
             driver_name: e.driverName || null,
             recorded_at: e.recordedAt,
-            notes: encodeDriverInNotes(e.notes, e.driverName),
+            notes: encodeDriverInNotes(e.notes, e.driverName, null, e.durationHm),
             is_deleted: Boolean(e.isDeleted),
             user_id: userId,
             user_email: userEmail,
@@ -594,7 +619,7 @@ export class DataRepository implements IDataRepository {
       let earningsList: any[] = [];
       if (Array.isArray(cloudGanhos) && cloudGanhos.length > 0) {
         earningsList = cloudGanhos.map((e) => {
-          const { driverName: extractedDriver, notes } = decodeDriverAndNotes(e.notes, e.driver_name || e.driverName);
+          const { driverName: extractedDriver, notes, durationHm } = decodeDriverAndNotes(e.notes, e.driver_name || e.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[e.id];
           const mappedVehicle = cloudVehicleMap[e.id];
           return {
@@ -611,13 +636,14 @@ export class DataRepository implements IDataRepository {
             startTime: e.start_time || undefined,
             endTime: e.end_time || undefined,
             workedHours: e.worked_hours ? parseFloat(e.worked_hours) : undefined,
+            ...(durationHm ? { durationHm } : {}),
             vehicleId: e.vehicle_id || mappedVehicle || undefined,
             isDeleted: Boolean(e.is_deleted),
           };
         });
       } else if (Array.isArray(cloudFaturamentos) && cloudFaturamentos.length > 0) {
         earningsList = cloudFaturamentos.map((f) => {
-          const { driverName: extractedDriver, notes } = decodeDriverAndNotes(f.notes || f.observacao, f.driver_name || f.driverName);
+          const { driverName: extractedDriver, notes, durationHm } = decodeDriverAndNotes(f.notes || f.observacao, f.driver_name || f.driverName);
           const mappedDriver = extractedDriver || cloudDriverMap[f.id];
           const mappedVehicle = cloudVehicleMap[f.id];
           return {
@@ -633,6 +659,7 @@ export class DataRepository implements IDataRepository {
             startTime: f.start_time || f.inicio || undefined,
             endTime: f.end_time || f.fim || undefined,
             workedHours: f.worked_hours ? parseFloat(f.worked_hours) : (f.horas_trabalhadas ? parseFloat(f.horas_trabalhadas) : undefined),
+            ...(durationHm ? { durationHm } : {}),
             vehicleId: f.vehicle_id || mappedVehicle || undefined,
             recordedAt: f.recorded_at,
           };
