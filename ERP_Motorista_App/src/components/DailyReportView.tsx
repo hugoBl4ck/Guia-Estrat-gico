@@ -329,10 +329,18 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           <button
             onClick={() => {
               const week = getCurrentWeekRange();
-              exportWeeklyDriverShiftReport(vehicle, earnings, expenses, customStart || week.start, customEnd || week.end);
+              const useCustomRange = (periodMode === 'SEMANAL' || periodMode === 'PERIODO') && customStart && customEnd;
+              exportWeeklyDriverShiftReport(
+                vehicle,
+                earnings,
+                expenses,
+                useCustomRange ? customStart : week.start,
+                useCustomRange ? customEnd : week.end,
+                drivers
+              );
             }}
             className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
-            title="Baixar receitas separadas por motorista e turno da semana selecionada"
+            title="Baixar relatório semanal (segunda a domingo, ou período selecionado) com receitas, horas e despesas rateadas por motorista"
           >
             <Download className="w-4 h-4" />
             Semana

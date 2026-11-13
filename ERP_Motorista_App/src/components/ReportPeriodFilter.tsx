@@ -96,11 +96,11 @@ export const ReportPeriodFilter: React.FC<ReportPeriodFilterProps> = ({
       compResult = calculateComparisonPeriod(today, today);
     } else if (mode === 'SEMANAL') {
       const nowD = new Date();
-      const s7 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - 7);
+      const s7 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - 6);
       compResult = calculateComparisonPeriod(formatToLocalDateString(s7), getTodayLocalDateString());
     } else if (mode === 'QUINZENAL') {
       const nowD = new Date();
-      const s15 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - 15);
+      const s15 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - 14);
       compResult = calculateComparisonPeriod(formatToLocalDateString(s15), getTodayLocalDateString());
     } else {
       compResult = calculateComparisonPeriod(cStart, cEnd);
@@ -489,13 +489,13 @@ export function filterItemsByPeriod<T extends { recordedAt?: string; expenseDate
     }
 
     if (periodMode === 'SEMANAL') {
-      const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
       const sevenDaysAgoStr = formatToLocalDateString(sevenDaysAgo);
       return itemLocalDateStr >= sevenDaysAgoStr && itemLocalDateStr <= todayStr;
     }
 
     if (periodMode === 'QUINZENAL') {
-      const fifteenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 15);
+      const fifteenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14);
       const fifteenDaysAgoStr = formatToLocalDateString(fifteenDaysAgo);
       return itemLocalDateStr >= fifteenDaysAgoStr && itemLocalDateStr <= todayStr;
     }
