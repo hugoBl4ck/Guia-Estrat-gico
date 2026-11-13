@@ -1,26 +1,29 @@
-import React, { useReducer, useEffect, useState, useRef } from 'react';
+import React, { useReducer, useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { BottomNav, ActiveTab } from './components/BottomNav';
 import { DashboardHUD } from './components/DashboardHUD';
 import { ShiftManager } from './components/ShiftManager';
-import { ExpensesTracker } from './components/ExpensesTracker';
-import { BucketsView } from './components/BucketsView';
-import { VoiceCopilotModal } from './components/VoiceCopilotModal';
-import { FlexFuelCalculator } from './components/FlexFuelCalculator';
-import { ElectricChargingCalculator } from './components/ElectricChargingCalculator';
-import { PersonalUsageTab } from './components/PersonalUsageTab';
-import { PersonalFinanceView } from './components/PersonalFinanceView';
-import { DailyReportView } from './components/DailyReportView';
-import { TaxOnlyReportView } from './components/TaxOnlyReportView';
-import { AddEarningModal } from './components/AddEarningModal';
-import { VehicleManager } from './components/VehicleManager';
-import { NotificationDraftModal } from './components/NotificationDraftModal';
-import { AuthModal } from './components/AuthModal';
-import { VehicleOnboardingModal } from './components/VehicleOnboardingModal';
-import { GoalSelectorModal } from './components/GoalSelectorModal';
-import { LandingPage } from './components/LandingPage';
-import { AnalyticsChartsModal } from './components/AnalyticsChartsModal';
-import { DriverRegistrationModal } from './components/DriverRegistrationModal';
+import type { LegalTab } from './components/LegalPrivacyModal';
+
+const ExpensesTracker = lazy(() => import('./components/ExpensesTracker').then((m) => ({ default: m.ExpensesTracker })));
+const BucketsView = lazy(() => import('./components/BucketsView').then((m) => ({ default: m.BucketsView })));
+const VoiceCopilotModal = lazy(() => import('./components/VoiceCopilotModal').then((m) => ({ default: m.VoiceCopilotModal })));
+const FlexFuelCalculator = lazy(() => import('./components/FlexFuelCalculator').then((m) => ({ default: m.FlexFuelCalculator })));
+const ElectricChargingCalculator = lazy(() => import('./components/ElectricChargingCalculator').then((m) => ({ default: m.ElectricChargingCalculator })));
+const PersonalUsageTab = lazy(() => import('./components/PersonalUsageTab').then((m) => ({ default: m.PersonalUsageTab })));
+const PersonalFinanceView = lazy(() => import('./components/PersonalFinanceView').then((m) => ({ default: m.PersonalFinanceView })));
+const DailyReportView = lazy(() => import('./components/DailyReportView').then((m) => ({ default: m.DailyReportView })));
+const TaxOnlyReportView = lazy(() => import('./components/TaxOnlyReportView').then((m) => ({ default: m.TaxOnlyReportView })));
+const AddEarningModal = lazy(() => import('./components/AddEarningModal').then((m) => ({ default: m.AddEarningModal })));
+const VehicleManager = lazy(() => import('./components/VehicleManager').then((m) => ({ default: m.VehicleManager })));
+const NotificationDraftModal = lazy(() => import('./components/NotificationDraftModal').then((m) => ({ default: m.NotificationDraftModal })));
+const AuthModal = lazy(() => import('./components/AuthModal').then((m) => ({ default: m.AuthModal })));
+const VehicleOnboardingModal = lazy(() => import('./components/VehicleOnboardingModal').then((m) => ({ default: m.VehicleOnboardingModal })));
+const GoalSelectorModal = lazy(() => import('./components/GoalSelectorModal').then((m) => ({ default: m.GoalSelectorModal })));
+const LandingPage = lazy(() => import('./components/LandingPage').then((m) => ({ default: m.LandingPage })));
+const AnalyticsChartsModal = lazy(() => import('./components/AnalyticsChartsModal').then((m) => ({ default: m.AnalyticsChartsModal })));
+const DriverRegistrationModal = lazy(() => import('./components/DriverRegistrationModal').then((m) => ({ default: m.DriverRegistrationModal })));
+const LegalPrivacyModal = lazy(() => import('./components/LegalPrivacyModal').then((m) => ({ default: m.LegalPrivacyModal })));
 import { Undo2, CheckCircle2, Bell } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -58,6 +61,8 @@ export function App() {
   const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState(false);
   const [isAnalyticsChartsOpen, setIsAnalyticsChartsOpen] = useState(false);
   const [isDriverRegistrationOpen, setIsDriverRegistrationOpen] = useState(false);
+  const [isLegalOpen, setIsLegalOpen] = useState(false);
+  const [legalInitialTab, setLegalInitialTab] = useState<LegalTab>('privacy');
   const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
   const isHydratedRef = useRef<boolean>(false);
 
@@ -1023,14 +1028,29 @@ export function App() {
 
   if (!userEmail) {
     return (
-      <>
-        <LandingPage onOpenAuth={() => setIsAuthOpen(true)} />
-        <AuthModal
-          isOpen={isAuthOpen}
-          onClose={() => setIsAuthOpen(false)}
-          onAuthSuccess={handleAuthSuccess}
+      <Suspense fallback={<div className="min-h-screen bg-pma-dark text-slate-100 flex items-center justify-center">Carregando...</div>}>
+        <LandingPage
+          onOpenAuth={() => setIsAuthOpen(true)}
+          onOpenLegal={(tab) => {
+            setLegalInitialTab(tab);
+            setIsLegalOpen(true);
+          }}
         />
-      </>
+        {isAuthOpen && (
+          <AuthModal
+            isOpen={isAuthOpen}
+            onClose={() => setIsAuthOpen(false)}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        )}
+        {isLegalOpen && (
+          <LegalPrivacyModal
+            isOpen={isLegalOpen}
+            initialTab={legalInitialTab}
+            onClose={() => setIsLegalOpen(false)}
+          />
+        )}
+      </Suspense>
     );
   }
 
@@ -1061,6 +1081,10 @@ export function App() {
         lastSyncStatus={lastSyncStatus}
         syncErrorMessage={syncErrorMessage}
         onSyncCloud={handleSyncCloud}
+        onOpenLegal={() => {
+          setLegalInitialTab('rights');
+          setIsLegalOpen(true);
+        }}
         onLogout={handleLogout}
       />
 
@@ -1068,6 +1092,7 @@ export function App() {
 
       {/* Conteúdo Principal Renderizado Conforme Aba Ativa */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+        <Suspense fallback={<div className="py-12 text-center text-xs text-slate-400">Carregando módulo...</div>}>
         {activeTab === 'hud' && (
           <DashboardHUD
             vehicle={currentVehicle}
@@ -1190,6 +1215,7 @@ export function App() {
             expenses={activeExpenses}
           />
         )}
+        </Suspense>
       </main>
 
       {/* Bottom PWA Navigation Bar */}
@@ -1199,76 +1225,113 @@ export function App() {
         onOpenVoice={() => setIsVoiceOpen(true)}
       />
 
-      {/* Voice Copilot Hands-Free Modal */}
-      <VoiceCopilotModal
-        isOpen={isVoiceOpen}
-        onClose={() => setIsVoiceOpen(false)}
-        onAddExpense={handleAddExpense}
-        onAddEarning={handleAddEarning}
-      />
+      <Suspense fallback={null}>
+        {/* Voice Copilot Hands-Free Modal */}
+        {isVoiceOpen && (
+          <VoiceCopilotModal
+            isOpen={isVoiceOpen}
+            onClose={() => setIsVoiceOpen(false)}
+            onAddExpense={handleAddExpense}
+            onAddEarning={handleAddEarning}
+          />
+        )}
 
-      {/* Modal Lançar / Editar Corridas Direto */}
-      <AddEarningModal
-        isOpen={isAddEarningOpen}
-        onClose={handleCloseAddModal}
-        onAddEarning={handleAddEarning}
-        onEditEarning={handleEditEarning}
-        earningToEdit={earningToEdit}
-        drivers={drivers}
-        currentDriverName={currentDriverName}
-        onAddDriver={handleAddDriver}
-      />
+        {/* Modal Lançar / Editar Corridas Direto */}
+        {isAddEarningOpen && (
+          <AddEarningModal
+            isOpen={isAddEarningOpen}
+            onClose={handleCloseAddModal}
+            onAddEarning={handleAddEarning}
+            onEditEarning={handleEditEarning}
+            earningToEdit={earningToEdit}
+            drivers={drivers}
+            currentDriverName={currentDriverName}
+            onAddDriver={handleAddDriver}
+          />
+        )}
 
-      {/* Modal Leitor de Notificações / Clipboard */}
-      <NotificationDraftModal
-        isOpen={isNotificationModalOpen}
-        onClose={() => setIsNotificationModalOpen(false)}
-        onConfirmDraft={handleAddEarning}
-      />
+        {/* Modal Leitor de Notificações / Clipboard */}
+        {isNotificationModalOpen && (
+          <NotificationDraftModal
+            isOpen={isNotificationModalOpen}
+            onClose={() => setIsNotificationModalOpen(false)}
+            onConfirmDraft={handleAddEarning}
+          />
+        )}
 
-      {/* Modal Autenticação Supabase */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        onAuthSuccess={handleAuthSuccess}
-      />
+        {/* Modal Autenticação Supabase */}
+        {isAuthOpen && (
+          <AuthModal
+            isOpen={isAuthOpen}
+            onClose={() => setIsAuthOpen(false)}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        )}
 
-      {/* Modal Onboarding de Veículo Real para Novos Motoristas */}
-      <VehicleOnboardingModal
-        isOpen={isVehicleOnboardingOpen}
-        onClose={() => setIsVehicleOnboardingOpen(false)}
-        onSaveVehicle={(newVeh) => {
-          handleAddVehicle(newVeh);
-        }}
-        userEmail={userEmail}
-      />
+        {/* Modal Onboarding de Veículo Real para Novos Motoristas */}
+        {isVehicleOnboardingOpen && (
+          <VehicleOnboardingModal
+            isOpen={isVehicleOnboardingOpen}
+            onClose={() => setIsVehicleOnboardingOpen(false)}
+            onSaveVehicle={(newVeh) => {
+              handleAddVehicle(newVeh);
+            }}
+            userEmail={userEmail}
+          />
+        )}
 
-      {/* Modal Seletor de Meta de Corridas (Plano Financeiro Escolhido pelo Usuário) */}
-      <GoalSelectorModal
-        isOpen={isGoalSelectorOpen}
-        onClose={() => setIsGoalSelectorOpen(false)}
-        currentDailyGoal={dailyGoalTrips}
-        onSelectGoal={(newTrips) => setDailyGoalTrips(newTrips)}
-      />
+        {/* Modal Seletor de Meta de Corridas (Plano Financeiro Escolhido pelo Usuário) */}
+        {isGoalSelectorOpen && (
+          <GoalSelectorModal
+            isOpen={isGoalSelectorOpen}
+            onClose={() => setIsGoalSelectorOpen(false)}
+            currentDailyGoal={dailyGoalTrips}
+            onSelectGoal={(newTrips) => setDailyGoalTrips(newTrips)}
+          />
+        )}
 
-      {/* Modal de Painel de Análise Visual & Gráficos Sob Demanda */}
-      <AnalyticsChartsModal
-        isOpen={isAnalyticsChartsOpen}
-        onClose={() => setIsAnalyticsChartsOpen(false)}
-        vehicle={currentVehicle}
-        earnings={activeEarnings}
-        expenses={activeExpenses}
-        buckets={calculatedBuckets}
-      />
+        {/* Modal de Painel de Análise Visual & Gráficos Sob Demanda */}
+        {isAnalyticsChartsOpen && (
+          <AnalyticsChartsModal
+            isOpen={isAnalyticsChartsOpen}
+            onClose={() => setIsAnalyticsChartsOpen(false)}
+            vehicle={currentVehicle}
+            earnings={activeEarnings}
+            expenses={activeExpenses}
+            buckets={calculatedBuckets}
+          />
+        )}
 
-      {/* Modal de Cadastro de Motorista (Nome, Telefone e Foto) */}
-      <DriverRegistrationModal
-        isOpen={isDriverRegistrationOpen}
-        onClose={() => setIsDriverRegistrationOpen(false)}
-        drivers={drivers}
-        onSaveDriver={handleSaveDriver}
-        onDeleteDriver={handleDeleteDriver}
-      />
+        {/* Modal de Cadastro de Motorista (Nome, Telefone e Foto) */}
+        {isDriverRegistrationOpen && (
+          <DriverRegistrationModal
+            isOpen={isDriverRegistrationOpen}
+            onClose={() => setIsDriverRegistrationOpen(false)}
+            drivers={drivers}
+            onSaveDriver={handleSaveDriver}
+            onDeleteDriver={handleDeleteDriver}
+          />
+        )}
+
+        {/* Modal Privacidade, Termos & Direitos LGPD */}
+        {isLegalOpen && (
+          <LegalPrivacyModal
+            isOpen={isLegalOpen}
+            initialTab={legalInitialTab}
+            onClose={() => setIsLegalOpen(false)}
+            userEmail={userEmail}
+            userId={userId}
+            vehicles={vehicles}
+            drivers={drivers}
+            earnings={activeEarnings}
+            expenses={activeExpenses}
+            onResetLocalAndLogout={async () => {
+              handleResetData();
+              await handleLogout();
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

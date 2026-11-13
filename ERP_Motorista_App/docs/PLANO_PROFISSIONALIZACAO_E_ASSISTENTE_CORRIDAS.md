@@ -266,20 +266,20 @@ gantt
 ### Detalhamento das 5 Fases:
 
 #### 🔹 Fase 1: Identidade Profissional, Domínio & Vercel
-1. Registro do domínio oficial no **Registro.br** (`girocerto.com.br` ou similar - R$ 40/ano).
-2. Configuração dos apontamentos DNS na Vercel (Registros `A` e `CNAME`) com SSL automático.
-3. Criação da **Landing Page Institucional** em `girocerto.com.br` com simulador público de CPK e redirecionamento do app para `app.girocerto.com.br`.
+1. [ ] Registro do domínio oficial no **Registro.br** (`girocerto.com.br` ou similar - R$ 40/ano).
+2. [-] Configuração dos apontamentos DNS na Vercel (`app-girocerto.vercel.app` ativo com SSL automático; domínio próprio pendente).
+3. [x] Criação da **Landing Page Institucional** (`LandingPage.tsx`) com simulador público de CPK, planos e links legais.
 
 #### 🔹 Fase 2: Otimização & Modernização do ERP Web Atual
-1. **Code-Splitting**: Divisão do código com `React.lazy` para os módulos pesados.
-2. **PWA Avançado**: Configuração do manifesto com ícones de alta resolução e Workbox.
-3. **Compressão WebP**: Otimização de comprovantes antes do upload.
-4. **Sentry**: Rastreamento de erros e exceções em produção.
+1. [x] **Code-Splitting**: Divisão do código com `React.lazy` e `Suspense` em `App.tsx` para módulos e modais pesados (bundle inicial reduzido de ~1.477 kB para ~573 kB).
+2. [ ] **PWA Avançado**: Configuração do manifesto com ícones de alta resolução e Workbox.
+3. [ ] **Compressão WebP**: Otimização de comprovantes antes do upload.
+4. [ ] **Sentry**: Rastreamento de erros e exceções em produção.
 
 #### 🔹 Fase 3: Supabase em Produção & Blindagem
-1. Execução do `DATABASE_SCHEMA.sql` com políticas RLS (Row Level Security) ativas para isolamento seguro entre motoristas.
-2. Criação do script de *Keep-Alive* contra pausas no plano Free.
-3. Validação do `DataRepository` para sincronização confiável em lote.
+1. [x] Migrations `v3` a `v11` com políticas RLS (`auth.uid()`) para isolamento entre motoristas e bucket privado `receipts` com `createSignedUrl`.
+2. [x] Criação do workflow de *Keep-Alive* (`.github/workflows/supabase-keepalive.yml`) contra pausas no plano Free.
+3. [-] Validação do `DataRepository` para sincronização confiável em lote (lock + backoff + testes unitários prontos; pendente teste real com 2 usuários).
 
 #### 🔹 Fase 4: Desenvolvimento do App Assistente Android (Overlay)
 1. Criação do projeto Android Companion (`GiroCerto Assistente`).

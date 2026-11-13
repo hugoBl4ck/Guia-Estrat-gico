@@ -28,6 +28,7 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onLogout?: () => void;
   onSyncCloud?: () => void;
+  onOpenLegal?: () => void;
   syncErrorMessage?: string;
 }
 
@@ -55,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   onLogout,
   onSyncCloud,
+  onOpenLegal,
   syncErrorMessage,
 }) => {
   const [showMobileConnectModal, setShowMobileConnectModal] = useState(false);
@@ -268,6 +270,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {userEmail ? userEmail.split('@')[0] : 'Entrar'}
               </span>
             </button>
+
+            {onOpenLegal && (
+              <button
+                onClick={onOpenLegal}
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 hover:border-emerald-700 rounded-xl transition-all"
+                title="Privacidade, Termos & Dados LGPD"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             {userEmail && onLogout && (
               <button

@@ -36,6 +36,8 @@ O aplicativo esta apto para uma beta controlada gratuita, desde que os usuarios 
 
 **Aceite para resolver:** publicar Politica de Privacidade e Termos de Uso em portugues; informar finalidade, base legal, retenção, subprocessadores e contato; solicitar consentimento quando aplicavel; implementar exportacao, correcao e exclusao de conta/dados; registrar versao/data do aceite.
 
+**Status em 2026-11-13: parcialmente resolvido.** `LegalPrivacyModal.tsx` publicado na Landing Page e no App com Política de Privacidade (LGPD), Termos de Uso, canal `privacidade@girocerto.com.br`, exportação completa em JSON e fluxo de limpeza local/encerramento de sessão. Permanece pendente apenas a exclusão automática definitiva do usuário no Supabase Auth via backend/Edge Function.
+
 ### P0-03 — Comprovantes privados nao possuem leitura privada correta
 
 **Evidencia:** `src/services/supabaseClient.ts` grava no bucket privado `receipts`, mas retorna URL obtida por `getPublicUrl`. O bucket e privado segundo `data/supabase_migration_v9_receipts_storage.sql`.
@@ -43,6 +45,8 @@ O aplicativo esta apto para uma beta controlada gratuita, desde que os usuarios 
 **Impacto:** o fluxo de leitura pode falhar para o proprio usuario ou induzir a uma futura abertura publica do bucket. O upload tambem nao valida tamanho, MIME real e extensao permitida.
 
 **Aceite para resolver:** usar `createSignedUrl` com expiracao curta; validar tipo, extensao, tamanho e nome; limitar formatos; confirmar que o caminho inicia pelo `auth.uid()`; testar leitura autorizada e negada; evitar guardar URLs permanentes de arquivos sensiveis.
+
+**Status em 2026-11-13: implementado no cliente (`supabaseClient.ts` + `supabaseClient.test.ts`).** `getPublicUrl` foi substituído por `getReceiptSignedUrl` (`createSignedUrl`), `validateReceiptUpload` valida MIME/extensão/limite de 5 MB e `buildUserReceiptPath` bloqueia traversal garantindo prefixo `{userId}/`. Pendente apenas o teste real com dois usuários no Supabase Storage.
 
 ### P0-04 — RLS depende de validacao externa e schema canonico nao esta consolidado
 

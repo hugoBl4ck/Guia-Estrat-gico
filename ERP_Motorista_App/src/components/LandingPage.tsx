@@ -29,9 +29,10 @@ import {
 
 interface LandingPageProps {
   onOpenAuth: () => void;
+  onOpenLegal?: (tab: 'privacy' | 'terms') => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenLegal }) => {
   // Estado do Simulador Interativo
   const [monthlyRevenue, setMonthlyRevenue] = useState<number>(6500);
   const [monthlyKm, setMonthlyKm] = useState<number>(3500);
@@ -731,6 +732,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           </div>
         </div>
       </section>
+
+      {/* Rodapé Legal & LGPD */}
+      <footer className="pb-24 pt-8 px-6 border-t border-white/10 text-center text-xs text-slate-400 space-y-2">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => onOpenLegal?.('privacy')}
+            className="hover:text-[#D4FF00] underline underline-offset-4 transition-colors"
+          >
+            Política de Privacidade (LGPD)
+          </button>
+          <span className="text-slate-600">•</span>
+          <button
+            type="button"
+            onClick={() => onOpenLegal?.('terms')}
+            className="hover:text-[#D4FF00] underline underline-offset-4 transition-colors"
+          >
+            Termos de Uso
+          </button>
+          <span className="text-slate-600">•</span>
+          <span>Suporte: privacidade@girocerto.com.br</span>
+        </div>
+        <p className="text-[11px] text-slate-500">
+          GiroCerto ERP • Controle financeiro e operacional para motoristas de aplicativo.
+        </p>
+      </footer>
 
       {/* 7. Barra Flutuante Fixa Inferior (Sticky Bar PMA Style) */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#07080C]/95 backdrop-blur-md border-t border-white/15 px-6 py-3 flex items-center justify-between">

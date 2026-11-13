@@ -87,9 +87,9 @@ Ao iniciar uma correção, atualize o status para `[-]`, registre a data e descr
 
 ## P0-03 — Proteger comprovantes fiscais
 
-**Status:** `[-]` correção implementada; validação offline/online real pendente  
+**Status:** `[-]` validação de upload e signed URL implementados (`supabaseClient.ts`); teste real com dois usuários no Storage pendente  
 **Prioridade:** P0/P1  
-**Evidência:** `src/services/supabaseClient.ts` usa `getPublicUrl` para arquivos no bucket `receipts`.
+**Evidência:** `src/services/supabaseClient.ts` usava `getPublicUrl` em `uploadReceiptImage`; corrigido em 2026-11-13 para `createSignedUrl` + validação de MIME/extensão/tamanho (`validateReceiptUpload`) e caminho estrito por `userId` (`buildUserReceiptPath`).
 
 **Risco:** recibos podem ficar publicamente acessíveis caso o bucket esteja público ou a configuração seja alterada de forma insegura.
 
@@ -97,9 +97,9 @@ Ao iniciar uma correção, atualize o status para `[-]`, registre a data e descr
 
 - [x] Confirmar se o bucket `receipts` é privado.
 - [x] Confirmar as policies de `storage.objects`.
-- [ ] Validar tipo, tamanho e extensão dos arquivos antes do upload.
-- [ ] Usar URL assinada com expiração para leitura.
-- [ ] Confirmar que o caminho do arquivo está vinculado ao usuário autenticado.
+- [x] Validar tipo, tamanho e extensão dos arquivos antes do upload.
+- [x] Usar URL assinada com expiração para leitura.
+- [x] Confirmar que o caminho do arquivo está vinculado ao usuário autenticado.
 - [ ] Testar upload e leitura com usuário autorizado e não autorizado.
 
 # Fase 2 — Estabilização
@@ -286,6 +286,7 @@ Ao iniciar uma correção, atualize o status para `[-]`, registre a data e descr
 | 2026-08-27 | v7 ownership backfill | `[x]` | SQL Editor: sucesso; 7 colunas `NOT NULL`, 7 FKs validadas | 1 usuário Auth e 2 veículos associados deterministicamente. |
 | 2026-08-27 | v8 policies e grants | `[x]` | SQL Editor: sucesso; 28 policies `auth.uid()`, grants anon revogados | Policies separadas por operação. |
 | 2026-08-27 | v9 receipts Storage | `[x]` | Bucket privado + 4 policies verificadas | Caminho protegido por `storage.foldername(name)[1] = auth.uid()`. |
+| 2026-11-13 | P0-03 Storage + P0-02 LGPD + Code-Splitting + Keep-Alive | `[x]` | `npm test -- --run`: 36 arquivos / 139 testes; `npm run build` OK | `getPublicUrl` removido (`createSignedUrl` + `validateReceiptUpload`); `LegalPrivacyModal` (Termos, Privacidade, exportação JSON e limpeza local); `React.lazy` reduziu chunk inicial de 1.477 kB para 573 kB; workflow `supabase-keepalive.yml` criado. |
 
 # Comandos de validação
 
