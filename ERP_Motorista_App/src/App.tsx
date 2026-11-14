@@ -933,17 +933,44 @@ export function App() {
   const handleSyncCloud = async () => {
     if (!userEmail) return;
     setIsSyncing(true);
-    const result = await repository.flushSyncQueue(userEmail, userId);
-    setIsSyncing(false);
-    const count = await repository.getPendingSyncCount(userEmail, userId);
-    setPendingSyncCount(count);
-    setLastSyncStatus(result.success ? 'Sincronização manual concluída' : (result.errorMessage || 'Falha na sincronização manual'));
-    setSyncErrorMessage(result.success ? '' : (result.errorMessage || 'Falha na sincronização manual'));
+    try {
+      const localContext = userId ? { userId, email: userEmail } : undefined;
+      await repository.saveData(state, userEmail, localContext);
+      if (localContext) {
+        await repository.saveVehicles(vehicles, localContext);
+      }
 
-    if (result.success) {
-      alert(`Banco de dados de corridas e despesas transferido e sincronizado com sucesso para ${userEmail}!`);
-    } else {
-      alert(`Falha ao sincronizar agora: ${result.errorMessage || 'verifique sua conexão e tente novamente.'}`);
+      const [{ supplierService }, { personalFinanceStorage }] = await Promise.all([
+        import('./services/supplierService'),
+        import('./services/personalFinanceStorage'),
+      ]);
+      const [rawSuppliers, pfState] = await Promise.all([
+        supplierService.loadRaw(userId),
+        personalFinanceStorage.load(userId),
+      ]);
+      await Promise.all([
+        supplierService.pushToCloud(rawSuppliers, userId),
+        personalFinanceStorage.pushToCloud(pfState, userId),
+      ]);
+
+      const result = await repository.flushSyncQueue(userEmail, userId);
+      const count = await repository.getPendingSyncCount(userEmail, userId);
+      setPendingSyncCount(count);
+      setLastSyncStatus(result.success ? 'Sincronização manual concluída' : (result.errorMessage || 'Falha na sincronização manual'));
+      setSyncErrorMessage(result.success ? '' : (result.errorMessage || 'Falha na sincronização manual'));
+
+      if (result.success) {
+        alert(`Todos os dados de corridas, despesas, veículos e fornecedores foram sincronizados para ${userEmail}!`);
+      } else {
+        alert(`Falha ao sincronizar agora: ${result.errorMessage || 'verifique sua conexão e tente novamente.'}`);
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Erro inesperado ao sincronizar com a nuvem.';
+      setLastSyncStatus(msg);
+      setSyncErrorMessage(msg);
+      alert(`Falha ao sincronizar agora: ${msg}`);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -1146,6 +1173,7 @@ export function App() {
 
         {activeTab === 'expenses' && (
           <ExpensesTracker
+            userId={userId}
             vehicle={currentVehicle}
             vehicles={vehicles}
             expenses={activeExpenses}

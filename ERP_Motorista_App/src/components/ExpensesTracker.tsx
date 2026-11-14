@@ -12,6 +12,7 @@ import { formatCnpj, supplierService } from '../services/supplierService';
 import { SupplierModal } from './SupplierModal';
 
 interface ExpensesTrackerProps {
+  userId?: string;
   vehicle: Vehicle;
   vehicles?: Vehicle[];
   expenses: Expense[];
@@ -25,6 +26,7 @@ interface ExpensesTrackerProps {
 }
 
 export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
+  userId,
   vehicle,
   vehicles = [],
   expenses,
@@ -212,10 +214,19 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     setSelectedVehicleId(vehicle.id);
   }, [vehicle.id]);
 
-  // Carregar fornecedores cadastrados
+  // Carregar fornecedores cadastrados e mesclar com Supabase
   useEffect(() => {
-    supplierService.load().then(setSuppliers);
-  }, []);
+    let mounted = true;
+    supplierService.loadRaw(userId).then(async (raw) => {
+      if (!mounted) return;
+      setSuppliers(raw.filter((s) => !s.isDeleted));
+      const merged = await supplierService.pullAndMergeFromCloud(raw, userId);
+      if (mounted) setSuppliers(merged);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
 
   const getSuggestedFinancingInstallment = (targetVeh: Vehicle): number => {
     const total = targetVeh.financingTotalInstallments || 48;
@@ -492,7 +503,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
               : category === 'MAINTENANCE' || category === 'WORKSHOP_MAINTENANCE' || category === 'OIL_CHANGE'
               ? 'MAINTENANCE'
               : 'GENERAL',
-        })
+        }, userId)
         .then(setSuppliers);
     }
 
@@ -2181,6 +2192,7 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         onClose={() => setShowSupplierModal(false)}
         suppliers={suppliers}
         defaultCategory="MAINTENANCE"
+        userId={userId}
         onSuppliersChange={setSuppliers}
         onSelectSupplier={(sup) => {
           setSelectedSupplierId(sup.id);

@@ -231,29 +231,41 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Indicador de Status do Supabase Cloud Sync */}
-          <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold" title={lastSyncStatus}>
+          <div
+            className={`flex items-center gap-1.5 sm:gap-2 bg-slate-950/80 border px-2 sm:px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold ${
+              syncErrorMessage
+                ? 'border-rose-500/70'
+                : !isOnline || pendingSyncCount > 0
+                ? 'border-amber-500/60'
+                : 'border-slate-800'
+            }`}
+            title={lastSyncStatus}
+          >
             {isSyncing ? (
               <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+            ) : syncErrorMessage ? (
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
             ) : (
-              <UploadCloud className={`w-3.5 h-3.5 ${isOnline ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <UploadCloud className={`w-3.5 h-3.5 ${!isOnline || pendingSyncCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`} />
             )}
-            <span className={isOnline ? 'text-emerald-400' : 'text-amber-400'}>
-              {isOnline ? (pendingSyncCount > 0 ? `Pendente ${pendingSyncCount}` : 'Sincronizado') : 'Offline'}
+            <span className={`hidden sm:inline ${syncErrorMessage ? 'text-rose-400' : !isOnline || pendingSyncCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              {!isOnline
+                ? 'Offline'
+                : syncErrorMessage
+                ? 'Erro Sync'
+                : pendingSyncCount > 0
+                ? `Pendente (${pendingSyncCount})`
+                : 'Sincronizado'}
             </span>
-            {syncErrorMessage && (
-              <div className="flex items-center gap-1 text-rose-400" title={syncErrorMessage}>
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Erro
-              </div>
-            )}
             {onSyncCloud && (
               <button
                 onClick={onSyncCloud}
-                className="hidden lg:inline-flex items-center gap-1 bg-slate-900 border border-slate-800 text-slate-200 px-2 py-0.5 rounded text-[10px] hover:border-emerald-400 transition-colors"
+                disabled={isSyncing || !isOnline}
+                className="inline-flex items-center gap-1 bg-slate-900 border border-slate-700 text-slate-200 px-1.5 sm:px-2 py-0.5 rounded text-[10px] hover:border-emerald-400 disabled:opacity-50 transition-colors"
                 title="Forçar sincronização agora"
               >
-                <RefreshCw className="w-3 h-3" />
-                Sync
+                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline">Sync</span>
               </button>
             )}
           </div>
@@ -386,6 +398,39 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Aviso Persistente quando houver falha ou pendência de sincronização */}
+      {(!isOnline || pendingSyncCount > 0 || Boolean(syncErrorMessage)) && (
+        <div
+          role="alert"
+          className={`px-3 sm:px-6 py-2 border-t text-xs flex flex-wrap items-center justify-between gap-2 ${
+            syncErrorMessage
+              ? 'bg-rose-950/90 border-rose-700/70 text-rose-100'
+              : 'bg-amber-950/90 border-amber-700/70 text-amber-100'
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className={`w-4 h-4 shrink-0 ${syncErrorMessage ? 'text-rose-400' : 'text-amber-400'}`} />
+            <span className="font-medium leading-snug">
+              {!isOnline
+                ? 'Sem internet: seus lançamentos estão salvos apenas neste aparelho e serão enviados ao reconectar.'
+                : syncErrorMessage
+                ? `Atenção: seus dados ainda não foram sincronizados com a nuvem (${syncErrorMessage}).`
+                : `Atenção: há ${pendingSyncCount} alteração(ões) salva(s) apenas neste aparelho aguardando sincronização.`}
+            </span>
+          </div>
+          {onSyncCloud && isOnline && (
+            <button
+              type="button"
+              onClick={onSyncCloud}
+              disabled={isSyncing}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-[11px] flex items-center gap-1.5 shrink-0 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Sincronizando...' : 'Sincronizar Agora'}
+            </button>
+          )}
         </div>
       )}
     </header>

@@ -138,9 +138,13 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
       setGoalYieldInput(loaded.emergencyGoal.yieldInfo || '');
       setIsLoaded(true);
 
-      const merged = await personalFinanceStorage.pullAndMergeFromCloud(loaded, userId);
+      const [merged, mergedSuppliers] = await Promise.all([
+        personalFinanceStorage.pullAndMergeFromCloud(loaded, userId),
+        supplierService.pullAndMergeFromCloud(loadedSuppliers, userId),
+      ]);
       if (mounted) {
         setPfState(merged);
+        setSuppliers(mergedSuppliers);
         setGoalMonthsInput(String(merged.emergencyGoal.targetMonths || 6));
         setGoalEssentialInput(String(merged.emergencyGoal.monthlyEssentialCost || 3000));
         setGoalYieldInput(merged.emergencyGoal.yieldInfo || '');

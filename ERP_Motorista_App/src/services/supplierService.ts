@@ -1,6 +1,7 @@
 import { Supplier, SupplierCategory } from '../types';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { getUserStorageKey } from './localOwnership';
+import { isSupabaseConfigured, supabase } from './supabaseClient';
 
 const SUPPLIERS_STORAGE_KEY = 'girocerto_suppliers_v1';
 
@@ -90,6 +91,7 @@ export function mergeSupplierIntoList(
       phone: input.phone?.trim() || current.phone,
       address: input.address?.trim() || current.address,
       notes: input.notes?.trim() || current.notes,
+      isDeleted: false,
       updatedAt: now,
     };
     return updated;
@@ -103,14 +105,44 @@ export function mergeSupplierIntoList(
     phone: input.phone?.trim() || undefined,
     address: input.address?.trim() || undefined,
     notes: input.notes?.trim() || undefined,
+    isDeleted: false,
     createdAt: now,
     updatedAt: now,
   };
   return [created, ...existing];
 }
 
+function isCloudSyncReady(userId?: string): userId is string {
+  return Boolean(
+    userId &&
+      userId !== 'unauthenticated' &&
+      isSupabaseConfigured() &&
+      supabase &&
+      (typeof navigator === 'undefined' || navigator.onLine)
+  );
+}
+
+/** Mescla fornecedores locais e da nuvem pelo `id` mantendo o `updatedAt` mais recente. */
+export function mergeCloudSuppliers(localItems: Supplier[], cloudItems: Supplier[]): Supplier[] {
+  const map = new Map<string, Supplier>();
+  localItems.forEach((item) => map.set(item.id, item));
+  cloudItems.forEach((cloudItem) => {
+    const existing = map.get(cloudItem.id);
+    if (!existing) {
+      map.set(cloudItem.id, cloudItem);
+      return;
+    }
+    const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+    const cloudTime = cloudItem.updatedAt ? new Date(cloudItem.updatedAt).getTime() : 0;
+    if (cloudTime >= existingTime) {
+      map.set(cloudItem.id, cloudItem);
+    }
+  });
+  return Array.from(map.values());
+}
+
 export const supplierService = {
-  async load(userId?: string): Promise<Supplier[]> {
+  async loadRaw(userId?: string): Promise<Supplier[]> {
     try {
       const stored = await indexedDBService.getItem<Supplier[]>(
         IDB_STORE_NAMES.APP_DATA,
@@ -123,11 +155,80 @@ export const supplierService = {
     }
   },
 
+  async load(userId?: string): Promise<Supplier[]> {
+    const raw = await this.loadRaw(userId);
+    return raw.filter((s) => !s.isDeleted);
+  },
+
   async saveAll(suppliers: Supplier[], userId?: string): Promise<void> {
     try {
       await indexedDBService.setItem(IDB_STORE_NAMES.APP_DATA, resolveKey(userId), suppliers);
     } catch (err) {
       console.warn('Erro ao salvar fornecedores:', err);
+    }
+  },
+
+  async pushToCloud(suppliers: Supplier[], userId?: string): Promise<boolean> {
+    if (!isCloudSyncReady(userId) || !supabase || suppliers.length === 0) return false;
+    try {
+      const rows = suppliers.map((s) => ({
+        id: s.id,
+        user_id: userId,
+        name: s.name,
+        cnpj: s.cnpj || null,
+        category: s.category || 'GENERAL',
+        phone: s.phone || null,
+        address: s.address || null,
+        notes: s.notes || null,
+        is_deleted: Boolean(s.isDeleted),
+        created_at: s.createdAt || new Date().toISOString(),
+        updated_at: s.updatedAt || new Date().toISOString(),
+      }));
+      const { error } = await supabase
+        .from('fornecedores')
+        .upsert(rows, { onConflict: 'id' });
+      if (error) {
+        console.warn('Sync fornecedores Supabase:', error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('Falha ao enviar fornecedores para Supabase:', err);
+      return false;
+    }
+  },
+
+  async pullAndMergeFromCloud(localSuppliers: Supplier[], userId?: string): Promise<Supplier[]> {
+    if (!isCloudSyncReady(userId) || !supabase) return localSuppliers.filter((s) => !s.isDeleted);
+    try {
+      const { data, error } = await supabase
+        .from('fornecedores')
+        .select('*')
+        .eq('user_id', userId);
+      if (error || !Array.isArray(data)) {
+        return localSuppliers.filter((s) => !s.isDeleted);
+      }
+      const cloudItems: Supplier[] = data.map((row: any) => ({
+        id: String(row.id),
+        name: String(row.name || ''),
+        cnpj: row.cnpj || undefined,
+        category: (row.category as SupplierCategory) || 'GENERAL',
+        phone: row.phone || undefined,
+        address: row.address || undefined,
+        notes: row.notes || undefined,
+        isDeleted: Boolean(row.is_deleted),
+        createdAt: String(row.created_at || new Date().toISOString()),
+        updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+      }));
+      const merged = mergeCloudSuppliers(localSuppliers, cloudItems);
+      await this.saveAll(merged, userId);
+      if (merged.length > cloudItems.length) {
+        void this.pushToCloud(merged, userId);
+      }
+      return merged.filter((s) => !s.isDeleted);
+    } catch (err) {
+      console.warn('Erro ao buscar fornecedores do Supabase:', err);
+      return localSuppliers.filter((s) => !s.isDeleted);
     }
   },
 
@@ -143,17 +244,22 @@ export const supplierService = {
     },
     userId?: string
   ): Promise<Supplier[]> {
-    const current = await this.load(userId);
+    const current = await this.loadRaw(userId);
     const next = mergeSupplierIntoList(current, input);
     await this.saveAll(next, userId);
-    return next;
+    void this.pushToCloud(next, userId);
+    return next.filter((s) => !s.isDeleted);
   },
 
   async remove(id: string, userId?: string): Promise<Supplier[]> {
-    const current = await this.load(userId);
-    const next = current.filter((s) => s.id !== id);
+    const current = await this.loadRaw(userId);
+    const now = new Date().toISOString();
+    const next = current.map((s) =>
+      s.id === id ? { ...s, isDeleted: true, updatedAt: now } : s
+    );
     await this.saveAll(next, userId);
-    return next;
+    void this.pushToCloud(next, userId);
+    return next.filter((s) => !s.isDeleted);
   },
 
   async lookupCnpjOnline(cnpj: string): Promise<{ name: string; phone?: string; address?: string } | null> {

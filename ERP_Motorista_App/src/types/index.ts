@@ -272,6 +272,7 @@ export interface Supplier {
   phone?: string;
   address?: string;
   notes?: string;
+  isDeleted?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
