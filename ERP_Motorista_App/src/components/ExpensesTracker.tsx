@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2, Pencil, Paperclip, FileText } from 'lucide-react';
-import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver, MaintenanceScheduleEntry, DriverExpenseSplit } from '../types';
+import { Receipt, Plus, Zap, Fuel, Wrench, Shield, Car, DollarSign, Calendar, Trash2, Camera, FileCode, X, ChevronUp, ChevronDown, ChevronsUpDown, User, CheckCircle2, Pencil, Paperclip, FileText, Building2 } from 'lucide-react';
+import { Expense, ExpenseCategory, Vehicle, ChargingLocationType, ReserveBucket, Driver, MaintenanceScheduleEntry, DriverExpenseSplit, Supplier } from '../types';
 import { getEffectiveExpenseSplits } from '../utils/driverReports';
 import { roundCurrency } from '../utils/financialCalculators';
 import { ExpenseReceiptCapture } from './ExpenseReceiptCapture';
@@ -8,6 +8,8 @@ import { MaintenanceScheduleCard } from './MaintenanceScheduleCard';
 import { getTodayLocalDateString, formatToLocalDateString, formatToBrazilianDate } from '../utils/dateUtils';
 import { fileToReceiptDataUrl, isPdfDataUrl, RECEIPT_ACCEPT } from '../utils/receiptAttachment';
 import { getReceiptSignedUrl } from '../services/supabaseClient';
+import { formatCnpj, supplierService } from '../services/supplierService';
+import { SupplierModal } from './SupplierModal';
 
 interface ExpensesTrackerProps {
   vehicle: Vehicle;
@@ -36,6 +38,11 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showReceiptCaptureModal, setShowReceiptCaptureModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [cnpjIssuer, setCnpjIssuer] = useState('');
+  const [issuerName, setIssuerName] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicle.id);
   // Estado de edição inline de motorista, rateio de prestação e veículo
   const [editingDriverExpenseId, setEditingDriverExpenseId] = useState<string | null>(null);
@@ -204,6 +211,11 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   useEffect(() => {
     setSelectedVehicleId(vehicle.id);
   }, [vehicle.id]);
+
+  // Carregar fornecedores cadastrados
+  useEffect(() => {
+    supplierService.load().then(setSuppliers);
+  }, []);
 
   const getSuggestedFinancingInstallment = (targetVeh: Vehicle): number => {
     const total = targetVeh.financingTotalInstallments || 48;
@@ -433,6 +445,8 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           installmentsCount,
           installmentNumber: i + 1,
           receiptUrl: receiptUrl || undefined,
+          cnpjIssuer: cnpjIssuer.trim() || undefined,
+          issuerName: issuerName.trim() || undefined,
           source: 'manual',
           vehicleId: selectedVehicleId || vehicle.id,
           driverName: effectiveDriverName,
@@ -455,11 +469,31 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
         installmentsCount: 1,
         installmentNumber: 1,
         receiptUrl: receiptUrl || undefined,
+        cnpjIssuer: cnpjIssuer.trim() || undefined,
+        issuerName: issuerName.trim() || undefined,
         source: 'manual',
         vehicleId: selectedVehicleId || vehicle.id,
         driverName: effectiveDriverName,
         ...(effectiveSplits && effectiveSplits.length > 0 ? { driverSplits: effectiveSplits } : {}),
       });
+    }
+
+    if (issuerName.trim()) {
+      supplierService
+        .upsert({
+          id: selectedSupplierId || undefined,
+          name: issuerName.trim(),
+          cnpj: cnpjIssuer.trim() || undefined,
+          category:
+            category === 'ELECTRIC_CHARGING'
+              ? 'CHARGING'
+              : category === 'FUEL'
+              ? 'FUEL'
+              : category === 'MAINTENANCE' || category === 'WORKSHOP_MAINTENANCE' || category === 'OIL_CHANGE'
+              ? 'MAINTENANCE'
+              : 'GENERAL',
+        })
+        .then(setSuppliers);
     }
 
     // Sincroniza o cronograma oficial do veículo caso a despesa tenha sido vinculada a uma revisão
@@ -496,6 +530,9 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
     setFuelLiters('');
     setReceiptUrl(null);
     setReceiptError(null);
+    setSelectedSupplierId('');
+    setCnpjIssuer('');
+    setIssuerName('');
     setInstallmentsCount(1);
     setPaymentMode('SINGLE_CASH');
     setExpenseDateInput(getTodayLocalDateString());
@@ -1832,6 +1869,60 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
                     </div>
                   )}
 
+                {/* FORNECEDOR / CNPJ (Recarga, Revisão, Peças, Acessórios) */}
+                <div className="p-3 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-slate-300 font-bold flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Fornecedor & CNPJ (opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowSupplierModal(true)}
+                      className="text-[11px] text-emerald-400 hover:underline font-bold"
+                    >
+                      + Cadastrar / Gerenciar
+                    </button>
+                  </div>
+                  {suppliers.length > 0 && (
+                    <select
+                      value={selectedSupplierId}
+                      onChange={(e) => {
+                        const found = suppliers.find((s) => s.id === e.target.value);
+                        setSelectedSupplierId(e.target.value);
+                        if (found) {
+                          setIssuerName(found.name);
+                          setCnpjIssuer(found.cnpj || '');
+                        }
+                      }}
+                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    >
+                      <option value="">Selecionar fornecedor cadastrado...</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.cnpj ? `(${s.cnpj})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={cnpjIssuer}
+                      onChange={(e) => setCnpjIssuer(formatCnpj(e.target.value))}
+                      placeholder="CNPJ: 00.000.000/0000-00"
+                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={issuerName}
+                      onChange={(e) => setIssuerName(e.target.value)}
+                      placeholder="Oficina, Posto, Eletroposto, Loja..."
+                      className="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                </div>
+
                 {/* 6. VALOR TOTAL PAGO (R$) */}
                 <div>
                   <label className="text-xs text-slate-400 font-semibold block mb-1 flex items-center justify-between">
@@ -2085,6 +2176,18 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
           </div>
         </div>
       )}
+      <SupplierModal
+        isOpen={showSupplierModal}
+        onClose={() => setShowSupplierModal(false)}
+        suppliers={suppliers}
+        defaultCategory="MAINTENANCE"
+        onSuppliersChange={setSuppliers}
+        onSelectSupplier={(sup) => {
+          setSelectedSupplierId(sup.id);
+          setIssuerName(sup.name);
+          setCnpjIssuer(sup.cnpj || '');
+        }}
+      />
     </div>
   );
 };

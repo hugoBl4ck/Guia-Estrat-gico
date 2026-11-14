@@ -17,6 +17,8 @@ import {
   Sparkles,
   CheckCircle2,
   SlidersHorizontal,
+  FileCode,
+  Building2,
 } from 'lucide-react';
 import {
   Driver,
@@ -28,6 +30,7 @@ import {
   PersonalInvestmentAssetType,
   PersonalTransaction,
   PersonalTransactionType,
+  Supplier,
   UserSubscription,
 } from '../types';
 import {
@@ -48,6 +51,9 @@ import {
 import { PersonalFinancePaywall } from './PersonalFinancePaywall';
 import { formatToBrazilianDate, getTodayLocalDateString } from '../utils/dateUtils';
 import { downloadExcelCsv } from '../utils/excelExporter';
+import { parseNfeXml } from '../services/nfeParser';
+import { formatCnpj, supplierService } from '../services/supplierService';
+import { SupplierModal } from './SupplierModal';
 
 interface PersonalFinanceViewProps {
   userId?: string;
@@ -89,6 +95,13 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
   const [txDate, setTxDate] = useState(getTodayLocalDateString());
   const [txOwner, setTxOwner] = useState(currentDriverName || drivers[0]?.name || 'Pessoal');
   const [txNotes, setTxNotes] = useState('');
+  const [txSupplierId, setTxSupplierId] = useState('');
+  const [txCnpjIssuer, setTxCnpjIssuer] = useState('');
+  const [txIssuerName, setTxIssuerName] = useState('');
+  const [txNfeKey, setTxNfeKey] = useState('');
+  const [nfeFeedback, setNfeFeedback] = useState('');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
 
   // Modal de Reserva (Configurar Meta)
   const [showGoalEditor, setShowGoalEditor] = useState(false);
@@ -114,10 +127,12 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
     Promise.all([
       personalFinanceStorage.load(userId),
       subscriptionService.load(userId),
-    ]).then(async ([loaded, sub]) => {
+      supplierService.load(userId),
+    ]).then(async ([loaded, sub, loadedSuppliers]) => {
       if (!mounted) return;
       setSubscription(sub);
       setPfState(loaded);
+      setSuppliers(loadedSuppliers);
       setGoalMonthsInput(String(loaded.emergencyGoal.targetMonths || 6));
       setGoalEssentialInput(String(loaded.emergencyGoal.monthlyEssentialCost || 3000));
       setGoalYieldInput(loaded.emergencyGoal.yieldInfo || '');
@@ -198,13 +213,74 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
       ownerFilter !== 'ALL' ? ownerFilter : currentDriverName || drivers[0]?.name || 'Pessoal'
     );
     setTxNotes('');
+    setTxSupplierId('');
+    setTxCnpjIssuer('');
+    setTxIssuerName('');
+    setTxNfeKey('');
+    setNfeFeedback('');
     setShowTxModal(true);
   };
 
-  const handleSaveTransaction = (e: React.FormEvent) => {
+  const handlePersonalNfeXmlUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const xmlText = String(ev.target?.result || '');
+        const parsed = parseNfeXml(xmlText);
+        setTxAmount(parsed.amount.toFixed(2));
+        setTxDate(parsed.expenseDate.slice(0, 10));
+        setTxCategory(parsed.personalCategory);
+        setTxTitle(parsed.issuerName || parsed.productSummary || 'Compra via NF-e');
+        setTxCnpjIssuer(parsed.cnpjIssuer ? formatCnpj(parsed.cnpjIssuer) : '');
+        setTxIssuerName(parsed.issuerName || '');
+        setTxNfeKey(parsed.nfeKey || '');
+        setTxNotes(parsed.notes);
+        if (parsed.issuerName) {
+          const nextSuppliers = await supplierService.upsert(
+            {
+              name: parsed.issuerName,
+              cnpj: parsed.cnpjIssuer,
+              category: 'PERSONAL',
+            },
+            userId
+          );
+          setSuppliers(nextSuppliers);
+        }
+        setNfeFeedback('NF-e lida com sucesso! Confira os campos abaixo e salve.');
+      } catch (err: any) {
+        setNfeFeedback(err?.message || 'Não foi possível ler o XML da NF-e.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(txAmount.replace(',', '.'));
     if (isNaN(amt) || amt <= 0) return;
+
+    const cleanIssuer = txIssuerName.trim();
+    const cleanCnpj = txCnpjIssuer.trim();
+    const supplierSuffix =
+      cleanIssuer || cleanCnpj
+        ? `Fornecedor: ${cleanIssuer || 'Não informado'}${cleanCnpj ? ` (CNPJ ${cleanCnpj})` : ''}`
+        : '';
+    const mergedNotes = [txNotes.trim(), supplierSuffix].filter(Boolean).join(' • ');
+
+    if (cleanIssuer) {
+      const nextSuppliers = await supplierService.upsert(
+        {
+          id: txSupplierId || undefined,
+          name: cleanIssuer,
+          cnpj: cleanCnpj || undefined,
+          category: 'PERSONAL',
+        },
+        userId
+      );
+      setSuppliers(nextSuppliers);
+    }
 
     const newTx: PersonalTransaction = {
       id: `pf-tx-${Date.now()}`,
@@ -214,7 +290,11 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
       amount: amt,
       date: txDate,
       ownerName: txOwner.trim() || 'Pessoal',
-      notes: txNotes.trim() || undefined,
+      notes: mergedNotes || undefined,
+      supplierId: txSupplierId || undefined,
+      cnpjIssuer: cleanCnpj || undefined,
+      issuerName: cleanIssuer || undefined,
+      nfeKey: txNfeKey.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -1177,6 +1257,29 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveTransaction} className="space-y-3 pt-3 overflow-y-auto">
+              {txType === 'EXPENSE' && (
+                <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                      <FileCode className="w-3.5 h-3.5" />
+                      Leitor de NF-e / NFC-e (XML)
+                    </span>
+                    <label className="px-2.5 py-1 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold cursor-pointer">
+                      Importar XML
+                      <input
+                        type="file"
+                        accept=".xml,text/xml"
+                        onChange={handlePersonalNfeXmlUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  {nfeFeedback && (
+                    <p className="text-[11px] text-slate-300">{nfeFeedback}</p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-xs text-slate-400 font-semibold block mb-1">Descrição</label>
                 <input
@@ -1229,6 +1332,61 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
                         </option>
                       ))}
                   </select>
+                </div>
+              )}
+
+              {txType === 'EXPENSE' && (
+                <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-slate-300 font-bold flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Fornecedor & CNPJ (opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowSupplierModal(true)}
+                      className="text-[11px] text-emerald-400 hover:underline font-bold"
+                    >
+                      + Cadastrar / Gerenciar
+                    </button>
+                  </div>
+                  {suppliers.length > 0 && (
+                    <select
+                      value={txSupplierId}
+                      onChange={(e) => {
+                        const selected = suppliers.find((s) => s.id === e.target.value);
+                        setTxSupplierId(e.target.value);
+                        if (selected) {
+                          setTxIssuerName(selected.name);
+                          setTxCnpjIssuer(selected.cnpj || '');
+                        }
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    >
+                      <option value="">Selecionar fornecedor cadastrado...</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.cnpj ? `(${s.cnpj})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={txCnpjIssuer}
+                      onChange={(e) => setTxCnpjIssuer(formatCnpj(e.target.value))}
+                      placeholder="CNPJ: 00.000.000/0000-00"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={txIssuerName}
+                      onChange={(e) => setTxIssuerName(e.target.value)}
+                      placeholder="Nome do estabelecimento"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -1359,6 +1517,61 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
                 </div>
               </div>
 
+              {txType === 'EXPENSE' && (
+                <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-slate-300 font-bold flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Fornecedor & CNPJ (opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowSupplierModal(true)}
+                      className="text-[11px] text-emerald-400 hover:underline font-bold"
+                    >
+                      + Cadastrar / Gerenciar
+                    </button>
+                  </div>
+                  {suppliers.length > 0 && (
+                    <select
+                      value={txSupplierId}
+                      onChange={(e) => {
+                        const selected = suppliers.find((s) => s.id === e.target.value);
+                        setTxSupplierId(e.target.value);
+                        if (selected) {
+                          setTxIssuerName(selected.name);
+                          setTxCnpjIssuer(selected.cnpj || '');
+                        }
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    >
+                      <option value="">Selecionar fornecedor cadastrado...</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.cnpj ? `(${s.cnpj})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={txCnpjIssuer}
+                      onChange={(e) => setTxCnpjIssuer(formatCnpj(e.target.value))}
+                      placeholder="CNPJ: 00.000.000/0000-00"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={txIssuerName}
+                      onChange={(e) => setTxIssuerName(e.target.value)}
+                      placeholder="Nome do estabelecimento"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs text-slate-400 font-semibold block mb-1">Titular</label>
                 <select
@@ -1394,6 +1607,20 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
           </div>
         </div>
       )}
+      {/* MODAL: FORNECEDORES */}
+      <SupplierModal
+        isOpen={showSupplierModal}
+        onClose={() => setShowSupplierModal(false)}
+        suppliers={suppliers}
+        defaultCategory="PERSONAL"
+        userId={userId}
+        onSuppliersChange={setSuppliers}
+        onSelectSupplier={(sup) => {
+          setTxSupplierId(sup.id);
+          setTxIssuerName(sup.name);
+          setTxCnpjIssuer(sup.cnpj || '');
+        }}
+      />
     </div>
   );
 };

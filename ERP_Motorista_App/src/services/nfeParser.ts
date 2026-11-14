@@ -1,4 +1,4 @@
-import { ExpenseCategory } from '../types';
+import { ExpenseCategory, PersonalExpenseCategory } from '../types';
 
 export interface ParsedNfeData {
   nfeKey?: string;
@@ -7,8 +7,63 @@ export interface ParsedNfeData {
   amount: number;
   expenseDate: string;
   category: ExpenseCategory;
+  personalCategory: PersonalExpenseCategory;
+  productSummary: string;
   notes: string;
   rawXmlText: string;
+}
+
+export function mapNfeToPersonalCategory(fullText: string): PersonalExpenseCategory {
+  const t = (fullText || '').toLowerCase();
+  if (
+    t.includes('supermercado') ||
+    t.includes('mercado') ||
+    t.includes('padaria') ||
+    t.includes('restaurante') ||
+    t.includes('lanchonete') ||
+    t.includes('alimento') ||
+    t.includes('acougue') ||
+    t.includes('hortifruti')
+  ) {
+    return 'FOOD';
+  }
+  if (
+    t.includes('farmacia') ||
+    t.includes('drogaria') ||
+    t.includes('medicamento') ||
+    t.includes('clinica') ||
+    t.includes('hospital') ||
+    t.includes('laboratorio')
+  ) {
+    return 'HEALTH';
+  }
+  if (
+    t.includes('energia') ||
+    t.includes('agua') ||
+    t.includes('internet') ||
+    t.includes('condominio') ||
+    t.includes('aluguel') ||
+    t.includes('material de construcao')
+  ) {
+    return 'HOUSING';
+  }
+  if (
+    t.includes('gasolina') ||
+    t.includes('etanol') ||
+    t.includes('combustivel') ||
+    t.includes('uber') ||
+    t.includes('estacionamento') ||
+    t.includes('passagem')
+  ) {
+    return 'TRANSPORT_FAMILY';
+  }
+  if (t.includes('livraria') || t.includes('escola') || t.includes('curso') || t.includes('faculdade')) {
+    return 'EDUCATION';
+  }
+  if (t.includes('cinema') || t.includes('ingresso') || t.includes('entretenimento') || t.includes('streaming')) {
+    return 'LEISURE';
+  }
+  return 'OTHER_PERSONAL';
 }
 
 /**
@@ -121,9 +176,12 @@ export function parseNfeXml(xmlString: string): ParsedNfeData {
     category = 'TOLL';
   }
 
+  const productSummary = productDescriptions[0] || '';
+  const personalCategory = mapNfeToPersonalCategory(`${issuerName || ''} ${fullProductText}`);
+
   const notesStr = issuerName
-    ? `NF-e: ${issuerName} (${productDescriptions[0] || 'Despesa Veicular'})`
-    : `NF-e Importada (${productDescriptions[0] || 'Despesa Veicular'})`;
+    ? `NF-e: ${issuerName} (${productSummary || 'Despesa Veicular'})`
+    : `NF-e Importada (${productSummary || 'Despesa Veicular'})`;
 
   return {
     nfeKey,
@@ -132,6 +190,8 @@ export function parseNfeXml(xmlString: string): ParsedNfeData {
     amount,
     expenseDate,
     category,
+    personalCategory,
+    productSummary,
     notes: notesStr,
     rawXmlText: xmlString,
   };

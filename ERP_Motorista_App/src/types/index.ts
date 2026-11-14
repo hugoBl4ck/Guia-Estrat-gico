@@ -255,6 +255,27 @@ export type PersonalInvestmentAssetType =
   | 'PREVIDENCIA'
   | 'OUTRO';
 
+export type SupplierCategory =
+  | 'CHARGING'
+  | 'FUEL'
+  | 'MAINTENANCE'
+  | 'PARTS'
+  | 'ACCESSORIES'
+  | 'PERSONAL'
+  | 'GENERAL';
+
+export interface Supplier {
+  id: string;
+  name: string;
+  cnpj?: string;
+  category: SupplierCategory;
+  phone?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface PersonalTransaction {
   id: string;
   type: PersonalTransactionType;
@@ -265,6 +286,10 @@ export interface PersonalTransaction {
   ownerName?: string;
   notes?: string;
   investmentId?: string;
+  supplierId?: string;
+  cnpjIssuer?: string;
+  issuerName?: string;
+  nfeKey?: string;
   isRecurring?: boolean;
   isDeleted?: boolean;
   updatedAt?: string;
