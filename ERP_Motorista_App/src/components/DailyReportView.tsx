@@ -25,6 +25,8 @@ import {
   Bot,
   Users,
   User,
+  FileText,
+  X,
 } from 'lucide-react';
 import { Vehicle, Earning, Expense, Driver } from '../types';
 import {
@@ -39,6 +41,7 @@ import { ReportPeriodFilter, ReportPeriodMode, filterItemsByPeriod, PeriodCompar
 import { MonthlyComparisonDashboard } from './MonthlyComparisonDashboard';
 import { formatToBrazilianDate, calculateComparisonPeriod } from '../utils/dateUtils';
 import { exportWeeklyDriverShiftReport } from '../utils/excelExporter';
+import { exportStructuredExcel, exportStructuredPdf, StructuredReportScope } from '../utils/structuredReportExporter';
 import { aggregateExpensesByDriver, buildDriversComparativeReport, formatExpenseSplitLabel, getEffectiveExpenseSplits } from '../utils/driverReports';
 import { CATEGORY_LABELS } from '../services/aiFinancialReportService';
 import { InsightsReportView } from './InsightsReportView';
@@ -70,6 +73,7 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
   onDeleteEarning,
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isExportHubOpen, setIsExportHubOpen] = useState(false);
   const [isFullReportOpen, setIsFullReportOpen] = useState(false);
   const [isDriverReportOpen, setIsDriverReportOpen] = useState(false);
   const [driverModalMode, setDriverModalMode] = useState<DriverReportViewMode>('COMPLETE');
@@ -318,12 +322,12 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
           </button>
 
           <button
-            onClick={handleExportCSV}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition-all"
-            title="Exportar dados completos em Excel"
+            onClick={() => setIsExportHubOpen(true)}
+            className="bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+            title="Exportar Receitas, Despesas ou Ambos em Excel (.xls) e PDF alinhado"
           >
-            <Download className="w-4 h-4" />
-            Excel
+            <FileSpreadsheet className="w-4 h-4" />
+            Excel / PDF
           </button>
 
           <button
@@ -902,6 +906,120 @@ export const DailyReportView: React.FC<DailyReportViewProps> = ({
         initialMode={driverModalMode}
         initialDriverName={driverModalSelectedName}
       />
+
+      {/* Central Rápida de Exportação Excel (.xls) & PDF Organizados */}
+      {isExportHubOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsExportHubOpen(false);
+          }}
+          className="fixed inset-0 z-[105] bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-pma-card border border-slate-700 rounded-3xl w-full max-w-lg p-5 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                  Exportar Relatórios Organizados
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Período ativo: <strong className="text-emerald-400">{activeComparison.currentLabel}</strong> ({activeEarnings.length} receitas • {activeExpenses.length} despesas)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExportHubOpen(false)}
+                className="p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {(
+                [
+                  {
+                    scope: 'EARNINGS' as StructuredReportScope,
+                    title: 'Somente Receitas',
+                    desc: 'Tabela alinhada por data, motorista, plataforma, corridas, KM, horas, bruto e gorjetas.',
+                  },
+                  {
+                    scope: 'EXPENSES' as StructuredReportScope,
+                    title: 'Somente Despesas',
+                    desc: 'Tabela alinhada por data, categoria, fornecedor/CNPJ, motorista/rateio e valor.',
+                  },
+                  {
+                    scope: 'COMBINED' as StructuredReportScope,
+                    title: 'Receitas e Despesas Separadas',
+                    desc: 'Excel com 3 abas (Resumo, Receitas, Despesas) ou PDF com seções separadas + fechamento por motorista.',
+                  },
+                ]
+              ).map((item) => {
+                const payload = {
+                  vehicle,
+                  earnings: activeEarnings,
+                  expenses: activeExpenses,
+                  drivers,
+                  periodLabel: activeComparison.currentLabel,
+                  scope: item.scope,
+                };
+                return (
+                  <div
+                    key={item.scope}
+                    className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-extrabold text-white">{item.title}</p>
+                      <p className="text-[11px] text-slate-400 leading-snug mt-0.5">{item.desc}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exportStructuredExcel(payload);
+                          setIsExportHubOpen(false);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        Excel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exportStructuredPdf(payload);
+                          setIsExportHubOpen(false);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-amber-400" />
+                        PDF
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Precisa do extrato bruto completo (CSV)?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  handleExportCSV();
+                  setIsExportHubOpen(false);
+                }}
+                className="text-emerald-400 hover:underline font-bold"
+              >
+                Baixar CSV completo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
