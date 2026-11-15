@@ -145,5 +145,71 @@ export const subscriptionService = {
 
     return nextSub;
   },
+
+  async startStripeCheckout(params: {
+    userId?: string;
+    userEmail?: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    const returnUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app-girocerto.vercel.app';
+
+    if (params.userId && params.userEmail && typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/api/stripe-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: params.userId,
+            userEmail: params.userEmail,
+            returnUrl,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url && typeof window !== 'undefined') {
+            window.location.assign(data.url);
+            return { ok: true };
+          }
+        }
+      } catch {
+        // Fallback para link de pagamento direto se disponível
+      }
+    }
+
+    const fallbackUrl = getWealthCheckoutUrl(params.userEmail, params.userId);
+    if (fallbackUrl && typeof window !== 'undefined') {
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      error: 'Checkout Stripe ainda não configurado neste ambiente (defina STRIPE_SECRET_KEY / STRIPE_PRICE_ID_WEALTH na Vercel ou VITE_STRIPE_WEALTH_CHECKOUT_URL).',
+    };
+  },
+
+  async openStripeCustomerPortal(userId?: string): Promise<{ ok: boolean; error?: string }> {
+    if (!userId || typeof fetch === 'undefined') {
+      return { ok: false, error: 'Usuário não autenticado.' };
+    }
+    const returnUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app-girocerto.vercel.app';
+    try {
+      const res = await fetch('/api/stripe-portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, returnUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.url && typeof window !== 'undefined') {
+        window.location.assign(data.url);
+        return { ok: true };
+      }
+      return {
+        ok: false,
+        error: data?.error || 'Portal Stripe disponível apenas para assinaturas pagas via Stripe.',
+      };
+    } catch {
+      return { ok: false, error: 'Não foi possível conectar ao Portal Stripe agora.' };
+    }
+  },
 };
 

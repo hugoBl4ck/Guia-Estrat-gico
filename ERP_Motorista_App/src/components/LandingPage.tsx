@@ -24,7 +24,8 @@ import {
   Star,
   HelpCircle,
   MessageSquareQuote,
-  Check
+  Check,
+  Share2,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -163,6 +164,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenLega
               >
                 ENTENDA POR QUÊ ↓
               </a>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app-girocerto.vercel.app';
+                  const text = `Conheça o GiroCerto ERP: descubra seu lucro real por hora e por km na Uber/99, com controle de CPK, recargas e finanças pessoais! ${shareUrl}`;
+                  if (typeof navigator !== 'undefined' && navigator.share) {
+                    try {
+                      await navigator.share({ title: 'GiroCerto ERP', text, url: shareUrl });
+                      return;
+                    } catch {
+                      // fallback abaixo
+                    }
+                  }
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+                }}
+                className="border border-[#D4FF00]/40 hover:border-[#D4FF00] text-[#D4FF00] font-mono text-xs px-5 py-4 rounded-none uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+                title="Compartilhar no WhatsApp ou copiar link de divulgação"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>INDICAR APP</span>
+              </button>
             </div>
           </div>
 

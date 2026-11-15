@@ -11,7 +11,7 @@ import {
   Cloud,
 } from 'lucide-react';
 import {
-  getWealthCheckoutUrl,
+  subscriptionService,
   WEALTH_PLAN_PRICE_BRL,
 } from '../services/subscriptionService';
 
@@ -29,9 +29,8 @@ export const PersonalFinancePaywall: React.FC<PersonalFinancePaywallProps> = ({
   onStartTrial,
 }) => {
   const [startingTrial, setStartingTrial] = useState(false);
-  const [checkoutNotice, setCheckoutNotice] = useState(false);
-
-  const checkoutUrl = getWealthCheckoutUrl(userEmail, userId);
+  const [startingCheckout, setStartingCheckout] = useState(false);
+  const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
 
   const handleActivateTrial = async () => {
     setStartingTrial(true);
@@ -42,12 +41,17 @@ export const PersonalFinancePaywall: React.FC<PersonalFinancePaywallProps> = ({
     }
   };
 
-  const handleSubscribeClick = () => {
-    if (checkoutUrl) {
-      window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-      return;
+  const handleSubscribeClick = async () => {
+    setStartingCheckout(true);
+    setCheckoutNotice(null);
+    try {
+      const result = await subscriptionService.startStripeCheckout({ userId, userEmail });
+      if (!result.ok) {
+        setCheckoutNotice(result.error || 'Checkout Stripe pendente de configuração.');
+      }
+    } finally {
+      setStartingCheckout(false);
     }
-    setCheckoutNotice(true);
   };
 
   return (
@@ -140,21 +144,23 @@ export const PersonalFinancePaywall: React.FC<PersonalFinancePaywallProps> = ({
 
           <button
             type="button"
+            disabled={startingCheckout}
             onClick={handleSubscribeClick}
-            className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-black py-3.5 px-5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-600/25 active:scale-95 transition-all"
+            className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white font-black py-3.5 px-5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-600/25 active:scale-95 transition-all"
           >
-            <span>Assinar Plano Wealth (R$ {WEALTH_PLAN_PRICE_BRL.toFixed(2).replace('.', ',')}/mês)</span>
+            <span>
+              {startingCheckout
+                ? 'Abrindo Checkout Stripe...'
+                : `Assinar Plano Wealth (R$ ${WEALTH_PLAN_PRICE_BRL.toFixed(2).replace('.', ',')}/mês)`}
+            </span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
         {checkoutNotice && (
-          <div className="bg-slate-950 border border-amber-500/40 rounded-2xl p-3.5 text-xs text-amber-200 flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <span>
-              Link de checkout externo ainda não configurado (`VITE_WEALTH_CHECKOUT_URL`). Enquanto isso, clique em{' '}
-              <strong>Testar 7 Dias Grátis Agora</strong> para liberar imediatamente o módulo completo na sua conta!
-            </span>
+          <div className="bg-amber-950/60 border border-amber-600/50 rounded-2xl p-3.5 text-xs text-amber-200 leading-relaxed">
+            {checkoutNotice} Você ainda pode testar gratuitamente clicando em{' '}
+            <strong>"Testar 7 Dias Grátis Agora"</strong>.
           </div>
         )}
       </div>
