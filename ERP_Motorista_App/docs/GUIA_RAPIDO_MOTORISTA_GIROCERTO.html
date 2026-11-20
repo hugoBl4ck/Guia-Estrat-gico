@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Guia Rápido do Motorista — GiroCerto ERP</title>
+  <style>
+    @page { size: A4 portrait; margin: 14mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+      color: #0f172a;
+      margin: 0;
+      padding: 0;
+      font-size: 11px;
+      line-height: 1.5;
+      background: #ffffff;
+    }
+    .hero {
+      background: #07080C;
+      color: #ffffff;
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 16px;
+      border-bottom: 4px solid #D4FF00;
+    }
+    .hero .badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #07080C;
+      background: #D4FF00;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: -0.3px;
+    }
+    .hero p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 11.5px;
+    }
+    .hero .url {
+      margin-top: 10px;
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      color: #D4FF00;
+      background: rgba(212, 255, 0, 0.1);
+      border: 1px solid rgba(212, 255, 0, 0.35);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 13px 15px;
+      background: #f8fafc;
+      break-inside: avoid;
+    }
+    .card.full {
+      grid-column: 1 / -1;
+    }
+    .card.wealth {
+      background: #faf5ff;
+      border-color: #c084fc;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #D4FF00;
+      font-weight: 900;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .card.wealth .step-num {
+      background: #7e22ce;
+      color: #ffffff;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 13px;
+      color: #0f172a;
+    }
+    ul {
+      margin: 4px 0 0;
+      padding-left: 16px;
+    }
+    li {
+      margin-bottom: 3px;
+      color: #334155;
+    }
+    li strong {
+      color: #0f172a;
+    }
+    .tip {
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: #ecfdf5;
+      border-left: 3px solid #10b981;
+      font-size: 10px;
+      color: #065f46;
+    }
+    .footer {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: #64748b;
+    }
+    .footer strong {
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="badge">GUIA RÁPIDO DO MOTORISTA</div>
+    <h1>Como Usar o GiroCerto ERP no Dia a Dia</h1>
+    <p>Controle seu lucro real por hora e por KM (CPK), organize despesas, rateie parcelas por motorista, importe notas fiscais XML e transforme o lucro das corridas em patrimônio.</p>
+    <div class="url">Acesse: https://app-girocerto.vercel.app</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="step-header">
+        <span class="step-num">1</span>
+        <h2>Instale no Celular (App PWA)</h2>
+      </div>
+      <ul>
+        <li>Abra <strong>https://app-girocerto.vercel.app</strong> no navegador do celular.</li>
+        <li><strong>No Android (Chrome):</strong> toque nos 3 pontinhos (⋮) e escolha <strong>"Instalar app"</strong> ou <strong>"Adicionar à tela inicial"</strong>.</li>
+        <li><strong>No iPhone (Safari):</strong> toque no ícone de compartilhar e depois em <strong>"Adicionar à Tela de Início"</strong>.</li>
+        <li>Toque em <strong>Quero o Acesso Agora</strong> para criar sua conta gratuita com e-mail e senha.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <span class="step-num">2</span>
+        <h2>Cadastre seu Veículo e Motoristas</h2>
+      </div>
+      <ul>
+        <li>Acesse a aba <strong>Veículos</strong> (ou o seletor no topo) e informe modelo, placa, tipo (<strong>Elétrico, Flex, Combustão ou GNV</strong>) e odômetro atual.</li>
+        <li>Preencha a <strong>parcela/aluguel</strong>, <strong>seguro mensal</strong> e consumo médio para o cálculo exato do seu <strong>CPK (Custo por KM)</strong>.</li>
+        <li>Se divide o carro com outro motorista, clique no ícone de motoristas no topo para cadastrar cada condutor.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <span class="step-num">3</span>
+        <h2>Lance Receitas e Turnos</h2>
+      </div>
+      <ul>
+        <li>Na tela inicial (<strong>HUD</strong>) ou em <strong>Turnos</strong>, clique em <strong>+ Lançar Corrida / Ganho</strong>.</li>
+        <li>Escolha a plataforma (<strong>Uber, 99, InDrive, Particular</strong>), valor bruto, gorjetas, corridas, KM rodados e <strong>horas/minutos exatos</strong> (ex.: <code>6h 24m</code>).</li>
+        <li>Bônus e indicações com <code>0</code> corridas são tratados separadamente sem distorcer sua média.</li>
+        <li>Use o botão verde <strong>Voz</strong> no topo para lançar no trânsito sem digitar.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <span class="step-num">4</span>
+        <h2>Despesas, NF-e XML e Fornecedores</h2>
+      </div>
+      <ul>
+        <li>Na aba <strong>Despesas</strong>, lance recargas EV, combustível, revisões, peças, lava-jato, seguro e parcelas.</li>
+        <li>Em <strong>Prestação / Financiamento</strong>, defina a <strong>porcentagem de rateio por motorista</strong> (ex.: 50% / 50%).</li>
+        <li>Cadastre <strong>Fornecedores com CNPJ</strong> (eletropostos, postos, oficinas, autopeças) ou importe o <strong>XML da NF-e</strong> e anexe foto/PDF do comprovante.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <span class="step-num">5</span>
+        <h2>Caixas Virtuais & Metas Diárias</h2>
+      </div>
+      <ul>
+        <li>Acompanhe no <strong>HUD</strong> o seu <strong>Lucro Limpo Real</strong>, <strong>R$/Hora</strong> e <strong>R$/KM</strong> já descontando todos os custos.</li>
+        <li>Escolha seu perfil de meta diária: <strong>Leve</strong> (ponto de equilíbrio), <strong>Moderada</strong> (lucro limpo) ou <strong>Agressiva</strong> (amortização).</li>
+        <li>Na aba <strong>Caixas</strong>, veja quanto separar automaticamente para parcela, manutenção, depreciação e lucro livre.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <span class="step-num">6</span>
+        <h2>Relatórios em Excel & PDF Alinhados</h2>
+      </div>
+      <ul>
+        <li>Acesse a aba <strong>Relatórios</strong> e escolha o período (<em>Diário, Semanal, Mensal ou Período</em>).</li>
+        <li>Toque no botão verde <strong>Excel / PDF</strong> para exportar:
+          <strong>Somente Receitas</strong>, <strong>Somente Despesas</strong> ou <strong>Receitas e Despesas Separadas</strong> (Excel com 3 abas ou PDF A4 alinhado).</li>
+        <li>Use o botão <strong>Semana</strong> para fechamento semanal completo por motorista.</li>
+      </ul>
+    </div>
+
+    <div class="card full">
+      <div class="step-header">
+        <span class="step-num">7</span>
+        <h2>Funciona Sem Internet (Offline-First) + Sincronização na Nuvem</h2>
+      </div>
+      <ul>
+        <li>Todos os lançamentos são salvos <strong>primeiro no seu celular</strong> (funciona mesmo sem sinal de 4G) e sincronizados automaticamente com a nuvem quando a conexão volta.</li>
+        <li>Se houver qualquer pendência ou falta de internet, uma <strong>barra de aviso</strong> aparece no topo da tela com o botão <strong>Sincronizar Agora</strong> para você ter 100% de segurança dos seus dados.</li>
+      </ul>
+    </div>
+
+    <div class="card full wealth">
+      <div class="step-header">
+        <span class="step-num">8</span>
+        <h2>GiroCerto Wealth — Módulo Premium de Finanças Pessoais (7 Dias Grátis)</h2>
+      </div>
+      <ul>
+        <li>Na aba <strong>Pessoal</strong>, separe definitivamente o dinheiro do carro da sua vida pessoal: registre gastos de casa/mercado/saúde (também com <strong>leitor de NF-e XML e CNPJ</strong>).</li>
+        <li>Transfira seu <strong>Pró-labore em 1 clique</strong> direto do lucro líquido do ERP.</li>
+        <li>Monte sua <strong>Reserva de Emergência</strong> (com meta em meses de custo de vida) e acompanhe sua <strong>Carteira de Investimentos</strong> (Tesouro Selic, CDB, FIIs, Ações e Cripto).</li>
+      </ul>
+      <div class="tip">
+        <strong>Dica:</strong> Comece testando o módulo <strong>GiroCerto Wealth por 7 dias grátis</strong> direto dentro do app (Plano completo por R$ 49,90/mês após o teste, sem fidelidade).
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span><strong>GiroCerto ERP</strong> • Gestão Financeira para Motoristas de Aplicativo</span>
+    <span>Suporte & LGPD: privacidade@girocerto.com.br</span>
+  </div>
+</body>
+</html>

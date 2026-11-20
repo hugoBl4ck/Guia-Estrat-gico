@@ -345,10 +345,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenLega
               </div>
               <h3 className="text-xl font-black text-white uppercase">Calculadora EV & CPK Real</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Comparativo de recarga em casa Coelba (R$ 1,21/kWh) vs Eletroposto (R$ 1,69/kWh) vs Combustão. Controle de custo por km com precisão cirúrgica.
+                Comparativo de recarga residencial (com sua tarifa de kWh) vs Eletroposto vs Combustão/Flex. Controle de custo por km, horas exatas e R$/Hora com precisão cirúrgica.
               </p>
             </div>
 
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 bg-[#0B0D13] border border-white/10 space-y-2">
+              <p className="text-xs font-mono font-bold text-[#D4FF00] uppercase">Leitor NF-e XML & Fornecedores</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Importe notas fiscais XML em 1 clique e cadastre postos, eletropostos, oficinas e autopeças com CNPJ validado.
+              </p>
+            </div>
+            <div className="p-6 bg-[#0B0D13] border border-white/10 space-y-2">
+              <p className="text-xs font-mono font-bold text-[#D4FF00] uppercase">Excel Multi-Abas & PDF Alinhado</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Exporte Receitas, Despesas ou Ambos separados em Excel (.xls com 3 abas) e PDF A4 pronto para imprimir ou enviar no WhatsApp.
+              </p>
+            </div>
+            <div className="p-6 bg-[#0B0D13] border border-white/10 space-y-2">
+              <p className="text-xs font-mono font-bold text-[#D4FF00] uppercase">Rateio Multi-Motorista</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Divida prestações e despesas por porcentagem (ex: 50%/50%) e acompanhe o fechamento semanal individual de cada motorista.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -447,6 +468,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenLega
                 <p className="text-[10px] text-slate-500 uppercase">Margem Real de Lucro</p>
                 <p className="text-xl font-black text-[#D4FF00] mt-1">{realNetMarginPercent}%</p>
               </div>
+            </div>
+
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10">
+              <p className="text-xs text-slate-400">
+                Quer calcular com os números reais do <strong className="text-white">seu veículo, parcela e consumo</strong>?
+              </p>
+              <button
+                type="button"
+                onClick={onOpenAuth}
+                className="w-full sm:w-auto bg-[#D4FF00] hover:bg-[#b8de00] text-black font-black text-xs px-6 py-3.5 uppercase tracking-wider transition-all flex items-center justify-center gap-2 shrink-0"
+              >
+                <span>CALCULAR MEU LUCRO REAL GRÁTIS</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
 
           </div>
@@ -672,11 +707,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenLega
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Calculadora EV Coelba vs Eletroposto vs Combustão</span>
+                    <span>Calculadora EV Residencial vs Eletroposto vs Combustão</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Multi-Motorista com Rateio de Parcelas & Despesas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Leitor NF-e XML, Fornecedores (CNPJ) & Exportação Excel/PDF</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -714,6 +753,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenLega
                     <p className="text-3xl font-black text-[#D4FF00]">R$ 49,90<span className="text-xs text-slate-400 font-normal">/mês</span></p>
                     <p className="text-[10px] text-slate-400 uppercase">7 dias grátis para testar</p>
                   </div>
+                </div>
+
+                <div className="overflow-hidden border border-[#D4FF00]/25 bg-black/50">
+                  <img
+                    src="/images/wealth-preview.jpg"
+                    alt="GiroCerto Wealth — Reserva de Emergência e Carteira de Investimentos"
+                    className="w-full h-36 object-cover opacity-90"
+                    loading="lazy"
+                  />
                 </div>
 
                 <div className="space-y-3 text-xs font-medium text-slate-200">
