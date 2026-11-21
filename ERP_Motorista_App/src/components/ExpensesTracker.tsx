@@ -58,12 +58,9 @@ export const ExpensesTracker: React.FC<ExpensesTrackerProps> = ({
   // Lista de motoristas disponíveis com fallback dinâmico
   const availableDrivers: Driver[] = drivers.length > 0 ? drivers : (currentDriverName ? [{ id: 'drv-current', name: currentDriverName, isDefault: true }] : []);
   const financingDrivers: Driver[] =
-    availableDrivers.length >= 2
+    availableDrivers.length > 0
       ? availableDrivers
-      : [
-          { id: 'drv-hugo', name: 'Hugo', isDefault: true },
-          { id: 'drv-ari', name: 'Ari' },
-        ];
+      : [{ id: 'drv-primary', name: currentDriverName || 'Motorista', isDefault: true }];
 
   const buildDefaultFinancingSplits = (): DriverExpenseSplit[] => {
     const count = financingDrivers.length;

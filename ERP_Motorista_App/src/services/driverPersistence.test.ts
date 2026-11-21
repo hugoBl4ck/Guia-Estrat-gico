@@ -49,14 +49,19 @@ describe('Driver Persistence & Fallback', () => {
     ]);
   });
 
-  it('getInitialDriversForUser deve retornar os motoristas padrão ou usar o nome fornecido', () => {
-    const drivers1 = getInitialDriversForUser('qualquer@email.com', 'Hugo Vieira');
-    expect(drivers1[0].name).toBe('Hugo Vieira');
-    expect(drivers1.some((d) => d.name === 'Ari')).toBe(true);
+  it('getInitialDriversForUser deve isolar novos usuarios e manter Hugo/Ari apenas na conta principal', () => {
+    const ownerDrivers = getInitialDriversForUser('hugovieira.eng@gmail.com', 'Hugo Vieira');
+    expect(ownerDrivers[0].name).toBe('Hugo Vieira');
+    expect(ownerDrivers.some((d) => d.name === 'Ari')).toBe(true);
 
-    const drivers2 = getInitialDriversForUser();
-    expect(drivers2[0].name).toBe('Hugo');
-    expect(drivers2.some((d) => d.name === 'Ari')).toBe(true);
+    const newUserDrivers = getInitialDriversForUser('novo@motorista.com', 'Carlos Silva');
+    expect(newUserDrivers).toHaveLength(1);
+    expect(newUserDrivers[0].name).toBe('Carlos Silva');
+    expect(newUserDrivers.some((d) => d.name === 'Hugo' || d.name === 'Ari')).toBe(false);
+
+    const newUserNoName = getInitialDriversForUser('maria@motorista.com');
+    expect(newUserNoName).toHaveLength(1);
+    expect(newUserNoName[0].name).toBe('maria');
   });
 
   it('EDIT_EARNING deve preservar a troca de motorista de Hugo para Ari', () => {

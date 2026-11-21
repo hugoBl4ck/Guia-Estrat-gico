@@ -1,15 +1,30 @@
 import { Vehicle, Earning, Expense, Shift, ReserveBucket, Driver } from '../types';
 
-export const getInitialDriversForUser = (_email?: string, name?: string): Driver[] => {
-  const primaryName = name && name.trim() !== '' ? name.trim() : 'Hugo';
-  
-  return [
-    { id: 'drv-hugo', name: primaryName, isDefault: true },
-    { id: 'drv-ari', name: 'Ari', isDefault: false }
-  ];
+export const PRIMARY_OWNER_EMAIL = 'hugovieira.eng@gmail.com';
+
+export const isPrimaryOwnerEmail = (email?: string): boolean => {
+  return (email || '').trim().toLowerCase() === PRIMARY_OWNER_EMAIL;
 };
 
-export const INITIAL_DRIVERS: Driver[] = getInitialDriversForUser();
+export const getInitialDriversForUser = (email?: string, name?: string): Driver[] => {
+  if (isPrimaryOwnerEmail(email)) {
+    const primaryName = name && name.trim() !== '' ? name.trim() : 'Hugo';
+    return [
+      { id: 'drv-hugo', name: primaryName, isDefault: true },
+      { id: 'drv-ari', name: 'Ari', isDefault: false }
+    ];
+  }
+
+  const emailPrefix = email && email.includes('@') ? email.split('@')[0].trim() : '';
+  const primaryName =
+    name && name.trim() !== ''
+      ? name.trim()
+      : emailPrefix || 'Motorista';
+
+  return [{ id: 'drv-primary', name: primaryName, isDefault: true }];
+};
+
+export const INITIAL_DRIVERS: Driver[] = getInitialDriversForUser(PRIMARY_OWNER_EMAIL);
 
 
 export const VEHICLE_BYD_DOLPHIN: Vehicle = {
@@ -59,39 +74,43 @@ export const VEHICLE_BYD_DOLPHIN: Vehicle = {
 };
 
 export const DEFAULT_GENERIC_VEHICLE: Vehicle = {
-  id: 'veh-default-generic',
-  model: 'Ford Ka 1.0 SE Flex',
-  brand: 'Ford',
-  year: 2021,
-  licensePlate: 'FORD-550',
+  id: 'veh-starter-01',
+  model: 'Meu Veículo (Configure Aqui)',
+  brand: '',
+  year: new Date().getFullYear(),
+  licensePlate: 'AAA-0000',
   vehicleType: 'COMBUSTION',
-  imageUrl: '/images/vehicles/ford_ka.png',
   isRented: false,
   monthlyRentalCost: 0,
-  usageMode: 'RENTAL_OWNER', // Alugado para terceiro (Modo Locador)
-  weeklyRentalIncome: 550.00,  // R$ 550,00 / semana (R$ 2.200,00 / mês)
-  tenantName: 'Motorista Locatário',
+  usageMode: 'DRIVER',
   monthlyFinancingCost: 0,
-  fipeValue: 48000,
-  estimatedResidualValue: 35000,
-  currentOdometerKm: 78000,
+  fipeValue: 0,
+  estimatedResidualValue: 0,
+  currentOdometerKm: 0,
   isElectric: false,
   batteryCapacityKwh: 0,
   kmPerKwh: 0,
-  residentialTariffPerKwh: 1.21,
-  fastChargerTariffPerKwh: 1.69,
-  insuranceMonthlyCost: 180.00,
+  residentialTariffPerKwh: 0.85,
+  fastChargerTariffPerKwh: 1.80,
+  insuranceMonthlyCost: 0,
   insuranceTotalInstallments: 12,
-  insurancePaidInstallments: 1,
-  insuranceCompany: 'Seguradora Auto Frota',
-  insuranceDueDay: 10
+  insurancePaidInstallments: 0,
+  insuranceCompany: '',
+  insuranceDueDay: 10,
 };
 
 export const getInitialVehicleForUser = (email?: string): Vehicle => {
-  if (email === 'hugovieira.eng@gmail.com') {
+  if (isPrimaryOwnerEmail(email)) {
     return VEHICLE_BYD_DOLPHIN;
   }
   return DEFAULT_GENERIC_VEHICLE;
+};
+
+export const getInitialVehiclesForUser = (email?: string): Vehicle[] => {
+  if (isPrimaryOwnerEmail(email)) {
+    return VEHICLES_LIST;
+  }
+  return [DEFAULT_GENERIC_VEHICLE];
 };
 
 export const VEHICLE_FORD_KA: Vehicle = {

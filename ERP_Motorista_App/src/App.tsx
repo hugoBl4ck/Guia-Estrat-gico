@@ -38,6 +38,7 @@ import { calculateVehicleInstallmentsSummary } from './utils/financialCalculator
 
 import {
   VEHICLES_LIST,
+  DEFAULT_GENERIC_VEHICLE,
   INITIAL_SHIFT_BYD,
   INITIAL_EARNINGS_BYD,
   INITIAL_EXPENSES_BYD,
@@ -46,8 +47,10 @@ import {
   INITIAL_EXPENSES_FORD_KA,
   INITIAL_BUCKETS,
   INITIAL_DRIVERS,
+  isPrimaryOwnerEmail,
   getInitialDriversForUser,
-  getInitialVehicleForUser
+  getInitialVehicleForUser,
+  getInitialVehiclesForUser
 } from './utils/mockData';
 import { Vehicle, Earning, Expense, Shift, PersonalUsageLog, Driver } from './types';
 
@@ -66,10 +69,10 @@ export function App() {
   const [dailyGoalTrips, setDailyGoalTrips] = useState<number>(30);
   const isHydratedRef = useRef<boolean>(false);
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => [VEHICLES_LIST[0]]);
-  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => VEHICLES_LIST[0]);
-  const [drivers, setDrivers] = useState<Driver[]>(() => INITIAL_DRIVERS);
-  const [currentDriverName, setCurrentDriverName] = useState<string>(() => INITIAL_DRIVERS[0]?.name || '');
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => [DEFAULT_GENERIC_VEHICLE]);
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(() => DEFAULT_GENERIC_VEHICLE);
+  const [drivers, setDrivers] = useState<Driver[]>(() => []);
+  const [currentDriverName, setCurrentDriverName] = useState<string>('');
 
   // Carregar estado inicial via IndexedDB de forma assíncrona
   const [state, dispatch] = useReducer(financeReducer, {
@@ -167,22 +170,27 @@ export function App() {
           dbService.loadItemVehiclesFromIndexedDB(storedEmail)
         ]);
 
+        const isOwnerAccount = isPrimaryOwnerEmail(storedEmail);
         const isMockEarningsOnly = !dbData || !dbData.earnings || (dbData.earnings.length <= 3 && dbData.earnings.every((e: Earning) => e.id.startsWith('earning-byd-') || e.id.startsWith('earning-ford-') || e.id.startsWith('earning-today-') || e.id.startsWith('earning-yesterday-') || e.id.startsWith('earning-2days-')));
 
         let currentStateData = dbData || {
-          earnings: INITIAL_EARNINGS_BYD,
-          expenses: INITIAL_EXPENSES_BYD,
+          earnings: isOwnerAccount ? INITIAL_EARNINGS_BYD : [],
+          expenses: isOwnerAccount ? INITIAL_EXPENSES_BYD : [],
           activeShift: null,
           buckets: INITIAL_BUCKETS.map((b) => ({ ...b, currentBalance: 0 })),
           personalLogs: [],
-          isDataCleared: false,
+          isDataCleared: !isOwnerAccount,
         };
 
         if (dbData) {
           const mergedData = {
             ...dbData,
-            earnings: storedEmail && !isMockEarningsOnly ? (dbData.earnings || []) : (isMockEarningsOnly ? INITIAL_EARNINGS_BYD : (dbData.earnings || [])),
-            expenses: storedEmail && !isMockEarningsOnly ? (dbData.expenses || []) : (dbData.expenses || INITIAL_EXPENSES_BYD),
+            earnings: isOwnerAccount
+              ? (storedEmail && !isMockEarningsOnly ? (dbData.earnings || []) : (isMockEarningsOnly ? INITIAL_EARNINGS_BYD : (dbData.earnings || [])))
+              : (dbData.earnings || []),
+            expenses: isOwnerAccount
+              ? (storedEmail && !isMockEarningsOnly ? (dbData.expenses || []) : (dbData.expenses || INITIAL_EXPENSES_BYD))
+              : (dbData.expenses || []),
           };
           currentStateData = mergedData;
           dispatch({ type: 'SET_ALL', payload: mergedData });
@@ -190,8 +198,11 @@ export function App() {
           dispatch({ type: 'SET_ALL', payload: currentStateData });
         }
 
-        let resolvedVehicles = dbVehicles && dbVehicles.length > 0 ? dbVehicles : VEHICLES_LIST;
-        let resolvedCurrentVehicle = dbCurrentVehicle;
+        let resolvedVehicles =
+          dbVehicles && dbVehicles.length > 0
+            ? dbVehicles
+            : getInitialVehiclesForUser(storedEmail);
+        let resolvedCurrentVehicle = dbCurrentVehicle || resolvedVehicles[0];
 
         if (isSupabaseConfigured() && sessionUserId) {
           try {
@@ -216,33 +227,34 @@ export function App() {
           setCurrentVehicle(resolvedCurrentVehicle);
         }
 
+        const defaultDriversForSession = getInitialDriversForUser(storedEmail, sessionUserName);
+        const fallbackPrimaryName = defaultDriversForSession[0]?.name || 'Motorista';
+
         const normalizeDriver = (name?: string | null): string => {
-          if (!name) return 'Hugo';
+          if (!name) return fallbackPrimaryName;
           const trimmed = name.trim();
           const lower = trimmed.toLowerCase();
-          if (
-            lower === 'motorista principal' ||
-            lower === 'motorista locatário' ||
-            lower === 'motorista' ||
-            lower === 'hugo vieira' ||
-            lower.startsWith('hugo')
-          ) {
-            return 'Hugo';
-          }
-          if (lower === 'ari') {
-            return 'Ari';
+          if (isOwnerAccount) {
+            if (
+              lower === 'motorista principal' ||
+              lower === 'motorista locatário' ||
+              lower === 'motorista' ||
+              lower === 'hugo vieira' ||
+              lower.startsWith('hugo')
+            ) {
+              return 'Hugo';
+            }
+            if (lower === 'ari') {
+              return 'Ari';
+            }
           }
           return trimmed;
         };
 
         let resolvedDrivers: Driver[] = [];
         const seenNames = new Set<string>();
-        const sanitizedDrivers: Driver[] = [
-          { id: 'drv-hugo', name: 'Hugo', isDefault: true },
-          { id: 'drv-ari', name: 'Ari', isDefault: false }
-        ];
-        seenNames.add('hugo');
-        seenNames.add('ari');
+        const sanitizedDrivers: Driver[] = defaultDriversForSession.map((d) => ({ ...d }));
+        sanitizedDrivers.forEach((d) => seenNames.add(d.name.trim().toLowerCase()));
 
         if (dbDrivers && Array.isArray(dbDrivers)) {
           dbDrivers.forEach((d: Driver) => {
@@ -985,11 +997,14 @@ export function App() {
     ]);
     const cloudData = await repository.fetchFromCloud(email);
 
-    let resolvedVehicles = localVehicles.length > 0 ? localVehicles : [VEHICLES_LIST[0]];
-    let resolvedCurrentVehicle = localCurrentVehicle;
+    let resolvedVehicles =
+      localVehicles.length > 0 ? localVehicles : getInitialVehiclesForUser(email);
+    let resolvedCurrentVehicle = localCurrentVehicle || resolvedVehicles[0];
+    let hasCloudVehicles = false;
     try {
       const cloudVehicles = await repository.fetchVehiclesFromCloud(authenticatedUserId);
       if (cloudVehicles.length > 0) {
+        hasCloudVehicles = true;
         resolvedVehicles = mergeCloudVehicles(resolvedVehicles, cloudVehicles);
         resolvedCurrentVehicle = resolvedVehicles.find((v) => v.id === resolvedCurrentVehicle?.id) || resolvedVehicles[0];
         await repository.saveVehicles(resolvedVehicles, localContext);
@@ -1018,6 +1033,9 @@ export function App() {
     setDrivers(initialDrvs);
     setCurrentDriverName(initialDrvs[0]?.name || 'Motorista');
     setIsAuthOpen(false);
+    if (!isPrimaryOwnerEmail(email) && !hasCloudVehicles && resolvedVehicles.every((v) => v.id === DEFAULT_GENERIC_VEHICLE.id)) {
+      setIsVehicleOnboardingOpen(true);
+    }
   };
 
   const handleLogout = async () => {
@@ -1042,8 +1060,10 @@ export function App() {
           isDataCleared: true,
         },
       });
-      setVehicles([VEHICLES_LIST[0]]);
-      setCurrentVehicle(VEHICLES_LIST[0]);
+      setVehicles([DEFAULT_GENERIC_VEHICLE]);
+      setCurrentVehicle(DEFAULT_GENERIC_VEHICLE);
+      setDrivers([]);
+      setCurrentDriverName('');
     }
   };
 

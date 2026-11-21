@@ -3,7 +3,8 @@ import {
   VEHICLES_LIST,
   INITIAL_BUCKETS,
   INITIAL_DRIVERS,
-  getInitialDriversForUser
+  getInitialDriversForUser,
+  getInitialVehicleForUser
 } from '../utils/mockData';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { canMigrateLegacyData, getUserStorageKey } from './localOwnership';
@@ -143,26 +144,32 @@ export const dbService = {
   },
 
   async loadVehiclesFromIndexedDB(context?: LocalUserContext): Promise<Vehicle[]> {
+    const isOwner = (context?.email || '').trim().toLowerCase() === 'hugovieira.eng@gmail.com';
+    const fallbackList = isOwner ? VEHICLES_LIST : [getInitialVehicleForUser(context?.email)];
     try {
       const stored = await loadUserItem<Vehicle[]>(IDB_STORE_NAMES.VEHICLES, STORAGE_KEYS.VEHICLES, context);
       if (!stored || !Array.isArray(stored) || stored.length === 0) {
-        return VEHICLES_LIST;
+        return fallbackList;
+      }
+      if (!isOwner) {
+        return stored;
       }
       const vehicleMap = new Map<string, Vehicle>();
       VEHICLES_LIST.forEach((v) => vehicleMap.set(v.id, v));
       stored.forEach((v) => vehicleMap.set(v.id, v));
       return Array.from(vehicleMap.values());
     } catch (error) {
-      return VEHICLES_LIST;
+      return fallbackList;
     }
   },
 
   async loadCurrentVehicleFromIndexedDB(context?: LocalUserContext): Promise<Vehicle> {
+    const fallbackVehicle = getInitialVehicleForUser(context?.email);
     try {
       const stored = await loadUserItem<Vehicle>(IDB_STORE_NAMES.CURRENT_VEHICLE, STORAGE_KEYS.CURRENT_VEHICLE, context);
-      return stored ?? VEHICLES_LIST[0];
+      return stored ?? fallbackVehicle;
     } catch (error) {
-      return VEHICLES_LIST[0];
+      return fallbackVehicle;
     }
   },
 
