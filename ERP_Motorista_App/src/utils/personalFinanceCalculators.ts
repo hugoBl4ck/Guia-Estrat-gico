@@ -86,6 +86,18 @@ export interface PersonalFinanceSummary {
   totalPatrimony: number;
 }
 
+export function getEffectiveEmergencyGoal(
+  state: PersonalFinanceState,
+  ownerFilter?: string
+) {
+  const normalizedOwner =
+    ownerFilter && ownerFilter !== 'ALL' ? ownerFilter.trim().toLowerCase() : null;
+  if (normalizedOwner && state.emergencyGoalsByOwner?.[normalizedOwner]) {
+    return state.emergencyGoalsByOwner[normalizedOwner];
+  }
+  return state.emergencyGoal || DEFAULT_PERSONAL_FINANCE_STATE.emergencyGoal;
+}
+
 /**
  * Calcula todos os indicadores de Finanças Pessoais (gastos do mês, reserva de emergência e investimentos).
  * Totalmente isolado do ERP operacional do veículo.
@@ -145,11 +157,12 @@ export function calculatePersonalFinanceSummary(
   });
   emergencyBalance = roundCurrency(Math.max(0, emergencyBalance));
 
-  const monthlyEssential = Math.max(0, Number(state.emergencyGoal?.monthlyEssentialCost) || 0);
-  const targetMonths = Math.max(1, Number(state.emergencyGoal?.targetMonths) || 6);
+  const activeGoal = getEffectiveEmergencyGoal(state, ownerFilter);
+  const monthlyEssential = Math.max(0, Number(activeGoal?.monthlyEssentialCost) || 0);
+  const targetMonths = Math.max(1, Number(activeGoal?.targetMonths) || 6);
   const emergencyTarget = roundCurrency(
-    state.emergencyGoal?.customTargetAmount && state.emergencyGoal.customTargetAmount > 0
-      ? state.emergencyGoal.customTargetAmount
+    activeGoal?.customTargetAmount && activeGoal.customTargetAmount > 0
+      ? activeGoal.customTargetAmount
       : monthlyEssential * targetMonths
   );
   const emergencyProgressPercent =

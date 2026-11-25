@@ -323,6 +323,7 @@ export interface PersonalFinanceState {
   transactions: PersonalTransaction[];
   investments: PersonalInvestment[];
   emergencyGoal: PersonalEmergencyGoal;
+  emergencyGoalsByOwner?: Record<string, PersonalEmergencyGoal>;
 }
 
 export type PlanTier = 'FREE_PRO' | 'WEALTH_PRO';

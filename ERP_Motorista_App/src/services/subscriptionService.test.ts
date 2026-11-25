@@ -34,6 +34,8 @@ describe('subscriptionService', () => {
       trialEndsAt: '2026-11-10T12:00:00Z',
     };
     expect(hasWealthAccess(expiredTrial, now)).toBe(false);
+    expect(hasWealthAccess(expiredTrial, now, 'hugovieira.eng@gmail.com')).toBe(true);
+    expect(hasWealthAccess(expiredTrial, now, 'outro@motorista.com')).toBe(false);
     expect(getTrialDaysRemaining(expiredTrial, now)).toBe(0);
   });
 });

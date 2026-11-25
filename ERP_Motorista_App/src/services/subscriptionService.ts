@@ -1,4 +1,5 @@
 import { UserSubscription } from '../types';
+import { isPrimaryOwnerEmail } from '../utils/mockData';
 import { indexedDBService, IDB_STORE_NAMES } from './indexedDB';
 import { getUserStorageKey } from './localOwnership';
 import { isSupabaseConfigured, supabase } from './supabaseClient';
@@ -23,7 +24,12 @@ export function getDefaultSubscription(userId?: string): UserSubscription {
   };
 }
 
-export function hasWealthAccess(sub?: UserSubscription | null, now: Date = new Date()): boolean {
+export function hasWealthAccess(
+  sub?: UserSubscription | null,
+  now: Date = new Date(),
+  userEmail?: string
+): boolean {
+  if (isPrimaryOwnerEmail(userEmail)) return true;
   if (!sub || sub.planTier !== 'WEALTH_PRO') return false;
   if (sub.status === 'active') return true;
   if (sub.status === 'trialing') {

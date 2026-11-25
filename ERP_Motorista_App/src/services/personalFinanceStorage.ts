@@ -63,6 +63,7 @@ export const personalFinanceStorage = {
             ...DEFAULT_PERSONAL_FINANCE_STATE.emergencyGoal,
             ...(stored.emergencyGoal || {}),
           },
+          emergencyGoalsByOwner: stored.emergencyGoalsByOwner || {},
         };
       }
       return { ...DEFAULT_PERSONAL_FINANCE_STATE };

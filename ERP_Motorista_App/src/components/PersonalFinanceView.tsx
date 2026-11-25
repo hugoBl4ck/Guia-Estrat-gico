@@ -36,6 +36,7 @@ import {
 import {
   calculatePersonalFinanceSummary,
   DEFAULT_PERSONAL_FINANCE_STATE,
+  getEffectiveEmergencyGoal,
   INVESTMENT_ASSET_META,
   PERSONAL_CATEGORY_META,
   suggestProLaboreFromErp,
@@ -159,6 +160,25 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
     if (!isLoaded) return;
     personalFinanceStorage.save(pfState, userId);
   }, [pfState, isLoaded, userId]);
+
+  useEffect(() => {
+    if (currentDriverName && currentDriverName.trim()) {
+      setOwnerFilter(currentDriverName.trim());
+      setTxOwner(currentDriverName.trim());
+      setInvOwner(currentDriverName.trim());
+    }
+  }, [currentDriverName]);
+
+  useEffect(() => {
+    const activeGoal = getEffectiveEmergencyGoal(pfState, ownerFilter);
+    setGoalMonthsInput(String(activeGoal.targetMonths || 6));
+    setGoalEssentialInput(String(activeGoal.monthlyEssentialCost || 3000));
+    setGoalYieldInput(activeGoal.yieldInfo || '');
+    if (ownerFilter !== 'ALL') {
+      setTxOwner(ownerFilter);
+      setInvOwner(ownerFilter);
+    }
+  }, [ownerFilter, pfState.emergencyGoal, pfState.emergencyGoalsByOwner]);
 
   const summary = useMemo(
     () => calculatePersonalFinanceSummary(pfState, selectedMonth, ownerFilter),
@@ -323,16 +343,31 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
     e.preventDefault();
     const months = Math.max(1, parseInt(goalMonthsInput, 10) || 6);
     const essential = Math.max(100, parseFloat(goalEssentialInput.replace(',', '.')) || 3000);
+    const normalizedOwner =
+      ownerFilter && ownerFilter !== 'ALL' ? ownerFilter.trim().toLowerCase() : null;
 
-    setPfState((prev) => ({
-      ...prev,
-      emergencyGoal: {
+    setPfState((prev) => {
+      const currentGoal = getEffectiveEmergencyGoal(prev, ownerFilter);
+      const updatedGoal = {
         targetMonths: months,
         monthlyEssentialCost: essential,
-        yieldInfo: goalYieldInput.trim() || prev.emergencyGoal.yieldInfo,
+        yieldInfo: goalYieldInput.trim() || currentGoal.yieldInfo,
         updatedAt: new Date().toISOString(),
-      },
-    }));
+      };
+      if (normalizedOwner) {
+        return {
+          ...prev,
+          emergencyGoalsByOwner: {
+            ...(prev.emergencyGoalsByOwner || {}),
+            [normalizedOwner]: updatedGoal,
+          },
+        };
+      }
+      return {
+        ...prev,
+        emergencyGoal: updatedGoal,
+      };
+    });
     setShowGoalEditor(false);
   };
 
@@ -474,7 +509,7 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
     return Array.from(names);
   }, [drivers, pfState.transactions]);
 
-  if (isLoaded && !hasWealthAccess(subscription)) {
+  if (isLoaded && !hasWealthAccess(subscription, new Date(), userEmail)) {
     const isTrialExpired = Boolean(
       subscription?.planTier === 'WEALTH_PRO' && subscription?.status === 'trialing'
     );
@@ -514,6 +549,46 @@ export const PersonalFinanceView: React.FC<PersonalFinanceViewProps> = ({
           )}
         </div>
       )}
+
+      {/* Barra de Isolamento por Motorista (Carteira Individual) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {drivers.map((drv) => {
+            const isSelected = ownerFilter.trim().toLowerCase() === drv.name.trim().toLowerCase();
+            return (
+              <button
+                key={drv.id}
+                type="button"
+                onClick={() => setOwnerFilter(drv.name)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all ${
+                  isSelected
+                    ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-emerald-500/50'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>{drv.name}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setOwnerFilter('ALL')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              ownerFilter === 'ALL'
+                ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20'
+                : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+            }`}
+          >
+            Consolidado (Todos)
+          </button>
+        </div>
+        <span className="text-[11px] font-mono text-slate-400 px-1">
+          {ownerFilter === 'ALL'
+            ? 'Exibindo soma de todos os titulares'
+            : `Carteira isolada de ${ownerFilter} (gastos, reserva e investimentos)`}
+        </span>
+      </div>
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
