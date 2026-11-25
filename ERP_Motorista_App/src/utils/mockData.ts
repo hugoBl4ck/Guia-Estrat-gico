@@ -8,9 +8,8 @@ export const isPrimaryOwnerEmail = (email?: string): boolean => {
 
 export const getInitialDriversForUser = (email?: string, name?: string): Driver[] => {
   if (isPrimaryOwnerEmail(email)) {
-    const primaryName = name && name.trim() !== '' ? name.trim() : 'Hugo';
     return [
-      { id: 'drv-hugo', name: primaryName, isDefault: true },
+      { id: 'drv-hugo', name: 'Hugo', isDefault: true },
       { id: 'drv-ari', name: 'Ari', isDefault: false }
     ];
   }

@@ -50,9 +50,10 @@ describe('Driver Persistence & Fallback', () => {
   });
 
   it('getInitialDriversForUser deve isolar novos usuarios e manter Hugo/Ari apenas na conta principal', () => {
-    const ownerDrivers = getInitialDriversForUser('hugovieira.eng@gmail.com', 'Hugo Vieira');
-    expect(ownerDrivers[0].name).toBe('Hugo Vieira');
+    const ownerDrivers = getInitialDriversForUser('hugovieira.eng@gmail.com', 'Hugo Leonardo Almeida Vieira');
+    expect(ownerDrivers[0].name).toBe('Hugo');
     expect(ownerDrivers.some((d) => d.name === 'Ari')).toBe(true);
+    expect(ownerDrivers).toHaveLength(2);
 
     const newUserDrivers = getInitialDriversForUser('novo@motorista.com', 'Carlos Silva');
     expect(newUserDrivers).toHaveLength(1);
