@@ -21,6 +21,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -34,6 +35,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const handleGoogleSignIn = async () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setOauthLoading(true);
+    try {
+      if (!supabase) {
+        throw new Error('Supabase não está configurado neste ambiente.');
+      }
+      const redirectTo = getAuthRedirectUrl();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Google OAuth Error:', err);
+      setErrorMsg(
+        err?.message ||
+          'Não foi possível iniciar o login com Google. Verifique se o provedor Google está ativado no Supabase.'
+      );
+      setOauthLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,6 +162,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <p className="text-xs text-slate-400">
               Sincronização em nuvem e segurança de dados
             </p>
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            disabled={loading || oauthLoading}
+            onClick={handleGoogleSignIn}
+            className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-95"
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"
+              />
+            </svg>
+            <span>{oauthLoading ? 'Conectando ao Google...' : 'Continuar com Google (Gmail)'}</span>
+          </button>
+
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <span className="flex-1 h-px bg-slate-800" />
+            <span>ou com e-mail e senha</span>
+            <span className="flex-1 h-px bg-slate-800" />
           </div>
         </div>
 
